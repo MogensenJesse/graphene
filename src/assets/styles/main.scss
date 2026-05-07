@@ -1,0 +1,16 @@
+// src/assets/styles/main.scss
+
+// Base
+@use 'base/variables';
+@use 'base/reset';
+@use 'base/typography';
+
+// App layout
+@use 'app/app';
+
+// Components
+@use 'components/EmptyState';
+@use 'components/Sidebar';
+@use 'components/TagPill';
+@use 'components/SnippetDetail';
+@use 'components/SnippetForm';

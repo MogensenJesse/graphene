@@ -1,0 +1,105 @@
+// src/assets/styles/app/_app.scss
+@use '../base/variables' as v;
+
+html {
+  background: transparent;
+  height: 100%;
+}
+
+body {
+  overflow: hidden;
+  background: transparent;
+  height: 100%;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: rgba(v.$night, 0.66);
+  overflow: hidden;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.app__body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 10px;
+}
+
+.app__sidebar {
+  width: 252px;
+  flex-shrink: 0;
+  background: rgba(v.$night, 0);
+  border-radius: v.$radius-lg;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app__main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: rgba(v.$onyx, 0.58);
+  border-radius: v.$radius-lg;
+  position: relative;
+}
+
+.app__drag-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  z-index: 5;
+  -webkit-app-region: drag;
+}
+
+.app__win-controls {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 10;
+  display: flex;
+  gap: 2px;
+}
+
+.app__win-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: v.$radius-sm;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  transition: background var(--transition-fast), color var(--transition-fast);
+
+  &:hover {
+    background: var(--color-border-secondary);
+    color: var(--color-text-secondary);
+  }
+
+  &--close:hover {
+    background: rgba(v.$red, 0.18);
+    color: v.$red;
+  }
+
+  &:focus-visible {
+    outline: 1px solid var(--color-border-primary);
+    outline-offset: 1px;
+  }
+}

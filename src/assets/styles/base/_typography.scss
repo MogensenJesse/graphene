@@ -1,0 +1,48 @@
+// src/assets/styles/base/_typography.scss
+@use 'variables' as v;
+
+@font-face {
+  font-family: 'Switzer';
+  src: url('/fonts/Switzer-Bold.woff2') format('woff2');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Switzer';
+  src: url('/fonts/Switzer-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+h1, h2, h3 {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+p {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+select {
+  outline: none;
+}
+
+option {
+  font-size: 13px;
+  font-weight: 400;
+  color: v.$light;
+  background: v.$onyx;
+  text-transform: none;
+}
