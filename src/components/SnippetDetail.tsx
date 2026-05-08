@@ -1,12 +1,13 @@
 // src/components/SnippetDetail.tsx
-import { useEffect, useState } from "react";
 import { useClipboard } from "../hooks/useClipboard";
-import type { Snippet } from "../types";
+import { useDeleteConfirm } from "../hooks/useDeleteConfirm";
+import { formatDate, getFolderPath } from "../lib/utils";
 import { LANG_COLORS } from "../types";
-import TagPill from "./TagPill";
+import type { Folder, SnippetItem } from "../types";
 
 interface SnippetDetailProps {
-  snippet: Snippet;
+  snippet: SnippetItem;
+  folders: Folder[];
   onEdit: () => void;
   onDelete: (id: string) => void;
   onCopied: (id: string) => void;
@@ -14,27 +15,15 @@ interface SnippetDetailProps {
 
 function SnippetDetail({
   snippet,
+  folders,
   onEdit,
   onDelete,
   onCopied,
 }: SnippetDetailProps) {
   const { copy, copied } = useClipboard();
-  const [confirming, setConfirming] = useState(false);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: snippet.id is an intentional trigger — reset confirming whenever the viewed snippet changes
-  useEffect(() => {
-    setConfirming(false);
-  }, [snippet.id]);
-
-  // Allow Escape to cancel the pending confirmation
-  useEffect(() => {
-    if (!confirming) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setConfirming(false);
-    };
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [confirming]);
+  const { confirming, startConfirm, cancelConfirm } = useDeleteConfirm(
+    snippet.id,
+  );
 
   const langStyle = LANG_COLORS[snippet.lang] ?? {
     bg: "var(--color-background-secondary)",
@@ -50,9 +39,11 @@ function SnippetDetail({
     if (confirming) {
       onDelete(snippet.id);
     } else {
-      setConfirming(true);
+      startConfirm();
     }
   };
+
+  const folderPath = getFolderPath(folders, snippet.folderId);
 
   return (
     <div className="snippet-detail">
@@ -60,21 +51,20 @@ function SnippetDetail({
         <div className="snippet-detail__header-left">
           <h2 className="snippet-detail__title">{snippet.title}</h2>
           <div className="snippet-detail__meta">
+            {folderPath.length > 0 && (
+              <span className="snippet-detail__folder-path">
+                {folderPath.join(" › ")}
+              </span>
+            )}
             <span
               className="snippet-detail__lang-badge"
               style={{ background: langStyle.bg, color: langStyle.color }}
             >
               {snippet.lang}
             </span>
-            {snippet.tags.map((tag) => (
-              <TagPill key={tag} tag={tag} />
-            ))}
-            {snippet.projects.length > 0 && (
-              <span className="snippet-detail__projects">
-                <span aria-hidden="true">◆</span>
-                {snippet.projects.join(", ")}
-              </span>
-            )}
+            <span className="snippet-detail__date">
+              {formatDate(snippet.updatedAt)}
+            </span>
           </div>
         </div>
       </div>
@@ -137,7 +127,7 @@ function SnippetDetail({
               <button
                 type="button"
                 className="snippet-detail__action-btn snippet-detail__action-btn--cancel-delete"
-                onClick={() => setConfirming(false)}
+                onClick={cancelConfirm}
                 title="Cancel delete"
                 aria-label="Cancel delete"
               >

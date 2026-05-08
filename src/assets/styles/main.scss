@@ -2,6 +2,7 @@
 
 // Base
 @use 'base/variables';
+@use 'base/mixins';
 @use 'base/reset';
 @use 'base/typography';
 
@@ -10,7 +11,8 @@
 
 // Components
 @use 'components/EmptyState';
+@use 'components/NewItemPanel';
+@use 'components/FolderRow';
+@use 'components/NoteDetail';
 @use 'components/Sidebar';
-@use 'components/TagPill';
 @use 'components/SnippetDetail';
-@use 'components/SnippetForm';

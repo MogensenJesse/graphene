@@ -1,5 +1,5 @@
 {
-  "name": "flowvault",
+  "name": "graphite",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -20,6 +20,8 @@
     "nanoid": "^5",
     "react": "^19",
     "react-dom": "^19",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "sass": "^1"
   },
   "devDependencies": {

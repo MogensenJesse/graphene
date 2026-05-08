@@ -1,66 +1,107 @@
 // src/App.tsx
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useEffect, useState } from "react";
-import EmptyState from "./components/EmptyState";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import NewItemPanel from "./components/NewItemPanel";
+import NoteDetail from "./components/NoteDetail";
 import Sidebar from "./components/Sidebar";
 import SnippetDetail from "./components/SnippetDetail";
-import SnippetForm from "./components/SnippetForm";
-import { useSnippets } from "./hooks/useSnippets";
-import type { Snippet } from "./types";
+import { useFolders } from "./hooks/useFolders";
+import { useItems } from "./hooks/useItems";
+import type { Item, NoteItem, SnippetItem } from "./types";
 
-type Mode = "detail" | "new" | "edit";
+type Mode = "new" | "detail" | "edit";
 
 const appWindow = getCurrentWindow();
 
 function App() {
   const {
-    snippets,
-    loading,
+    items,
+    addNote,
     addSnippet,
-    updateSnippet,
-    deleteSnippet,
+    updateItem,
+    deleteItem,
     incrementCopyCount,
-  } = useSnippets();
+  } = useItems();
+
+  const handleDeleteCascade = useCallback(
+    (folderId: string, newParentId: string | null) => {
+      for (const item of items) {
+        if (item.folderId === folderId) {
+          updateItem(item.id, { folderId: newParentId });
+        }
+      }
+    },
+    [items, updateItem],
+  );
+
+  const { folders, addFolder, updateFolder, deleteFolder } =
+    useFolders(handleDeleteCascade);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [activeTag, setActiveTag] = useState("all");
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<"all" | "note" | "snippet">(
+    "all",
+  );
   const [searchQuery, setSearchQuery] = useState("");
-  const [mode, setMode] = useState<Mode>("detail");
+  const [mode, setMode] = useState<Mode>("new");
 
-  // Auto-select the first snippet when snippets load
   useEffect(() => {
-    if (!loading && snippets.length > 0 && !selectedId) {
-      setSelectedId(snippets[0].id);
+    if (selectedId && !items.some((i) => i.id === selectedId)) {
+      setSelectedId(null);
+      setMode("new");
     }
-  }, [loading, snippets, selectedId]);
+  }, [items, selectedId]);
 
-  // When the selected snippet is deleted, move selection to the first remaining one
-  useEffect(() => {
-    if (selectedId && !snippets.some((s) => s.id === selectedId)) {
-      setSelectedId(snippets.length > 0 ? snippets[0].id : null);
-      setMode("detail");
-    }
-  }, [snippets, selectedId]);
-
-  const selectedSnippet: Snippet | undefined = snippets.find(
-    (s) => s.id === selectedId,
+  const selectedItem = useMemo(
+    () => items.find((i) => i.id === selectedId),
+    [items, selectedId],
   );
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
+    setSelectedFolderId(null);
     setMode("detail");
   };
 
-  const handleNew = () => {
+  const handleSelectFolder = (id: string | null) => {
+    setSelectedFolderId(id);
+    setSelectedId(null);
+  };
+
+  const [newPanelDefaultType, setNewPanelDefaultType] = useState<
+    "note" | "snippet"
+  >("note");
+
+  const handleNewNote = () => {
+    setNewPanelDefaultType("note");
     setMode("new");
     setSelectedId(null);
   };
 
-  const handleSaveNew = (
-    fields: Omit<Snippet, "id" | "createdAt" | "updatedAt" | "copies">,
+  const handleNewSnippet = () => {
+    setNewPanelDefaultType("snippet");
+    setMode("new");
+    setSelectedId(null);
+  };
+
+  const handleSaveNewNote = (
+    fields: Omit<NoteItem, "id" | "type" | "createdAt" | "updatedAt">,
+  ) => {
+    const newId = addNote(fields);
+    setSelectedId(newId);
+    setSelectedFolderId(null);
+    setMode("detail");
+  };
+
+  const handleSaveNewSnippet = (
+    fields: Omit<
+      SnippetItem,
+      "id" | "type" | "createdAt" | "updatedAt" | "copies"
+    >,
   ) => {
     const newId = addSnippet(fields);
     setSelectedId(newId);
+    setSelectedFolderId(null);
     setMode("detail");
   };
 
@@ -68,22 +109,46 @@ function App() {
     setMode("edit");
   };
 
-  const handleSaveEdit = (
-    fields: Omit<Snippet, "id" | "createdAt" | "updatedAt" | "copies">,
+  const handleSaveEditNote = (
+    fields: Omit<NoteItem, "id" | "type" | "createdAt" | "updatedAt">,
   ) => {
     if (!selectedId) return;
-    updateSnippet(selectedId, fields);
+    // Cast needed: updateItem accepts Partial of common fields; we spread note-specific fields at runtime
+    updateItem(
+      selectedId,
+      fields as Partial<Omit<Item, "id" | "createdAt" | "type">>,
+    );
+    setMode("detail");
+  };
+
+  const handleSaveEditSnippet = (
+    fields: Omit<
+      SnippetItem,
+      "id" | "type" | "createdAt" | "updatedAt" | "copies"
+    >,
+  ) => {
+    if (!selectedId) return;
+    updateItem(
+      selectedId,
+      fields as Partial<Omit<Item, "id" | "createdAt" | "type">>,
+    );
     setMode("detail");
   };
 
   const handleCancel = () => {
-    setMode("detail");
+    setMode(selectedId ? "detail" : "new");
   };
 
   const handleDelete = (id: string) => {
-    deleteSnippet(id);
-    // Selection is updated reactively by the useEffect above
+    deleteItem(id);
   };
+
+  const handleMoveItem = useCallback(
+    (itemId: string, targetFolderId: string | null) => {
+      updateItem(itemId, { folderId: targetFolderId });
+    },
+    [updateItem],
+  );
 
   const handleCopied = (id: string) => {
     incrementCopyCount(id);
@@ -91,23 +156,58 @@ function App() {
 
   const renderMain = () => {
     if (mode === "new") {
-      return <SnippetForm onSave={handleSaveNew} onCancel={handleCancel} />;
-    }
-
-    if (mode === "edit" && selectedSnippet) {
       return (
-        <SnippetForm
-          initial={selectedSnippet}
-          onSave={handleSaveEdit}
+        <NewItemPanel
+          key={newPanelDefaultType}
+          folders={folders}
+          defaultType={newPanelDefaultType}
+          onSaveNote={handleSaveNewNote}
+          onSaveSnippet={handleSaveNewSnippet}
           onCancel={handleCancel}
         />
       );
     }
 
-    if (selectedSnippet) {
+    if (mode === "edit" && selectedItem?.type === "note") {
+      return (
+        <NewItemPanel
+          initialNote={selectedItem}
+          folders={folders}
+          onSaveNote={handleSaveEditNote}
+          onSaveSnippet={handleSaveNewSnippet}
+          onCancel={handleCancel}
+        />
+      );
+    }
+
+    if (mode === "edit" && selectedItem?.type === "snippet") {
+      return (
+        <NewItemPanel
+          initialSnippet={selectedItem}
+          folders={folders}
+          onSaveNote={handleSaveEditNote}
+          onSaveSnippet={handleSaveEditSnippet}
+          onCancel={handleCancel}
+        />
+      );
+    }
+
+    if (selectedItem?.type === "note") {
+      return (
+        <NoteDetail
+          note={selectedItem}
+          folders={folders}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      );
+    }
+
+    if (selectedItem?.type === "snippet") {
       return (
         <SnippetDetail
-          snippet={selectedSnippet}
+          snippet={selectedItem}
+          folders={folders}
           onEdit={handleEdit}
           onDelete={handleDelete}
           onCopied={handleCopied}
@@ -115,7 +215,15 @@ function App() {
       );
     }
 
-    return <EmptyState onNew={handleNew} />;
+    return (
+      <NewItemPanel
+        folders={folders}
+        defaultType="note"
+        onSaveNote={handleSaveNewNote}
+        onSaveSnippet={handleSaveNewSnippet}
+        onCancel={handleCancel}
+      />
+    );
   };
 
   return (
@@ -123,14 +231,21 @@ function App() {
       <div className="app__body">
         <div className="app__sidebar">
           <Sidebar
-            snippets={snippets}
+            items={items}
+            folders={folders}
             selectedId={selectedId}
+            selectedFolderId={selectedFolderId}
+            typeFilter={typeFilter}
             searchQuery={searchQuery}
-            activeTag={activeTag}
             onSelect={handleSelect}
-            onNew={handleNew}
+            onSelectFolder={handleSelectFolder}
+            onNew={handleNewNote}
+            onAddFolder={addFolder}
+            onRenameFolder={updateFolder}
+            onDeleteFolder={deleteFolder}
+            onMoveItem={handleMoveItem}
             onSearchChange={setSearchQuery}
-            onTagChange={setActiveTag}
+            onTypeFilterChange={setTypeFilter}
           />
         </div>
         <main className="app__main">

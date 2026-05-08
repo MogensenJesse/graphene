@@ -1,76 +1,108 @@
 // src/components/Sidebar.tsx
-import { useMemo } from "react";
-import { filterSnippets } from "../lib/search";
-import type { Snippet } from "../types";
-import TagPill from "./TagPill";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useDragToFolder } from "../hooks/useDragToFolder";
+import { filterItems } from "../lib/search";
+import type { Folder, Item } from "../types";
+import FolderRow from "./FolderRow";
+import ItemRow from "./ItemRow";
 
 interface SidebarProps {
-  snippets: Snippet[];
+  items: Item[];
+  folders: Folder[];
   selectedId: string | null;
+  selectedFolderId: string | null;
+  typeFilter: "all" | "note" | "snippet";
   searchQuery: string;
-  activeTag: string;
   onSelect: (id: string) => void;
+  onSelectFolder: (id: string | null) => void;
   onNew: () => void;
+  onAddFolder: (name: string, parentId: string | null) => void;
+  onRenameFolder: (id: string, name: string) => void;
+  onDeleteFolder: (id: string) => void;
+  onMoveItem: (itemId: string, targetFolderId: string | null) => void;
   onSearchChange: (q: string) => void;
-  onTagChange: (tag: string) => void;
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffDays === 0) return "today";
-  if (diffDays === 1) return "1d ago";
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 14) return "1w ago";
-  if (diffDays < 28) return `${Math.floor(diffDays / 7)}w ago`;
-  if (diffDays < 60) return "1mo ago";
-  return `${Math.floor(diffDays / 30)}mo ago`;
+  onTypeFilterChange: (filter: "all" | "note" | "snippet") => void;
 }
 
 function Sidebar({
-  snippets,
+  items,
+  folders,
   selectedId,
+  selectedFolderId,
+  typeFilter,
   searchQuery,
-  activeTag,
   onSelect,
+  onSelectFolder,
   onNew,
+  onAddFolder,
+  onRenameFolder,
+  onDeleteFolder,
+  onMoveItem,
   onSearchChange,
-  onTagChange,
+  onTypeFilterChange,
 }: SidebarProps) {
-  const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    for (const s of snippets) {
-      for (const t of s.tags) tagSet.add(t);
-    }
-    return ["all", ...Array.from(tagSet).sort()];
-  }, [snippets]);
+  const [showAddFolder, setShowAddFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
 
-  const filtered = useMemo(
-    () => filterSnippets(snippets, searchQuery, activeTag),
-    [snippets, searchQuery, activeTag],
+  const newFolderInputRef = useRef<HTMLInputElement>(null);
+
+  const { dragState, dragOverId, startDrag } = useDragToFolder(onMoveItem);
+
+  useEffect(() => {
+    if (showAddFolder && newFolderInputRef.current) {
+      newFolderInputRef.current.focus();
+    }
+  }, [showAddFolder]);
+
+  const rootFolders = useMemo(
+    () => folders.filter((f) => f.parentId === null),
+    [folders],
   );
+
+  // No folder filter — the tree handles folder grouping visually
+  const filtered = useMemo(
+    () => filterItems(items, searchQuery, typeFilter, null),
+    [items, searchQuery, typeFilter],
+  );
+
+  const unfiledItems = useMemo(
+    () => filtered.filter((i) => i.folderId === null),
+    [filtered],
+  );
+
+  const handleAddRootFolder = () => {
+    const trimmed = newFolderName.trim();
+    if (trimmed) onAddFolder(trimmed, null);
+    setNewFolderName("");
+    setShowAddFolder(false);
+  };
+
+  const handleAddFolderKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") handleAddRootFolder();
+    if (e.key === "Escape") {
+      setNewFolderName("");
+      setShowAddFolder(false);
+    }
+  };
+
+  const handleAddSubfolder = (parentId: string, name: string) => {
+    if (name.trim()) onAddFolder(name.trim(), parentId);
+  };
+
+  // "All items" row is active drop target when dragOverId is null (unfiled zone)
+  const isAllItemsDragOver = dragState !== null && dragOverId === null;
 
   return (
     <aside className="sidebar">
+      {/* Header — drag region */}
       <div className="sidebar__header" data-tauri-drag-region>
         <div className="sidebar__brand" data-tauri-drag-region>
           <span aria-hidden="true">⬡</span>
-          <span>flowvault</span>
+          <span>graphite</span>
         </div>
-        <button
-          type="button"
-          className="sidebar__new-btn"
-          onClick={onNew}
-          aria-label="New snippet"
-          title="New snippet"
-        >
-          <span aria-hidden="true">+</span>
-        </button>
       </div>
 
+      {/* Search */}
       <div className="sidebar__search">
         <div className="sidebar__search-box">
           <span className="sidebar__search-icon" aria-hidden="true">
@@ -82,59 +114,127 @@ function Sidebar({
             placeholder="search…"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            aria-label="Search snippets"
+            aria-label="Search items"
           />
         </div>
       </div>
 
-      <div className="sidebar__tags">
-        {allTags.map((tag) => (
+      {/* Type filter pills */}
+      <div className="sidebar__filters">
+        {(["all", "note", "snippet"] as const).map((f) => (
           <button
-            key={tag}
+            key={f}
             type="button"
-            className={`sidebar__tag-btn${activeTag === tag ? " sidebar__tag-btn--active" : ""}`}
-            onClick={() => onTagChange(tag)}
+            className={`sidebar__filter-pill${typeFilter === f ? " sidebar__filter-pill--active" : ""}`}
+            onClick={() => onTypeFilterChange(f)}
           >
-            {tag}
+            {f === "note" ? "notes" : f === "snippet" ? "snippets" : "all"}
           </button>
         ))}
       </div>
 
-      <ul className="sidebar__list">
-        {filtered.length === 0 ? (
-          <li className="sidebar__empty">no results</li>
-        ) : (
-          filtered.map((snippet) => (
-            <li
-              key={snippet.id}
-              className={`snippet-item${selectedId === snippet.id ? " snippet-item--selected" : ""}`}
-              onClick={() => onSelect(snippet.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") onSelect(snippet.id);
-              }}
-              aria-selected={selectedId === snippet.id}
-            >
-              <div className="snippet-item__top">
-                <span className="snippet-item__title">{snippet.title}</span>
-                <span className="snippet-item__date">
-                  {formatDate(snippet.updatedAt)}
-                </span>
-              </div>
-              <div className="snippet-item__tags">
-                {snippet.tags.slice(0, 2).map((tag) => (
-                  <TagPill key={tag} tag={tag} small />
-                ))}
-              </div>
-            </li>
-          ))
-        )}
-      </ul>
+      {/* Folder + tree section */}
+      <div className="sidebar__folders">
+        <div className="sidebar__folders-header">
+          <span className="sidebar__folders-label">Folders</span>
+          <button
+            type="button"
+            className="sidebar__folders-add-btn"
+            onClick={() => setShowAddFolder((v) => !v)}
+            aria-label="Add folder"
+            title="Add folder"
+          >
+            +
+          </button>
+        </div>
 
-      <div className="sidebar__footer">
-        <span>
-          {filtered.length} snippet{filtered.length !== 1 ? "s" : ""}
-        </span>
+        {showAddFolder && (
+          <div className="sidebar__folder-add-row">
+            <input
+              ref={newFolderInputRef}
+              className="sidebar__folder-add-input"
+              type="text"
+              placeholder="folder name…"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onBlur={handleAddRootFolder}
+              onKeyDown={handleAddFolderKeyDown}
+            />
+          </div>
+        )}
+
+        {/* "All items" row — drop target for unfiling (data-folder-drop-id="unfiled") */}
+        <button
+          type="button"
+          data-folder-drop-id="unfiled"
+          className={`sidebar__all-items${selectedFolderId === null ? " sidebar__all-items--active" : ""}${isAllItemsDragOver ? " sidebar__all-items--drag-over" : ""}`}
+          onClick={() => onSelectFolder(null)}
+        >
+          <span aria-hidden="true" className="sidebar__all-items-icon">
+            ◈
+          </span>
+          All items
+        </button>
+
+        {rootFolders.map((folder) => (
+          <FolderRow
+            key={folder.id}
+            folder={folder}
+            allFolders={folders}
+            items={filtered}
+            selectedFolderId={selectedFolderId}
+            selectedId={selectedId}
+            dragOverId={dragOverId}
+            depth={0}
+            onSelect={onSelectFolder}
+            onSelectItem={onSelect}
+            onItemPointerDown={startDrag}
+            onAddSubfolder={handleAddSubfolder}
+            onRename={onRenameFolder}
+            onDelete={onDeleteFolder}
+          />
+        ))}
+
+        {/* Unfiled items — no folder assigned */}
+        {unfiledItems.map((item) => (
+          <ItemRow
+            key={item.id}
+            item={item}
+            isSelected={selectedId === item.id}
+            onSelect={onSelect}
+            onPointerDown={startDrag}
+            style={{ paddingLeft: "14px" }}
+          />
+        ))}
+
+        {filtered.length === 0 && (
+          <div className="sidebar__empty">no results</div>
+        )}
       </div>
+
+      {/* New item button */}
+      <div className="sidebar__new-footer">
+        <button
+          type="button"
+          className="sidebar__new-footer-btn"
+          onClick={onNew}
+          aria-label="New item"
+        >
+          <span aria-hidden="true">+</span>
+          new
+        </button>
+      </div>
+
+      {/* Drag ghost — follows cursor while dragging */}
+      {dragState && (
+        <div
+          className="drag-ghost"
+          style={{ left: dragState.x, top: dragState.y }}
+          aria-hidden="true"
+        >
+          {dragState.label}
+        </div>
+      )}
     </aside>
   );
 }

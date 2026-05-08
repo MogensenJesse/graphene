@@ -1,4 +1,5 @@
 // src/assets/styles/components/_Sidebar.scss
+@use '../base/mixins' as mixins;
 
 .sidebar {
   display: flex;
@@ -27,32 +28,37 @@
     color: var(--color-text-primary);
     letter-spacing: -0.01em;
     pointer-events: none;
-
-    i {
-      font-size: 14px;
-      color: var(--color-text-secondary);
-    }
   }
 
-  &__new-btn {
-    width: 22px;
-    height: 22px;
+  // ── New item footer button ───────────────────────────────────────────────
+
+  &__new-footer {
+    padding: 10px 12px;
+    flex-shrink: 0;
+    border-top: 0.5px solid var(--color-border-tertiary);
+  }
+
+  &__new-footer-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--border-radius-md);
+    gap: 6px;
+    width: 100%;
+    padding: 8px 0;
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 500;
     border: 0.5px solid var(--color-border-secondary);
-    cursor: pointer;
-    color: var(--color-text-secondary);
-    transition: background var(--transition-fast), color var(--transition-fast);
-    flex-shrink: 0;
+    border-radius: var(--border-radius-md);
     background: none;
-    font-size: 16px;
-    line-height: 1;
-    -webkit-app-region: no-drag;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast),
+      border-color var(--transition-fast);
 
     &:hover {
-      background: var(--color-border-secondary);
+      background: color-mix(in srgb, var(--color-background-secondary) 30%, transparent);
+      border-color: var(--color-border-primary);
       color: var(--color-text-primary);
     }
 
@@ -61,6 +67,8 @@
       outline-offset: 1px;
     }
   }
+
+  // ── Search ──────────────────────────────────────────────────────────────
 
   &__search {
     padding: 10px 12px;
@@ -75,12 +83,12 @@
       border: 0.5px solid var(--color-border-tertiary);
       border-radius: var(--border-radius-md);
       padding: 6px 10px;
+    }
 
-      i {
-        font-size: 12px;
-        color: var(--color-text-tertiary);
-        flex-shrink: 0;
-      }
+    &-icon {
+      font-size: 12px;
+      color: var(--color-text-tertiary);
+      flex-shrink: 0;
     }
 
     &-input {
@@ -90,6 +98,7 @@
       width: 100%;
       color: var(--color-text-primary);
       outline: none;
+      font-family: inherit;
 
       &::placeholder {
         color: var(--color-text-tertiary);
@@ -97,16 +106,17 @@
     }
   }
 
-  &__tags {
-    padding: 10px 12px;
+  // ── Type filter pills ───────────────────────────────────────────────────
+
+  &__filters {
+    padding: 8px 12px;
     display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
+    gap: 5px;
     border-bottom: 0.5px solid var(--color-border-tertiary);
     flex-shrink: 0;
   }
 
-  &__tag-btn {
+  &__filter-pill {
     cursor: pointer;
     font-size: 11px;
     padding: 3px 8px;
@@ -114,7 +124,9 @@
     border: 0.5px solid var(--color-border-tertiary);
     background: none;
     color: var(--color-text-tertiary);
-    transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+    font-family: inherit;
+    transition: background var(--transition-fast), color var(--transition-fast),
+      border-color var(--transition-fast);
 
     &:hover {
       color: var(--color-text-secondary);
@@ -129,22 +141,122 @@
     }
   }
 
+  // ── Folder section ──────────────────────────────────────────────────────
+
+  &__folders {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0 4px;
+
+    @include mixins.custom-scrollbar;
+  }
+
+  &__folders-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px 4px;
+  }
+
+  &__folders-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--color-text-tertiary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  &__folders-add-btn {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--color-text-tertiary);
+    border-radius: var(--border-radius-sm);
+    padding: 0;
+
+    &:hover {
+      background: var(--color-border-secondary);
+      color: var(--color-text-secondary);
+    }
+
+    &:focus-visible {
+      outline: 1px solid var(--color-border-primary);
+      outline-offset: 1px;
+    }
+  }
+
+  &__folder-add-row {
+    padding: 3px 10px 3px 14px;
+  }
+
+  &__folder-add-input {
+    width: 100%;
+    font-size: 12px;
+    font-family: inherit;
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-primary);
+    border-radius: var(--border-radius-sm);
+    color: var(--color-text-primary);
+    padding: 3px 7px;
+    outline: none;
+    box-sizing: border-box;
+
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  &__all-items {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-family: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    text-align: left;
+    border-radius: var(--border-radius-sm);
+    transition: background var(--transition-fast), color var(--transition-fast);
+
+    &:hover {
+      background: color-mix(in srgb, var(--color-background-secondary) 25%, transparent);
+      color: var(--color-text-primary);
+    }
+
+    &--active {
+      color: var(--color-text-primary);
+      font-weight: 500;
+    }
+
+    &--drag-over {
+      background: rgba(var(--rgb-blue), 0.12);
+      outline: 1px solid rgba(var(--rgb-blue), 0.3);
+      outline-offset: -1px;
+    }
+
+    &-icon {
+      font-size: 11px;
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  // ── Item list ───────────────────────────────────────────────────────────
+
   &__list {
     flex: 1;
     overflow-y: auto;
 
-    &::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    &::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background: var(--color-border-secondary);
-      border-radius: 2px;
-    }
+    @include mixins.custom-scrollbar;
   }
 
   &__empty {
@@ -153,6 +265,8 @@
     font-size: 12px;
     color: var(--color-text-tertiary);
   }
+
+  // ── Footer ──────────────────────────────────────────────────────────────
 
   &__footer {
     padding: 10px 16px;
@@ -166,12 +280,14 @@
   }
 }
 
-.snippet-item {
-  padding: 12px 16px;
+// ── Item row ──────────────────────────────────────────────────────────────────
+
+.item-row {
+  padding: 8px 8px;
   cursor: pointer;
-  border-bottom: 0.5px solid var(--color-border-tertiary);
-  transition: background var(--transition-fast);
   border-radius: var(--border-radius-sm);
+  transition: background var(--transition-fast);
+  list-style: none;
 
   &:hover {
     background: color-mix(in srgb, var(--color-background-secondary) 25%, transparent);
@@ -183,16 +299,24 @@
 
   &__top {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 6px;
-    gap: 6px;
+    align-items: center;
+    gap: 5px;
+  }
+
+  &__type-icon {
+    font-size: 10px;
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+
+    &--snippet {
+      font-size: 9px;
+      font-family: var(--font-mono);
+    }
   }
 
   &__title {
     font-size: 12px;
-    font-weight: 500;
-    color: var(--color-text-primary);
+    color: var(--color-text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -200,15 +324,32 @@
     min-width: 0;
   }
 
+  &--selected &__title {
+    color: var(--color-text-primary);
+    font-weight: 500;
+  }
+
   &__date {
     font-size: 10px;
     color: var(--color-text-tertiary);
     flex-shrink: 0;
   }
+}
 
-  &__tags {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-  }
+// ── Drag ghost ────────────────────────────────────────────────────────────────
+
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  padding: 4px 10px;
+  background: rgba(var(--rgb-blue), 0.15);
+  border: 1px solid rgba(var(--rgb-blue), 0.4);
+  border-radius: var(--border-radius-sm);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+  translate: -50% calc(-100% - 8px);
 }

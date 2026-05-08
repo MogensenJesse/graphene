@@ -34,6 +34,11 @@
     margin: 0;
   }
 
+  &__actions {
+    display: flex;
+    gap: 8px;
+  }
+
   &__btn {
     display: flex;
     align-items: center;

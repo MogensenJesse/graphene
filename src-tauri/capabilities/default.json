@@ -1,13 +1,14 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/schema/acl-manifests.json",
   "identifier": "default",
-  "description": "Default capabilities for FlowVault",
+  "description": "Default capabilities for Graphite",
   "windows": ["main"],
   "permissions": [
     "core:default",
     "core:window:default",
     "core:window:allow-minimize",
     "core:window:allow-close",
+    "core:window:allow-start-dragging",
     "fs:default",
     {
       "identifier": "fs:allow-read-text-file",

@@ -1,24 +1,34 @@
 // src/lib/search.ts
-import type { Snippet } from "../types";
+import type { Item } from "../types";
 
 /**
- * Pure filter function — filters snippets by search query (title + tags) and active tag.
+ * Pure filter function — filters items by search query (title + tags + body/code),
+ * type, and active folder.
  */
-export function filterSnippets(
-  snippets: Snippet[],
+export function filterItems(
+  items: Item[],
   query: string,
-  activeTag: string,
-): Snippet[] {
+  typeFilter: "all" | "note" | "snippet" = "all",
+  folderId: string | null = null,
+): Item[] {
   const q = query.trim().toLowerCase();
 
-  return snippets.filter((snippet) => {
-    const matchesTag = activeTag === "all" || snippet.tags.includes(activeTag);
+  return items.filter((item) => {
+    if (typeFilter !== "all" && item.type !== typeFilter) return false;
 
-    const matchesQuery =
-      !q ||
-      snippet.title.toLowerCase().includes(q) ||
-      snippet.tags.some((tag) => tag.toLowerCase().includes(q));
+    if (folderId !== null && item.folderId !== folderId) return false;
 
-    return matchesTag && matchesQuery;
+    if (!q) return true;
+
+    const inTitle = item.title.toLowerCase().includes(q);
+
+    if (item.type === "snippet") {
+      const inCode = item.code.toLowerCase().includes(q);
+      const inNote = item.note.toLowerCase().includes(q);
+      return inTitle || inCode || inNote;
+    }
+
+    const inBody = item.body.toLowerCase().includes(q);
+    return inTitle || inBody;
   });
 }
