@@ -1,5 +1,6 @@
 // src/components/FolderPicker.tsx
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useClickOutside } from "../hooks/useClickOutside";
 import type { Folder } from "../types";
 
 interface FlatFolder {
@@ -30,19 +31,13 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  const flat = flattenFolders(folders);
-  const selectedName = folders.find((f) => f.id === value)?.name ?? "no folder";
+  const flat = useMemo(() => flattenFolders(folders), [folders]);
+  const selectedName = useMemo(
+    () => folders.find((f) => f.id === value)?.name ?? "no folder",
+    [folders, value],
+  );
 
-  useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
+  useClickOutside(wrapRef, open, () => setOpen(false));
 
   const handleSelect = (id: string | null) => {
     onChange(id);

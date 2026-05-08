@@ -250,33 +250,11 @@
     }
   }
 
-  // ── Item list ───────────────────────────────────────────────────────────
-
-  &__list {
-    flex: 1;
-    overflow-y: auto;
-
-    @include mixins.custom-scrollbar;
-  }
-
   &__empty {
     padding: 40px 16px;
     text-align: center;
     font-size: 12px;
     color: var(--color-text-tertiary);
-  }
-
-  // ── Footer ──────────────────────────────────────────────────────────────
-
-  &__footer {
-    padding: 10px 16px;
-    border-top: 0.5px solid var(--color-border-tertiary);
-    flex-shrink: 0;
-
-    span {
-      font-size: 11px;
-      color: var(--color-text-tertiary);
-    }
   }
 }
 

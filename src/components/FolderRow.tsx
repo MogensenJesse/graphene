@@ -1,5 +1,6 @@
 // src/components/FolderRow.tsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useClickOutside } from "../hooks/useClickOutside";
 import type { Folder, Item } from "../types";
 import ItemRow from "./ItemRow";
 
@@ -50,8 +51,14 @@ function FolderRow({
   const renameInputRef = useRef<HTMLInputElement>(null);
   const childInputRef = useRef<HTMLInputElement>(null);
 
-  const children = allFolders.filter((f) => f.parentId === folder.id);
-  const myItems = items.filter((i) => i.folderId === folder.id);
+  const children = useMemo(
+    () => allFolders.filter((f) => f.parentId === folder.id),
+    [allFolders, folder.id],
+  );
+  const myItems = useMemo(
+    () => items.filter((i) => i.folderId === folder.id),
+    [items, folder.id],
+  );
   const hasContents = children.length > 0 || myItems.length > 0;
   const isSelected = selectedFolderId === folder.id;
   const isDragOver = dragOverId === folder.id;
@@ -69,16 +76,7 @@ function FolderRow({
     }
   }, [showAddChild]);
 
-  useEffect(() => {
-    if (!showMenu) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showMenu]);
+  useClickOutside(menuRef, showMenu, () => setShowMenu(false));
 
   const handleRenameConfirm = () => {
     const trimmed = renameValue.trim();

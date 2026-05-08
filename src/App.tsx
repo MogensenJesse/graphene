@@ -7,7 +7,7 @@ import Sidebar from "./components/Sidebar";
 import SnippetDetail from "./components/SnippetDetail";
 import { useFolders } from "./hooks/useFolders";
 import { useItems } from "./hooks/useItems";
-import type { Item, NoteItem, SnippetItem } from "./types";
+import type { NoteItem, SnippetItem } from "./types";
 
 type Mode = "new" | "detail" | "edit";
 
@@ -78,12 +78,6 @@ function App() {
     setSelectedId(null);
   };
 
-  const handleNewSnippet = () => {
-    setNewPanelDefaultType("snippet");
-    setMode("new");
-    setSelectedId(null);
-  };
-
   const handleSaveNewNote = (
     fields: Omit<NoteItem, "id" | "type" | "createdAt" | "updatedAt">,
   ) => {
@@ -113,11 +107,7 @@ function App() {
     fields: Omit<NoteItem, "id" | "type" | "createdAt" | "updatedAt">,
   ) => {
     if (!selectedId) return;
-    // Cast needed: updateItem accepts Partial of common fields; we spread note-specific fields at runtime
-    updateItem(
-      selectedId,
-      fields as Partial<Omit<Item, "id" | "createdAt" | "type">>,
-    );
+    updateItem(selectedId, fields);
     setMode("detail");
   };
 
@@ -128,10 +118,7 @@ function App() {
     >,
   ) => {
     if (!selectedId) return;
-    updateItem(
-      selectedId,
-      fields as Partial<Omit<Item, "id" | "createdAt" | "type">>,
-    );
+    updateItem(selectedId, fields);
     setMode("detail");
   };
 

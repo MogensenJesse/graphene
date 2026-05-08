@@ -11,6 +11,10 @@ type AddSnippetFields = Omit<
   "id" | "type" | "createdAt" | "updatedAt" | "copies"
 >;
 
+type UpdateNoteFields = Partial<Omit<NoteItem, "id" | "type" | "createdAt">>;
+type UpdateSnippetFields = Partial<Omit<SnippetItem, "id" | "type" | "createdAt">>;
+export type UpdateItemFields = UpdateNoteFields | UpdateSnippetFields;
+
 export function useItems() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,22 +55,15 @@ export function useItems() {
     return snippet.id;
   }, []);
 
-  const updateItem = useCallback(
-    (id: string, fields: Partial<Omit<Item, "id" | "createdAt" | "type">>) => {
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? ({
-                ...item,
-                ...fields,
-                updatedAt: new Date().toISOString(),
-              } as Item)
-            : item,
-        ),
-      );
-    },
-    [],
-  );
+  const updateItem = useCallback((id: string, fields: UpdateItemFields) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? ({ ...item, ...fields, updatedAt: new Date().toISOString() } as Item)
+          : item,
+      ),
+    );
+  }, []);
 
   const deleteItem = useCallback((id: string) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
