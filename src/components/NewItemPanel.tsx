@@ -8,7 +8,7 @@ import FolderPicker from "./FolderPicker";
 
 type Lang = (typeof LANGUAGES)[number];
 
-const REMARK_PLUGINS = [remarkGfm] as const;
+const REMARK_PLUGINS = [remarkGfm];
 
 type NoteFields = Omit<NoteItem, "id" | "type" | "createdAt" | "updatedAt">;
 type SnippetFields = Omit<

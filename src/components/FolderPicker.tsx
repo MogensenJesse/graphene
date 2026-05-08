@@ -50,7 +50,7 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
         type="button"
         className={`folder-picker__trigger${open ? " folder-picker__trigger--open" : ""}`}
         onClick={() => setOpen((v) => !v)}
-        aria-haspopup="listbox"
+        aria-haspopup="menu"
         aria-expanded={open}
       >
         <span className="folder-picker__label">{selectedName}</span>
@@ -58,11 +58,10 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
       </button>
 
       {open && (
-        <div className="folder-picker__dropdown" role="listbox">
+        <div className="folder-picker__dropdown" role="menu">
           <button
             type="button"
-            role="option"
-            aria-selected={value === null}
+            role="menuitem"
             className={`folder-picker__option${value === null ? " folder-picker__option--selected" : ""}`}
             onClick={() => handleSelect(null)}
           >
@@ -74,8 +73,7 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
             <button
               key={folder.id}
               type="button"
-              role="option"
-              aria-selected={value === folder.id}
+              role="menuitem"
               className={`folder-picker__option${value === folder.id ? " folder-picker__option--selected" : ""}`}
               style={{ paddingLeft: `${12 + depth * 16}px` }}
               onClick={() => handleSelect(folder.id)}

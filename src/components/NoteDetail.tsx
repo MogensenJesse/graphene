@@ -5,7 +5,7 @@ import { useDeleteConfirm } from "../hooks/useDeleteConfirm";
 import { formatDate, getFolderPath } from "../lib/utils";
 import type { Folder, NoteItem } from "../types";
 
-const REMARK_PLUGINS = [remarkGfm] as const;
+const REMARK_PLUGINS = [remarkGfm];
 
 interface NoteDetailProps {
   note: NoteItem;
