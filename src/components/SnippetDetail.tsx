@@ -1,4 +1,5 @@
 // src/components/SnippetDetail.tsx
+import { useEffect } from "react";
 import { useClipboard } from "../hooks/useClipboard";
 import { useDeleteConfirm } from "../hooks/useDeleteConfirm";
 import { formatDate, getFolderPath } from "../lib/utils";
@@ -42,6 +43,24 @@ function SnippetDetail({
       startConfirm();
     }
   };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key === "Delete" &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement)
+      ) {
+        if (confirming) {
+          onDelete(snippet.id);
+        } else {
+          startConfirm();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [confirming, startConfirm, onDelete, snippet.id]);
 
   const folderPath = getFolderPath(folders, snippet.folderId);
 

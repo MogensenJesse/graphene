@@ -11,6 +11,7 @@ interface SidebarProps {
   folders: Folder[];
   selectedId: string | null;
   selectedFolderId: string | null;
+  unsavedItemId: string | null;
   typeFilter: "all" | "note" | "snippet";
   searchQuery: string;
   onSelect: (id: string) => void;
@@ -29,6 +30,7 @@ function Sidebar({
   folders,
   selectedId,
   selectedFolderId,
+  unsavedItemId,
   typeFilter,
   searchQuery,
   onSelect,
@@ -43,8 +45,39 @@ function Sidebar({
 }: SidebarProps) {
   const [showAddFolder, setShowAddFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [folderConfirmDeleteId, setFolderConfirmDeleteId] = useState<
+    string | null
+  >(null);
 
   const newFolderInputRef = useRef<HTMLInputElement>(null);
+
+  // Del key — start or confirm folder deletion (confirm requires same folder still selected)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
+
+      if (e.key === "Delete") {
+        if (
+          folderConfirmDeleteId !== null &&
+          folderConfirmDeleteId === selectedFolderId
+        ) {
+          onDeleteFolder(folderConfirmDeleteId);
+          setFolderConfirmDeleteId(null);
+        } else if (selectedFolderId !== null) {
+          setFolderConfirmDeleteId(selectedFolderId);
+        }
+      }
+      if (e.key === "Escape" && folderConfirmDeleteId !== null) {
+        setFolderConfirmDeleteId(null);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [selectedFolderId, folderConfirmDeleteId, onDeleteFolder]);
 
   const { dragState, dragOverId, startDrag } = useDragToFolder(onMoveItem);
 
@@ -61,7 +94,7 @@ function Sidebar({
 
   // No folder filter — the tree handles folder grouping visually
   const filtered = useMemo(
-    () => filterItems(items, searchQuery, typeFilter, null),
+    () => filterItems(items, searchQuery, typeFilter),
     [items, searchQuery, typeFilter],
   );
 
@@ -98,7 +131,7 @@ function Sidebar({
       <div className="sidebar__header" data-tauri-drag-region>
         <div className="sidebar__brand" data-tauri-drag-region>
           <span aria-hidden="true">⬡</span>
-          <span>graphite</span>
+          <span>graphene</span>
         </div>
       </div>
 
@@ -163,6 +196,37 @@ function Sidebar({
           </div>
         )}
 
+        {/* Folder delete confirmation banner — only when the targeted folder is still selected */}
+        {folderConfirmDeleteId !== null &&
+          folderConfirmDeleteId === selectedFolderId && (
+            <div className="sidebar__folder-confirm-delete">
+              <span>
+                Delete &ldquo;
+                {folders.find((f) => f.id === folderConfirmDeleteId)?.name}
+                &rdquo;?
+              </span>
+              <div className="sidebar__folder-confirm-actions">
+                <button
+                  type="button"
+                  className="sidebar__folder-confirm-btn sidebar__folder-confirm-btn--danger"
+                  onClick={() => {
+                    onDeleteFolder(folderConfirmDeleteId);
+                    setFolderConfirmDeleteId(null);
+                  }}
+                >
+                  delete
+                </button>
+                <button
+                  type="button"
+                  className="sidebar__folder-confirm-btn"
+                  onClick={() => setFolderConfirmDeleteId(null)}
+                >
+                  cancel
+                </button>
+              </div>
+            </div>
+          )}
+
         {/* "All items" row — drop target for unfiling (data-folder-drop-id="unfiled") */}
         <button
           type="button"
@@ -184,6 +248,7 @@ function Sidebar({
             items={filtered}
             selectedFolderId={selectedFolderId}
             selectedId={selectedId}
+            unsavedItemId={unsavedItemId}
             dragOverId={dragOverId}
             depth={0}
             onSelect={onSelectFolder}
@@ -201,6 +266,7 @@ function Sidebar({
             key={item.id}
             item={item}
             isSelected={selectedId === item.id}
+            isUnsaved={unsavedItemId === item.id}
             onSelect={onSelect}
             onPointerDown={startDrag}
             style={{ paddingLeft: "14px" }}

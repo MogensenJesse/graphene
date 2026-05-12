@@ -17,11 +17,29 @@
     user-select: none;
   }
 
+  &__title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  &__dirty-dot {
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-text-secondary);
+    display: inline-block;
+  }
+
   &__title-display {
     position: relative;
     z-index: 6;
     display: block;
-    width: 100%;
+    min-width: 0;
+    flex-grow: 0;
+    flex-shrink: 1;
     font-size: 18px;
     font-weight: 600;
     font-family: inherit;
@@ -29,7 +47,7 @@
     background: none;
     border: none;
     outline: none;
-    padding: 0 80px 0 0;
+    padding: 0;
     letter-spacing: -0.02em;
     text-align: left;
     cursor: text;
@@ -307,6 +325,53 @@
         background: color-mix(in srgb, var(--color-background-primary) 80%, var(--color-border-primary));
       }
     }
+  }
+}
+
+// ── Markdown toolbar (used inside note editor) ───────────────────────────────
+
+.markdown-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 0 6px;
+  flex-shrink: 0;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  margin-bottom: 0;
+
+  &__btn {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    padding: 2px 6px;
+    min-width: 24px;
+    border: 0.5px solid transparent;
+    border-radius: var(--border-radius-sm);
+    background: none;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    line-height: 1.6;
+    transition: border-color var(--transition-fast), color var(--transition-fast),
+      background var(--transition-fast);
+
+    &:hover {
+      color: var(--color-text-primary);
+      border-color: var(--color-border-secondary);
+      background: var(--color-background-secondary);
+    }
+
+    &:focus-visible {
+      outline: 1px solid var(--color-border-primary);
+      outline-offset: 1px;
+    }
+  }
+
+  &__sep {
+    display: inline-block;
+    width: 0.5px;
+    height: 14px;
+    background: var(--color-border-secondary);
+    margin: 0 4px;
+    flex-shrink: 0;
   }
 }
 

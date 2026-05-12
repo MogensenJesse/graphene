@@ -6,6 +6,7 @@ interface ItemRowProps {
   item: Item;
   isSelected: boolean;
   isDragOver?: boolean;
+  isUnsaved?: boolean;
   onSelect: (id: string) => void;
   onPointerDown: (e: React.PointerEvent, id: string, title: string) => void;
   style?: React.CSSProperties;
@@ -15,6 +16,7 @@ function ItemRow({
   item,
   isSelected,
   isDragOver,
+  isUnsaved,
   onSelect,
   onPointerDown,
   style,
@@ -39,6 +41,13 @@ function ItemRow({
           {item.type === "note" ? "📝" : "</>"}
         </span>
         <span className="item-row__title">{item.title}</span>
+        {isUnsaved && (
+          <span
+            className="item-row__unsaved-dot"
+            aria-label="unsaved changes"
+            title="unsaved changes"
+          />
+        )}
         <span className="item-row__date">{formatDate(item.updatedAt)}</span>
       </div>
     </div>

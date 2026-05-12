@@ -2,21 +2,18 @@
 import type { Item } from "../types";
 
 /**
- * Pure filter function — filters items by search query (title + tags + body/code),
- * type, and active folder.
+ * Pure filter function — filters items by search query (title + tags + body/code)
+ * and type. Folder grouping is handled visually by the folder tree.
  */
 export function filterItems(
   items: Item[],
   query: string,
   typeFilter: "all" | "note" | "snippet" = "all",
-  folderId: string | null = null,
 ): Item[] {
   const q = query.trim().toLowerCase();
 
   return items.filter((item) => {
     if (typeFilter !== "all" && item.type !== typeFilter) return false;
-
-    if (folderId !== null && item.folderId !== folderId) return false;
 
     if (!q) return true;
 

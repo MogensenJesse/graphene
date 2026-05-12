@@ -1,4 +1,5 @@
 // src/assets/styles/components/_Sidebar.scss
+@use '../base/variables' as v;
 @use '../base/mixins' as mixins;
 
 .sidebar {
@@ -258,6 +259,52 @@
   }
 }
 
+// ── Folder delete confirmation ─────────────────────────────────────────────────
+
+.sidebar__folder-confirm-delete {
+  margin: 4px 8px;
+  padding: 8px 10px;
+  border-radius: v.$radius-sm;
+  background: color-mix(in srgb, #{v.$red} 12%, transparent);
+  border: 1px solid color-mix(in srgb, #{v.$red} 30%, transparent);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar__folder-confirm-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.sidebar__folder-confirm-btn {
+  font-size: 11px;
+  font-family: inherit;
+  padding: 3px 8px;
+  border-radius: v.$radius-sm;
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-background-secondary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-background-primary);
+    color: var(--color-text-primary);
+  }
+
+  &--danger {
+    border-color: color-mix(in srgb, #{v.$red} 40%, transparent);
+    color: v.$red;
+
+    &:hover {
+      background: color-mix(in srgb, #{v.$red} 15%, transparent);
+      color: v.$red;
+    }
+  }
+}
+
 // ── Item row ──────────────────────────────────────────────────────────────────
 
 .item-row {
@@ -311,6 +358,15 @@
     font-size: 10px;
     color: var(--color-text-tertiary);
     flex-shrink: 0;
+  }
+
+  &__unsaved-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--color-text-secondary);
+    flex-shrink: 0;
+    display: inline-block;
   }
 }
 

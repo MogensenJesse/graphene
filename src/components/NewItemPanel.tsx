@@ -1,28 +1,29 @@
 // src/components/NewItemPanel.tsx
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
+import type { AddNoteFields, AddSnippetFields } from "../hooks/useItems";
+import { useMarkdownFormat } from "../hooks/useMarkdownFormat";
 import type { Folder, NoteItem, SnippetItem } from "../types";
 import { LANGUAGES } from "../types";
 import FolderPicker from "./FolderPicker";
+import MarkdownToolbar from "./MarkdownToolbar";
 
 type Lang = (typeof LANGUAGES)[number];
 
-const REMARK_PLUGINS = [remarkGfm];
-
-type NoteFields = Omit<NoteItem, "id" | "type" | "createdAt" | "updatedAt">;
-type SnippetFields = Omit<
-  SnippetItem,
-  "id" | "type" | "createdAt" | "updatedAt" | "copies"
->;
+const REMARK_PLUGINS = [remarkGfm, remarkBreaks];
 
 interface NewItemPanelProps {
   folders: Folder[];
   initialNote?: NoteItem;
   initialSnippet?: SnippetItem;
   defaultType?: "note" | "snippet";
-  onSaveNote: (fields: NoteFields) => void;
-  onSaveSnippet: (fields: SnippetFields) => void;
+  onSaveNote: (fields: AddNoteFields) => void;
+  onSaveSnippet: (fields: AddSnippetFields) => void;
+  onAutoSaveNote?: (fields: AddNoteFields) => void;
+  onAutoSaveSnippet?: (fields: AddSnippetFields) => void;
+  onDirtyChange?: (isDirty: boolean) => void;
   onCancel: () => void;
 }
 
@@ -33,6 +34,9 @@ function NewItemPanel({
   defaultType = "note",
   onSaveNote,
   onSaveSnippet,
+  onAutoSaveNote,
+  onAutoSaveSnippet,
+  onDirtyChange,
   onCancel,
 }: NewItemPanelProps) {
   const isEditing = !!(initialNote || initialSnippet);
@@ -53,19 +57,50 @@ function NewItemPanel({
   );
 
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const applyFormat = useMarkdownFormat(textareaRef, body, setBody);
 
   useEffect(() => {
     if (editingTitle) titleInputRef.current?.select();
   }, [editingTitle]);
 
-  const handleSave = () => {
+  const isDirty = useMemo(() => {
+    if (initialNote) {
+      return (
+        title !== initialNote.title ||
+        body !== initialNote.body ||
+        folderId !== initialNote.folderId
+      );
+    }
+    if (initialSnippet) {
+      return (
+        title !== initialSnippet.title ||
+        code !== initialSnippet.code ||
+        lang !== initialSnippet.lang ||
+        snippetNote !== initialSnippet.note ||
+        folderId !== initialSnippet.folderId
+      );
+    }
+    return title.length > 0 || body.length > 0 || code.length > 0;
+  }, [
+    title,
+    body,
+    code,
+    lang,
+    snippetNote,
+    folderId,
+    initialNote,
+    initialSnippet,
+  ]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
+  const handleSave = useCallback(() => {
     const resolvedTitle = title.trim() || "untitled";
     if (itemType === "note") {
-      onSaveNote({
-        title: resolvedTitle,
-        body,
-        folderId,
-      });
+      onSaveNote({ title: resolvedTitle, body, folderId });
     } else {
       onSaveSnippet({
         title: resolvedTitle,
@@ -75,7 +110,62 @@ function NewItemPanel({
         folderId,
       });
     }
-  };
+  }, [
+    itemType,
+    title,
+    body,
+    lang,
+    code,
+    snippetNote,
+    folderId,
+    onSaveNote,
+    onSaveSnippet,
+  ]);
+
+  const handleAutoSave = useCallback(() => {
+    const resolvedTitle = title.trim() || "untitled";
+    if (itemType === "note" && onAutoSaveNote) {
+      onAutoSaveNote({ title: resolvedTitle, body, folderId });
+    } else if (itemType === "snippet" && onAutoSaveSnippet) {
+      onAutoSaveSnippet({
+        title: resolvedTitle,
+        lang,
+        code,
+        note: snippetNote,
+        folderId,
+      });
+    } else {
+      handleSave();
+    }
+  }, [
+    itemType,
+    title,
+    body,
+    lang,
+    code,
+    snippetNote,
+    folderId,
+    onAutoSaveNote,
+    onAutoSaveSnippet,
+    handleSave,
+  ]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        handleAutoSave();
+      }
+      if (
+        e.key === "Escape" &&
+        document.activeElement !== titleInputRef.current
+      ) {
+        onCancel();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [handleAutoSave, onCancel]);
 
   return (
     <div className="new-item-panel">
@@ -96,13 +186,22 @@ function NewItemPanel({
             }}
           />
         ) : (
-          <button
-            type="button"
-            className={`new-item-panel__title-display${!title ? " new-item-panel__title-display--placeholder" : ""}`}
-            onClick={() => setEditingTitle(true)}
-          >
-            {title || "untitled"}
-          </button>
+          <div className="new-item-panel__title-row">
+            <button
+              type="button"
+              className={`new-item-panel__title-display${!title ? " new-item-panel__title-display--placeholder" : ""}`}
+              onClick={() => setEditingTitle(true)}
+            >
+              {title || "untitled"}
+            </button>
+            {isDirty && (
+              <span
+                className="new-item-panel__dirty-dot"
+                aria-label="unsaved changes"
+                title="unsaved changes"
+              />
+            )}
+          </div>
         )}
 
         {!isEditing && (
@@ -139,7 +238,7 @@ function NewItemPanel({
                   mdMode ? "Switch to plain text" : "Switch to markdown preview"
                 }
               >
-                {mdMode ? "edit" : "md"}
+                {mdMode ? "edit" : "preview"}
               </button>
             </div>
             {mdMode ? (
@@ -149,12 +248,16 @@ function NewItemPanel({
                 </ReactMarkdown>
               </div>
             ) : (
-              <textarea
-                className="new-item-panel__textarea"
-                placeholder="start writing…"
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-              />
+              <>
+                <MarkdownToolbar onFormat={applyFormat} />
+                <textarea
+                  ref={textareaRef}
+                  className="new-item-panel__textarea"
+                  placeholder="start writing…"
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                />
+              </>
             )}
           </div>
         ) : (
@@ -187,7 +290,6 @@ function NewItemPanel({
             )}
           </div>
         )}
-
       </div>
 
       <div className="new-item-panel__footer">
