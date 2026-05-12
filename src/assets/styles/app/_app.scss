@@ -103,3 +103,89 @@ body {
     outline-offset: 1px;
   }
 }
+
+// ─── Vault Picker (first-launch fullscreen) ─────────────────────────────────
+
+.vault-picker {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(v.$night, 0.72);
+}
+
+.vault-picker__win-controls {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+}
+
+.vault-picker__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px 48px;
+  background: rgba(v.$onyx, 0.72);
+  border: 1px solid var(--color-border-primary);
+  border-radius: v.$radius-lg;
+  max-width: 380px;
+  text-align: center;
+}
+
+.vault-picker__icon {
+  font-size: 36px;
+  line-height: 1;
+  color: var(--color-text-secondary);
+}
+
+.vault-picker__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  margin: 0;
+}
+
+.vault-picker__desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.vault-picker__error {
+  font-size: 12px;
+  color: var(--color-text-danger);
+  margin: 0;
+}
+
+.vault-picker__btn {
+  margin-top: 4px;
+  padding: 9px 22px;
+  background: var(--color-border-primary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: v.$radius-md;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    background: rgba(200, 204, 214, 0.14);
+    border-color: var(--color-border-primary);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 1px solid var(--color-border-primary);
+    outline-offset: 2px;
+  }
+}

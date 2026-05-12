@@ -1,158 +1,257 @@
 // src/lib/storage.ts
 import {
-  BaseDirectory,
   exists,
   mkdir,
+  readDir,
   readTextFile,
+  remove,
+  rename,
   writeTextFile,
 } from "@tauri-apps/plugin-fs";
-import type { Folder, Item, SnippetItem } from "../types";
+import type { Folder, Item, NoteItem, SnippetItem } from "../types";
+import {
+  extForLang,
+  langFromExt,
+  parseNoteFile,
+  parseSnippetFile,
+  serializeNote,
+  serializeSnippet,
+} from "./fileFormat";
+import { getVaultPath, setVaultPath } from "./vault";
 
-const DIR = "graphite";
-const ITEMS_FILE = "graphite/items.json";
-const FOLDERS_FILE = "graphite/folders.json";
+// Re-export so callers can import from one place
+export { getVaultPath as loadVaultPath, setVaultPath as saveVaultPath };
 
-// Legacy path — used only during one-time migration
-const LEGACY_FILE = "flowvault/snippets.json";
+// ---------------------------------------------------------------------------
+// Path helpers
+// ---------------------------------------------------------------------------
 
-function isValidItem(item: unknown): item is Item {
-  if (!item || typeof item !== "object") return false;
-  const s = item as Record<string, unknown>;
-  if (
-    typeof s.id !== "string" ||
-    s.id.length === 0 ||
-    typeof s.title !== "string"
-  )
-    return false;
-  if (s.type === "note") return typeof s.body === "string";
-  if (s.type === "snippet")
-    return typeof s.code === "string" && typeof s.lang === "string";
-  return false;
+/** Sanitize a title into a safe, readable filename segment (max 50 chars). */
+function slugify(title: string): string {
+  const base = title.trim() || "untitled";
+  const slug = base
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 50);
+  return slug || "untitled";
 }
 
-function isValidFolder(f: unknown): f is Folder {
-  if (!f || typeof f !== "object") return false;
-  const o = f as Record<string, unknown>;
-  return (
-    typeof o.id === "string" && o.id.length > 0 && typeof o.name === "string"
-  );
+function joinPath(...parts: string[]): string {
+  return parts
+    .join("/")
+    .replace(/\\/g, "/")
+    .replace(/\/+/g, "/")
+    .replace(/\/$/, "");
 }
 
-interface LegacySnippet {
-  id: string;
-  title: string;
-  lang: string;
-  projects?: string[];
-  code: string;
-  note: string;
-  createdAt: string;
-  updatedAt: string;
-  copies: number;
+/** Relative path of a file/dir from vault root, no leading slash */
+function relativePath(vaultPath: string, absolutePath: string): string {
+  const vaultNorm = vaultPath.replace(/\\/g, "/").replace(/\/$/, "");
+  const absNorm = absolutePath.replace(/\\/g, "/");
+  if (absNorm.startsWith(`${vaultNorm}/`)) {
+    return absNorm.slice(vaultNorm.length + 1);
+  }
+  return absNorm;
 }
 
-function isLegacySnippet(item: unknown): item is LegacySnippet {
-  if (!item || typeof item !== "object") return false;
-  const s = item as Record<string, unknown>;
-  return (
-    typeof s.id === "string" &&
-    s.id.length > 0 &&
-    typeof s.title === "string" &&
-    s.title.length > 0 &&
-    typeof s.code === "string"
-  );
+/** Derive folder id (relative path from vault) from a file's absolute path */
+function folderIdFromFilePath(
+  vaultPath: string,
+  fileAbsPath: string,
+): string | null {
+  const rel = relativePath(vaultPath, fileAbsPath);
+  const slashIdx = rel.lastIndexOf("/");
+  if (slashIdx < 0) return null; // file is at vault root
+  return rel.slice(0, slashIdx);
 }
 
-function migrateSnippet(s: LegacySnippet): SnippetItem {
-  return {
-    id: s.id,
-    type: "snippet",
-    title: s.title,
-    folderId: null,
-    createdAt: s.createdAt ?? new Date().toISOString(),
-    updatedAt: s.updatedAt ?? new Date().toISOString(),
-    lang: (s.lang as SnippetItem["lang"]) ?? "JS",
-    code: s.code,
-    note: s.note ?? "",
-    copies: typeof s.copies === "number" ? s.copies : 0,
-  };
+/** Build absolute path for a folder id (which is a relative path from vault) */
+function folderAbsPath(vaultPath: string, folderId: string): string {
+  return joinPath(vaultPath, folderId);
 }
 
-async function ensureDir(): Promise<void> {
-  await mkdir(DIR, { baseDir: BaseDirectory.AppData, recursive: true });
+/** Determine absolute path for an item file */
+function itemFilePath(vaultPath: string, item: Item): string {
+  const ext =
+    item.type === "note" ? ".md" : extForLang((item as SnippetItem).lang);
+  const dir =
+    item.folderId !== null
+      ? joinPath(vaultPath, item.folderId)
+      : vaultPath;
+  return joinPath(dir, `${slugify(item.title)}-${item.id}${ext}`);
+}
+
+// ---------------------------------------------------------------------------
+// Recursive directory scanner
+// ---------------------------------------------------------------------------
+
+interface ScannedFile {
+  absPath: string;
+  name: string;
+}
+
+interface ScannedDir {
+  absPath: string;
+  relPath: string; // relative to vault root
+}
+
+async function scanVaultRecursive(
+  vaultPath: string,
+  currentAbsPath: string,
+): Promise<{ files: ScannedFile[]; dirs: ScannedDir[] }> {
+  const files: ScannedFile[] = [];
+  const dirs: ScannedDir[] = [];
+
+  let entries: { name: string; isFile: boolean; isDirectory: boolean }[];
+  try {
+    entries = await readDir(currentAbsPath);
+  } catch {
+    return { files, dirs };
+  }
+
+  for (const entry of entries) {
+    if (!entry.name) continue;
+    const absPath = joinPath(currentAbsPath, entry.name);
+
+    if (entry.isDirectory) {
+      const relPath = relativePath(vaultPath, absPath);
+      dirs.push({ absPath, relPath });
+      const sub = await scanVaultRecursive(vaultPath, absPath);
+      files.push(...sub.files);
+      dirs.push(...sub.dirs);
+    } else if (entry.isFile) {
+      files.push({ absPath, name: entry.name });
+    }
+  }
+
+  return { files, dirs };
 }
 
 // ---------------------------------------------------------------------------
 // Items
 // ---------------------------------------------------------------------------
 
-export async function loadItems(): Promise<Item[]> {
-  try {
-    const itemsExist = await exists(ITEMS_FILE, {
-      baseDir: BaseDirectory.AppData,
-    });
+export async function loadAllItems(vaultPath: string): Promise<Item[]> {
+  const items: Item[] = [];
+  const { files } = await scanVaultRecursive(vaultPath, vaultPath);
 
-    if (itemsExist) {
-      const raw = await readTextFile(ITEMS_FILE, {
-        baseDir: BaseDirectory.AppData,
-      });
-      const parsed = JSON.parse(raw) as unknown;
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter(isValidItem);
-    }
+  for (const { absPath, name } of files) {
+    const dotIdx = name.lastIndexOf(".");
+    if (dotIdx < 0) continue;
+    const ext = name.slice(dotIdx).toLowerCase();
 
-    // Migration: try reading legacy snippets.json
-    const legacyExists = await exists(LEGACY_FILE, {
-      baseDir: BaseDirectory.AppData,
-    });
-    await ensureDir();
+    try {
+      const raw = await readTextFile(absPath);
+      const folderId = folderIdFromFilePath(vaultPath, absPath);
 
-    if (legacyExists) {
-      try {
-        const raw = await readTextFile(LEGACY_FILE, {
-          baseDir: BaseDirectory.AppData,
-        });
-        const parsed = JSON.parse(raw) as unknown;
-        const migrated: Item[] = Array.isArray(parsed)
-          ? parsed.filter(isLegacySnippet).map(migrateSnippet)
-          : [];
-        await writeTextFile(ITEMS_FILE, JSON.stringify(migrated, null, 2), {
-          baseDir: BaseDirectory.AppData,
-        });
-        // Write empty folders file if it doesn't exist yet
-        const foldersExist = await exists(FOLDERS_FILE, {
-          baseDir: BaseDirectory.AppData,
-        });
-        if (!foldersExist) {
-          await writeTextFile(FOLDERS_FILE, "[]", {
-            baseDir: BaseDirectory.AppData,
-          });
+      if (ext === ".md") {
+        // Could be a note OR a JSON-LD snippet stored as .md
+        const parsed = parseNoteFile(raw);
+        if (!parsed.id) continue;
+
+        // Check if this is a JSON-LD snippet stored as .md
+        // (frontmatter has type: snippet or lang: JSON-LD)
+        const rawLower = raw.slice(0, 200);
+        if (
+          rawLower.includes("type: snippet") ||
+          rawLower.includes('type: "snippet"')
+        ) {
+          // Parse as snippet via the note format path
+          const note = parseNoteFile(raw);
+          if (!note.id) continue;
+          // The body is the JSON-LD code
+          const snippet: SnippetItem = {
+            id: note.id,
+            type: "snippet",
+            title: note.title,
+            folderId: folderId ?? note.folderId,
+            lang: "JSON-LD",
+            code: note.body,
+            note: "",
+            copies: 0,
+            createdAt: note.createdAt,
+            updatedAt: note.updatedAt,
+          };
+          items.push(snippet);
+        } else {
+          const note: NoteItem = {
+            ...parsed,
+            folderId: folderId ?? parsed.folderId,
+          };
+          items.push(note);
         }
-        return migrated;
-      } catch (migrationErr) {
-        console.warn(
-          "[storage] migration failed, starting fresh:",
-          migrationErr,
-        );
+      } else {
+        const lang = langFromExt(ext);
+        if (!lang) continue;
+        const snippet = parseSnippetFile(raw, ext);
+        if (!snippet.id) continue;
+        items.push({ ...snippet, folderId: folderId ?? snippet.folderId });
       }
+    } catch (err) {
+      console.warn("[storage] Failed to read item file:", absPath, err);
     }
+  }
 
-    // Fresh start
-    await writeTextFile(ITEMS_FILE, "[]", { baseDir: BaseDirectory.AppData });
-    return [];
+  return items;
+}
+
+export async function saveItem(
+  vaultPath: string,
+  item: Item,
+): Promise<void> {
+  const dir =
+    item.folderId !== null
+      ? joinPath(vaultPath, item.folderId)
+      : vaultPath;
+  await mkdir(dir, { recursive: true });
+
+  const filePath = itemFilePath(vaultPath, item);
+  const content =
+    item.type === "note"
+      ? serializeNote(item as NoteItem)
+      : serializeSnippet(item as SnippetItem);
+
+  await writeTextFile(filePath, content);
+}
+
+export async function deleteItemFile(
+  vaultPath: string,
+  item: Item,
+): Promise<void> {
+  const filePath = itemFilePath(vaultPath, item);
+  try {
+    const fileExists = await exists(filePath);
+    if (fileExists) await remove(filePath);
   } catch (err) {
-    console.error("[storage] loadItems failed:", err);
-    return [];
+    console.warn("[storage] deleteItemFile failed:", filePath, err);
   }
 }
 
-export async function saveItems(items: Item[]): Promise<void> {
+export async function moveItemFile(
+  vaultPath: string,
+  item: Item,
+  newFolderId: string | null,
+): Promise<void> {
+  const oldPath = itemFilePath(vaultPath, item);
+  const newDir =
+    newFolderId !== null ? joinPath(vaultPath, newFolderId) : vaultPath;
+
+  await mkdir(newDir, { recursive: true });
+
+  const ext =
+    item.type === "note" ? ".md" : extForLang((item as SnippetItem).lang);
+  const newPath = joinPath(newDir, `${slugify(item.title)}-${item.id}${ext}`);
+
   try {
-    await ensureDir();
-    await writeTextFile(ITEMS_FILE, JSON.stringify(items, null, 2), {
-      baseDir: BaseDirectory.AppData,
-    });
+    const fileExists = await exists(oldPath);
+    if (fileExists && oldPath !== newPath) {
+      await rename(oldPath, newPath);
+    }
   } catch (err) {
-    console.error("[storage] saveItems failed:", err);
+    console.warn("[storage] moveItemFile failed:", oldPath, "→", newPath, err);
   }
 }
 
@@ -160,37 +259,52 @@ export async function saveItems(items: Item[]): Promise<void> {
 // Folders
 // ---------------------------------------------------------------------------
 
-export async function loadFolders(): Promise<Folder[]> {
-  try {
-    const fileExists = await exists(FOLDERS_FILE, {
-      baseDir: BaseDirectory.AppData,
-    });
-    if (!fileExists) {
-      await ensureDir();
-      await writeTextFile(FOLDERS_FILE, "[]", {
-        baseDir: BaseDirectory.AppData,
-      });
-      return [];
-    }
-    const raw = await readTextFile(FOLDERS_FILE, {
-      baseDir: BaseDirectory.AppData,
-    });
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isValidFolder);
-  } catch (err) {
-    console.error("[storage] loadFolders failed:", err);
-    return [];
-  }
+export async function loadAllFolders(vaultPath: string): Promise<Folder[]> {
+  const { dirs } = await scanVaultRecursive(vaultPath, vaultPath);
+  return dirs.map(({ relPath }) => {
+    const slashIdx = relPath.lastIndexOf("/");
+    const parentId = slashIdx > 0 ? relPath.slice(0, slashIdx) : null;
+    const name =
+      slashIdx > 0 ? relPath.slice(slashIdx + 1) : relPath;
+    return {
+      id: relPath,
+      name,
+      parentId,
+      createdAt: new Date().toISOString(),
+    };
+  });
 }
 
-export async function saveFolders(folders: Folder[]): Promise<void> {
+export async function createFolderDir(
+  vaultPath: string,
+  folder: Folder,
+): Promise<void> {
+  const absPath = folderAbsPath(vaultPath, folder.id);
+  await mkdir(absPath, { recursive: true });
+}
+
+export async function renameFolderDir(
+  vaultPath: string,
+  oldId: string,
+  newName: string,
+): Promise<void> {
+  const oldAbs = folderAbsPath(vaultPath, oldId);
+  const slashIdx = oldId.lastIndexOf("/");
+  const newId =
+    slashIdx > 0 ? `${oldId.slice(0, slashIdx)}/${newName}` : newName;
+  const newAbs = folderAbsPath(vaultPath, newId);
+  await rename(oldAbs, newAbs);
+}
+
+export async function deleteFolderDir(
+  vaultPath: string,
+  folderId: string,
+): Promise<void> {
+  const absPath = folderAbsPath(vaultPath, folderId);
   try {
-    await ensureDir();
-    await writeTextFile(FOLDERS_FILE, JSON.stringify(folders, null, 2), {
-      baseDir: BaseDirectory.AppData,
-    });
+    const dirExists = await exists(absPath);
+    if (dirExists) await remove(absPath, { recursive: true });
   } catch (err) {
-    console.error("[storage] saveFolders failed:", err);
+    console.warn("[storage] deleteFolderDir failed:", absPath, err);
   }
 }

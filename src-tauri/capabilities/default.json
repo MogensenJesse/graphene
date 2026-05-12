@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/schema/acl-manifests.json",
   "identifier": "default",
-  "description": "Default capabilities for Graphite",
+  "description": "Default capabilities for Graphene",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -12,20 +12,33 @@
     "fs:default",
     {
       "identifier": "fs:allow-read-text-file",
-      "allow": [{ "path": "$APPDATA/**" }]
+      "allow": [{ "path": "$HOME/**" }]
     },
     {
       "identifier": "fs:allow-write-text-file",
-      "allow": [{ "path": "$APPDATA/**" }]
+      "allow": [{ "path": "$HOME/**" }]
     },
     {
       "identifier": "fs:allow-exists",
-      "allow": [{ "path": "$APPDATA/**" }]
+      "allow": [{ "path": "$HOME/**" }]
     },
     {
       "identifier": "fs:allow-mkdir",
-      "allow": [{ "path": "$APPDATA/**" }]
+      "allow": [{ "path": "$HOME/**" }]
     },
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    {
+      "identifier": "fs:allow-rename",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    "dialog:allow-open",
     "clipboard-manager:allow-write-text"
   ]
 }

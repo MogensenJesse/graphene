@@ -98,7 +98,7 @@ function Sidebar({
       <div className="sidebar__header" data-tauri-drag-region>
         <div className="sidebar__brand" data-tauri-drag-region>
           <span aria-hidden="true">⬡</span>
-          <span>graphite</span>
+          <span>graphene</span>
         </div>
       </div>
 

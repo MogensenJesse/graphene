@@ -1,11 +1,12 @@
 // src/components/NoteDetail.tsx
 import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import { useDeleteConfirm } from "../hooks/useDeleteConfirm";
 import { formatDate, getFolderPath } from "../lib/utils";
 import type { Folder, NoteItem } from "../types";
 
-const REMARK_PLUGINS = [remarkGfm];
+const REMARK_PLUGINS = [remarkGfm, remarkBreaks];
 
 interface NoteDetailProps {
   note: NoteItem;

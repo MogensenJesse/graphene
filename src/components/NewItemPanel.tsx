@@ -1,14 +1,17 @@
 // src/components/NewItemPanel.tsx
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
+import { useMarkdownFormat } from "../hooks/useMarkdownFormat";
 import type { Folder, NoteItem, SnippetItem } from "../types";
 import { LANGUAGES } from "../types";
 import FolderPicker from "./FolderPicker";
+import MarkdownToolbar from "./MarkdownToolbar";
 
 type Lang = (typeof LANGUAGES)[number];
 
-const REMARK_PLUGINS = [remarkGfm];
+const REMARK_PLUGINS = [remarkGfm, remarkBreaks];
 
 type NoteFields = Omit<NoteItem, "id" | "type" | "createdAt" | "updatedAt">;
 type SnippetFields = Omit<
@@ -53,6 +56,8 @@ function NewItemPanel({
   );
 
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const applyFormat = useMarkdownFormat(textareaRef, body, setBody);
 
   useEffect(() => {
     if (editingTitle) titleInputRef.current?.select();
@@ -139,7 +144,7 @@ function NewItemPanel({
                   mdMode ? "Switch to plain text" : "Switch to markdown preview"
                 }
               >
-                {mdMode ? "edit" : "md"}
+                {mdMode ? "edit" : "preview"}
               </button>
             </div>
             {mdMode ? (
@@ -149,12 +154,16 @@ function NewItemPanel({
                 </ReactMarkdown>
               </div>
             ) : (
-              <textarea
-                className="new-item-panel__textarea"
-                placeholder="start writing…"
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-              />
+              <>
+                <MarkdownToolbar onFormat={applyFormat} />
+                <textarea
+                  ref={textareaRef}
+                  className="new-item-panel__textarea"
+                  placeholder="start writing…"
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                />
+              </>
             )}
           </div>
         ) : (

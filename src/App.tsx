@@ -7,21 +7,101 @@ import Sidebar from "./components/Sidebar";
 import SnippetDetail from "./components/SnippetDetail";
 import { useFolders } from "./hooks/useFolders";
 import { useItems } from "./hooks/useItems";
+import {
+  loadAllFolders,
+  loadAllItems,
+} from "./lib/storage";
+import { getVaultPath, pickVaultPath, setVaultPath } from "./lib/vault";
 import type { NoteItem, SnippetItem } from "./types";
 
 type Mode = "new" | "detail" | "edit";
 
 const appWindow = getCurrentWindow();
 
-function App() {
+function VaultPicker({ onVaultSet }: { onVaultSet: (path: string) => void }) {
+  const [picking, setPicking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleChoose = async () => {
+    setPicking(true);
+    setError(null);
+    try {
+      const chosen = await pickVaultPath();
+      if (chosen) {
+        await setVaultPath(chosen);
+        onVaultSet(chosen);
+      }
+    } catch (err) {
+      setError("Failed to pick folder. Please try again.");
+      console.error("[VaultPicker]", err);
+    } finally {
+      setPicking(false);
+    }
+  };
+
+  return (
+    <div className="vault-picker" data-tauri-drag-region>
+      <div className="vault-picker__card">
+        <div className="vault-picker__icon" aria-hidden="true">⬡</div>
+        <h1 className="vault-picker__title">graphene</h1>
+        <p className="vault-picker__desc">
+          Choose a folder to use as your vault. Notes and snippets will be
+          stored as files inside it.
+        </p>
+        {error && <p className="vault-picker__error">{error}</p>}
+        <button
+          type="button"
+          className="vault-picker__btn"
+          onClick={handleChoose}
+          disabled={picking}
+        >
+          {picking ? "Choosing…" : "Choose vault folder"}
+        </button>
+      </div>
+      <div className="app__win-controls vault-picker__win-controls">
+        <button
+          type="button"
+          className="app__win-btn"
+          onClick={() => appWindow.minimize()}
+          aria-label="Minimize"
+          title="Minimize"
+        >
+          <svg width="10" height="1" viewBox="0 0 10 1" fill="none" aria-hidden="true">
+            <rect width="10" height="1" rx="0.5" fill="currentColor" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          className="app__win-btn app__win-btn--close"
+          onClick={() => appWindow.close()}
+          aria-label="Close"
+          title="Close"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+            <path
+              d="M1 1L9 9M9 1L1 9"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MainApp({ vaultPath }: { vaultPath: string }) {
   const {
     items,
+    setItems,
     addNote,
     addSnippet,
     updateItem,
     deleteItem,
+    moveItem,
     incrementCopyCount,
-  } = useItems();
+  } = useItems(vaultPath);
 
   const handleDeleteCascade = useCallback(
     (folderId: string, newParentId: string | null) => {
@@ -34,8 +114,21 @@ function App() {
     [items, updateItem],
   );
 
-  const { folders, addFolder, updateFolder, deleteFolder } =
-    useFolders(handleDeleteCascade);
+  const { folders, setFolders, addFolder, updateFolder, deleteFolder } =
+    useFolders(vaultPath, handleDeleteCascade);
+
+  // Load all items + folders from vault on mount
+  useEffect(() => {
+    Promise.all([
+      loadAllItems(vaultPath),
+      loadAllFolders(vaultPath),
+    ])
+      .then(([loadedItems, loadedFolders]) => {
+        setItems(loadedItems);
+        setFolders(loadedFolders);
+      })
+      .catch(console.error);
+  }, [vaultPath, setItems, setFolders]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -132,14 +225,21 @@ function App() {
 
   const handleMoveItem = useCallback(
     (itemId: string, targetFolderId: string | null) => {
-      updateItem(itemId, { folderId: targetFolderId });
+      moveItem(itemId, targetFolderId);
     },
-    [updateItem],
+    [moveItem],
   );
 
   const handleCopied = (id: string) => {
     incrementCopyCount(id);
   };
+
+  const handleDeleteFolder = useCallback(
+    (id: string) => {
+      deleteFolder(id, items);
+    },
+    [deleteFolder, items],
+  );
 
   const renderMain = () => {
     if (mode === "new") {
@@ -229,7 +329,7 @@ function App() {
             onNew={handleNewNote}
             onAddFolder={addFolder}
             onRenameFolder={updateFolder}
-            onDeleteFolder={deleteFolder}
+            onDeleteFolder={handleDeleteFolder}
             onMoveItem={handleMoveItem}
             onSearchChange={setSearchQuery}
             onTypeFilterChange={setTypeFilter}
@@ -283,6 +383,32 @@ function App() {
       </div>
     </div>
   );
+}
+
+function App() {
+  const [vaultPath, setVaultPathState] = useState<string | null | undefined>(
+    undefined,
+  );
+
+  useEffect(() => {
+    getVaultPath()
+      .then(setVaultPathState)
+      .catch(() => setVaultPathState(null));
+  }, []);
+
+  const handleVaultSet = (path: string) => {
+    setVaultPathState(path);
+  };
+
+  // Still loading
+  if (vaultPath === undefined) return null;
+
+  // No vault chosen yet — show picker
+  if (vaultPath === null) {
+    return <VaultPicker onVaultSet={handleVaultSet} />;
+  }
+
+  return <MainApp vaultPath={vaultPath} />;
 }
 
 export default App;
