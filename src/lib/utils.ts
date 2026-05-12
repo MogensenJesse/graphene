@@ -15,7 +15,10 @@ export function formatDate(iso: string): string {
 }
 
 /** Returns ordered folder names from root down to `folderId`, e.g. ["Notes", "boop", "ragdollll"] */
-export function getFolderPath(folders: Folder[], folderId: string | null): string[] {
+export function getFolderPath(
+  folders: Folder[],
+  folderId: string | null,
+): string[] {
   if (!folderId) return [];
   const result: string[] = [];
   let currentId: string | null = folderId;
@@ -27,4 +30,3 @@ export function getFolderPath(folders: Folder[], folderId: string | null): strin
   }
   return result;
 }
-

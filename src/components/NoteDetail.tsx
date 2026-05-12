@@ -1,4 +1,5 @@
 // src/components/NoteDetail.tsx
+import { useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
@@ -25,6 +26,24 @@ function NoteDetail({ note, folders, onEdit, onDelete }: NoteDetailProps) {
       startConfirm();
     }
   };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key === "Delete" &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement)
+      ) {
+        if (confirming) {
+          onDelete(note.id);
+        } else {
+          startConfirm();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [confirming, startConfirm, onDelete, note.id]);
 
   const folderPath = getFolderPath(folders, note.folderId);
 

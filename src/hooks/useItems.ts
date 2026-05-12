@@ -1,21 +1,22 @@
 // src/hooks/useItems.ts
 import { nanoid } from "nanoid";
 import { useCallback, useState } from "react";
-import {
-  deleteItemFile,
-  moveItemFile,
-  saveItem,
-} from "../lib/storage";
+import { deleteItemFile, moveItemFile, saveItem } from "../lib/storage";
 import type { Item, NoteItem, SnippetItem } from "../types";
 
-type AddNoteFields = Omit<NoteItem, "id" | "type" | "createdAt" | "updatedAt">;
-type AddSnippetFields = Omit<
+export type AddNoteFields = Omit<
+  NoteItem,
+  "id" | "type" | "createdAt" | "updatedAt"
+>;
+export type AddSnippetFields = Omit<
   SnippetItem,
   "id" | "type" | "createdAt" | "updatedAt" | "copies"
 >;
 
 type UpdateNoteFields = Partial<Omit<NoteItem, "id" | "type" | "createdAt">>;
-type UpdateSnippetFields = Partial<Omit<SnippetItem, "id" | "type" | "createdAt">>;
+type UpdateSnippetFields = Partial<
+  Omit<SnippetItem, "id" | "type" | "createdAt">
+>;
 export type UpdateItemFields = UpdateNoteFields | UpdateSnippetFields;
 
 export function useItems(vaultPath: string) {
@@ -62,7 +63,11 @@ export function useItems(vaultPath: string) {
         const old = prev.find((i) => i.id === id);
         const next = prev.map((item) =>
           item.id === id
-            ? ({ ...item, ...fields, updatedAt: new Date().toISOString() } as Item)
+            ? ({
+                ...item,
+                ...fields,
+                updatedAt: new Date().toISOString(),
+              } as Item)
             : item,
         );
         const updated = next.find((i) => i.id === id);

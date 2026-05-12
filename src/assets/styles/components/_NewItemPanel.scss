@@ -17,11 +17,29 @@
     user-select: none;
   }
 
+  &__title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  &__dirty-dot {
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-text-secondary);
+    display: inline-block;
+  }
+
   &__title-display {
     position: relative;
     z-index: 6;
     display: block;
-    width: 100%;
+    min-width: 0;
+    flex-grow: 0;
+    flex-shrink: 1;
     font-size: 18px;
     font-weight: 600;
     font-family: inherit;
@@ -29,7 +47,7 @@
     background: none;
     border: none;
     outline: none;
-    padding: 0 80px 0 0;
+    padding: 0;
     letter-spacing: -0.02em;
     text-align: left;
     cursor: text;

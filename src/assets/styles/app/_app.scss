@@ -189,3 +189,25 @@ body {
     outline-offset: 2px;
   }
 }
+
+// ─── File Drop Overlay ───────────────────────────────────────────────────────
+
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  border-radius: v.$radius-lg;
+  background: rgba(v.$night, 0.55);
+  border: 2px dashed v.$blue;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &::after {
+    content: 'Drop to import';
+    font-size: 14px;
+    color: var(--color-text-info);
+    letter-spacing: 0.06em;
+  }
+}

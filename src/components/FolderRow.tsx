@@ -10,6 +10,7 @@ interface FolderRowProps {
   items: Item[];
   selectedFolderId: string | null;
   selectedId: string | null;
+  unsavedItemId: string | null;
   // undefined = no drag active / not over this folder; null = unfiled zone matched; string = folder id matched
   dragOverId: string | null | undefined;
   depth: number;
@@ -31,6 +32,7 @@ function FolderRow({
   items,
   selectedFolderId,
   selectedId,
+  unsavedItemId,
   dragOverId,
   depth,
   onSelect,
@@ -231,6 +233,7 @@ function FolderRow({
               items={items}
               selectedFolderId={selectedFolderId}
               selectedId={selectedId}
+              unsavedItemId={unsavedItemId}
               dragOverId={dragOverId}
               depth={depth + 1}
               onSelect={onSelect}
@@ -246,6 +249,7 @@ function FolderRow({
               key={item.id}
               item={item}
               isSelected={selectedId === item.id}
+              isUnsaved={unsavedItemId === item.id}
               onSelect={onSelectItem}
               onPointerDown={onItemPointerDown}
               style={{ paddingLeft: `${8 + (depth + 1) * 16}px` }}

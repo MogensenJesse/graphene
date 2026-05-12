@@ -69,7 +69,8 @@ export function parseNoteFile(raw: string): NoteItem & { body: string } {
       id: meta.id ?? "",
       type: "note",
       title: meta.title ?? "",
-      folderId: meta.folderId && meta.folderId !== "null" ? meta.folderId : null,
+      folderId:
+        meta.folderId && meta.folderId !== "null" ? meta.folderId : null,
       createdAt: meta.createdAt ?? new Date().toISOString(),
       updatedAt: meta.updatedAt ?? new Date().toISOString(),
       body,

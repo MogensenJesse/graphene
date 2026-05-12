@@ -36,7 +36,7 @@ function MarkdownToolbar({ onFormat }: MarkdownToolbarProps) {
   return (
     <div className="markdown-toolbar">
       {GROUPS.map((group, gi) => (
-        <Fragment key={gi}>
+        <Fragment key={group[0].type}>
           {gi > 0 && (
             <span className="markdown-toolbar__sep" aria-hidden="true" />
           )}

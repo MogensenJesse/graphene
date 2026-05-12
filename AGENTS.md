@@ -12,7 +12,7 @@
 
 ## Learned Workspace Facts
 
-- Project: Graphene (renamed FlowVault → Graphite → Graphene) — Tauri v2 + React 18 + TypeScript + Vite desktop app for general note-taking with markdown, folders, and code snippet storage; disk root: `D:\graphene`; Tauri identifier: `com.graphene.app`
+- Project: Graphene (renamed FlowVault → Graphite → Graphene) — Tauri v2 + React 18 + TypeScript + Vite desktop app for general note-taking with markdown, folders, and code snippet storage; disk root: `D:\graphene`; Tauri identifier: `com.graphene.app`; GitHub: `MogensenJesse/graphene` (remote: `https://github.com/MogensenJesse/graphene.git`, renamed from `flowvault`)
 - Stack: Tauri v2, React 18, TypeScript, Vite, SCSS, nanoid, Biome, gray-matter; plugins: tauri-plugin-fs + tauri-plugin-clipboard-manager + tauri-plugin-dialog
 - Design language and SCSS system borrowed from `D:\image-optimizer` (React + JSX, no TypeScript — reference for styles only)
 - SCSS color palette: `$light` #e0e0e0, `$night` #0E0E0F, `$onyx` #121314, `$green` #62cd20, `$yellow` #d7bb21, `$red` #cd3120; radii: `$radius-sm` 7px, `$radius-lg` 12px

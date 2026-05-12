@@ -11,6 +11,7 @@ import type { Folder, Item } from "../types";
 export function useFolders(
   vaultPath: string,
   onDeleteCascade: (folderId: string, newFolderId: string | null) => void,
+  onRenameFolder?: (oldId: string, newId: string) => void,
 ) {
   const [folders, setFolders] = useState<Folder[]>([]);
 
@@ -37,16 +38,16 @@ export function useFolders(
   const updateFolder = useCallback(
     (id: string, name: string) => {
       const newName = name.trim();
+      const slashIdx = id.lastIndexOf("/");
+      const newId =
+        slashIdx > 0 ? `${id.slice(0, slashIdx)}/${newName}` : newName;
+
       setFolders((prev) => {
         const target = prev.find((f) => f.id === id);
         if (!target) return prev;
 
-        const slashIdx = id.lastIndexOf("/");
-        const newId =
-          slashIdx > 0 ? `${id.slice(0, slashIdx)}/${newName}` : newName;
-
         // Update the folder itself and any descendants whose id starts with old id
-        const updated = prev.map((f) => {
+        return prev.map((f) => {
           if (f.id === id) {
             return { ...f, id: newId, name: newName };
           }
@@ -65,12 +66,12 @@ export function useFolders(
           }
           return f;
         });
-
-        renameFolderDir(vaultPath, id, newName).catch(console.error);
-        return updated;
       });
+
+      renameFolderDir(vaultPath, id, newName).catch(console.error);
+      onRenameFolder?.(id, newId);
     },
-    [vaultPath],
+    [vaultPath, onRenameFolder],
   );
 
   const deleteFolder = useCallback(

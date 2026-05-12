@@ -54,7 +54,9 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
         aria-expanded={open}
       >
         <span className="folder-picker__label">{selectedName}</span>
-        <span className="folder-picker__chevron" aria-hidden="true">▾</span>
+        <span className="folder-picker__chevron" aria-hidden="true">
+          ▾
+        </span>
       </button>
 
       {open && (
@@ -65,7 +67,9 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
             className={`folder-picker__option${value === null ? " folder-picker__option--selected" : ""}`}
             onClick={() => handleSelect(null)}
           >
-            <span className="folder-picker__option-icon" aria-hidden="true">◈</span>
+            <span className="folder-picker__option-icon" aria-hidden="true">
+              ◈
+            </span>
             no folder
           </button>
 

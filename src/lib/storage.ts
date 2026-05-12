@@ -78,9 +78,7 @@ function itemFilePath(vaultPath: string, item: Item): string {
   const ext =
     item.type === "note" ? ".md" : extForLang((item as SnippetItem).lang);
   const dir =
-    item.folderId !== null
-      ? joinPath(vaultPath, item.folderId)
-      : vaultPath;
+    item.folderId !== null ? joinPath(vaultPath, item.folderId) : vaultPath;
   return joinPath(dir, `${slugify(item.title)}-${item.id}${ext}`);
 }
 
@@ -98,7 +96,7 @@ interface ScannedDir {
   relPath: string; // relative to vault root
 }
 
-async function scanVaultRecursive(
+export async function scanVaultRecursive(
   vaultPath: string,
   currentAbsPath: string,
 ): Promise<{ files: ScannedFile[]; dirs: ScannedDir[] }> {
@@ -134,9 +132,11 @@ async function scanVaultRecursive(
 // Items
 // ---------------------------------------------------------------------------
 
-export async function loadAllItems(vaultPath: string): Promise<Item[]> {
+async function itemsFromFiles(
+  vaultPath: string,
+  files: ScannedFile[],
+): Promise<Item[]> {
   const items: Item[] = [];
-  const { files } = await scanVaultRecursive(vaultPath, vaultPath);
 
   for (const { absPath, name } of files) {
     const dotIdx = name.lastIndexOf(".");
@@ -198,14 +198,14 @@ export async function loadAllItems(vaultPath: string): Promise<Item[]> {
   return items;
 }
 
-export async function saveItem(
-  vaultPath: string,
-  item: Item,
-): Promise<void> {
+export async function loadAllItems(vaultPath: string): Promise<Item[]> {
+  const { files } = await scanVaultRecursive(vaultPath, vaultPath);
+  return itemsFromFiles(vaultPath, files);
+}
+
+export async function saveItem(vaultPath: string, item: Item): Promise<void> {
   const dir =
-    item.folderId !== null
-      ? joinPath(vaultPath, item.folderId)
-      : vaultPath;
+    item.folderId !== null ? joinPath(vaultPath, item.folderId) : vaultPath;
   await mkdir(dir, { recursive: true });
 
   const filePath = itemFilePath(vaultPath, item);
@@ -259,13 +259,11 @@ export async function moveItemFile(
 // Folders
 // ---------------------------------------------------------------------------
 
-export async function loadAllFolders(vaultPath: string): Promise<Folder[]> {
-  const { dirs } = await scanVaultRecursive(vaultPath, vaultPath);
+function foldersFromDirs(dirs: ScannedDir[]): Folder[] {
   return dirs.map(({ relPath }) => {
     const slashIdx = relPath.lastIndexOf("/");
     const parentId = slashIdx > 0 ? relPath.slice(0, slashIdx) : null;
-    const name =
-      slashIdx > 0 ? relPath.slice(slashIdx + 1) : relPath;
+    const name = slashIdx > 0 ? relPath.slice(slashIdx + 1) : relPath;
     return {
       id: relPath,
       name,
@@ -273,6 +271,20 @@ export async function loadAllFolders(vaultPath: string): Promise<Folder[]> {
       createdAt: new Date().toISOString(),
     };
   });
+}
+
+export async function loadAllFolders(vaultPath: string): Promise<Folder[]> {
+  const { dirs } = await scanVaultRecursive(vaultPath, vaultPath);
+  return foldersFromDirs(dirs);
+}
+
+export async function loadVault(
+  vaultPath: string,
+): Promise<{ items: Item[]; folders: Folder[] }> {
+  const { files, dirs } = await scanVaultRecursive(vaultPath, vaultPath);
+  const items = await itemsFromFiles(vaultPath, files);
+  const folders = foldersFromDirs(dirs);
+  return { items, folders };
 }
 
 export async function createFolderDir(
