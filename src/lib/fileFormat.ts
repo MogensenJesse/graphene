@@ -1,39 +1,8 @@
 // src/lib/fileFormat.ts
-import type { NoteItem, SnippetItem } from "../types";
+import type { Item } from "../types";
 
 // ---------------------------------------------------------------------------
-// Extension / language maps
-// ---------------------------------------------------------------------------
-
-const EXT_FOR_LANG: Record<string, string> = {
-  JS: ".js",
-  TS: ".ts",
-  CSS: ".css",
-  SCSS: ".scss",
-  HTML: ".html",
-  Bash: ".sh",
-  "JSON-LD": ".md", // JSON has no comment syntax — stored as .md with lang in frontmatter
-};
-
-const LANG_FROM_EXT: Record<string, string> = {
-  ".js": "JS",
-  ".ts": "TS",
-  ".css": "CSS",
-  ".scss": "SCSS",
-  ".html": "HTML",
-  ".sh": "Bash",
-};
-
-export function extForLang(lang: string): string {
-  return EXT_FOR_LANG[lang] ?? ".txt";
-}
-
-export function langFromExt(ext: string): string | null {
-  return LANG_FROM_EXT[ext] ?? null;
-}
-
-// ---------------------------------------------------------------------------
-// Notes — YAML frontmatter + markdown body
+// Items — YAML frontmatter + markdown body, always stored as .md
 // ---------------------------------------------------------------------------
 
 /**
@@ -58,8 +27,8 @@ function parseYamlFrontmatter(block: string): Record<string, string> {
   return result;
 }
 
-export function parseNoteFile(raw: string): NoteItem & { body: string } {
-  const withoutBom = raw.startsWith("\uFEFF") ? raw.slice(1) : raw;
+export function parseNoteFile(raw: string): Item {
+  const withoutBom = raw.startsWith("﻿") ? raw.slice(1) : raw;
   const fenceEnd = withoutBom.indexOf("\n---", 4);
   if (withoutBom.startsWith("---\n") && fenceEnd !== -1) {
     const frontmatterBlock = withoutBom.slice(4, fenceEnd);
@@ -67,7 +36,6 @@ export function parseNoteFile(raw: string): NoteItem & { body: string } {
     const meta = parseYamlFrontmatter(frontmatterBlock);
     return {
       id: meta.id ?? "",
-      type: "note",
       title: meta.title ?? "",
       folderId:
         meta.folderId && meta.folderId !== "null" ? meta.folderId : null,
@@ -79,7 +47,6 @@ export function parseNoteFile(raw: string): NoteItem & { body: string } {
   // Fallback: no frontmatter — treat whole file as body
   return {
     id: "",
-    type: "note",
     title: "",
     folderId: null,
     createdAt: new Date().toISOString(),
@@ -88,13 +55,12 @@ export function parseNoteFile(raw: string): NoteItem & { body: string } {
   };
 }
 
-export function serializeNote(item: NoteItem): string {
+export function serializeItem(item: Item): string {
   const folderLine =
     item.folderId !== null ? `folderId: ${item.folderId}` : "folderId: null";
   return [
     "---",
     `id: ${item.id}`,
-    "type: note",
     `title: ${item.title}`,
     folderLine,
     `createdAt: ${item.createdAt}`,
@@ -105,36 +71,46 @@ export function serializeNote(item: NoteItem): string {
 }
 
 // ---------------------------------------------------------------------------
-// Snippets — metadata JSON comment on line 1
+// Code blocks
 // ---------------------------------------------------------------------------
 
-interface SnippetMeta {
+/** Extensions of code files that can be dropped in (and that old snippets were stored as). */
+export const CODE_EXTS = new Set([
+  ".js",
+  ".ts",
+  ".css",
+  ".scss",
+  ".html",
+  ".sh",
+]);
+
+/** Wrap code in a fenced block whose fence is longer than any backtick run inside the code. */
+export function fence(code: string, lang: string): string {
+  const longest = Math.max(
+    2,
+    ...(code.match(/^`+/gm) ?? []).map((run) => run.length),
+  );
+  const ticks = "`".repeat(longest + 1);
+  const text = code.replace(/\r\n/g, "\n").replace(/\n$/, "");
+  return `${ticks}${lang}\n${text}\n${ticks}`;
+}
+
+// ---------------------------------------------------------------------------
+// Legacy snippets — read only, to convert them to notes on first launch
+// ---------------------------------------------------------------------------
+
+export interface LegacySnippet {
   id: string;
-  type: "snippet";
   title: string;
   folderId: string | null;
   lang: string;
-  copies: number;
   note: string;
+  code: string;
   createdAt: string;
   updatedAt: string;
 }
 
 const PREFIX = "@graphene:";
-
-function metaCommentForExt(
-  ext: string,
-  json: string,
-): { line: string; closingTag: string } {
-  if (ext === ".css" || ext === ".scss") {
-    return { line: `/* ${PREFIX}${json} */`, closingTag: "" };
-  }
-  if (ext === ".html") {
-    return { line: `<!-- ${PREFIX}${json} -->`, closingTag: "" };
-  }
-  // JS, TS, Bash, and catch-all
-  return { line: `// ${PREFIX}${json}`, closingTag: "" };
-}
 
 function extractMetaJson(firstLine: string): string | null {
   // Try: // @graphene:{...}
@@ -162,61 +138,51 @@ function extractMetaJson(firstLine: string): string | null {
   return null;
 }
 
-export function parseSnippetFile(raw: string, ext: string): SnippetItem {
-  const lines = raw.split("\n");
-  const firstLine = lines[0] ?? "";
-  const jsonStr = extractMetaJson(firstLine);
-
-  if (jsonStr) {
-    try {
-      const meta = JSON.parse(jsonStr) as SnippetMeta;
-      const code = lines.slice(1).join("\n").replace(/^\n/, "");
-      return {
-        id: meta.id ?? "",
-        type: "snippet",
-        title: meta.title ?? "",
-        folderId: meta.folderId ?? null,
-        lang: (meta.lang as SnippetItem["lang"]) ?? langFromExt(ext) ?? "JS",
-        copies: typeof meta.copies === "number" ? meta.copies : 0,
-        note: meta.note ?? "",
-        createdAt: meta.createdAt ?? new Date().toISOString(),
-        updatedAt: meta.updatedAt ?? new Date().toISOString(),
-        code,
-      };
-    } catch {
-      // Fall through to raw fallback
-    }
-  }
-
-  // Fallback: no valid metadata comment
-  return {
-    id: "",
-    type: "snippet",
-    title: "",
-    folderId: null,
-    lang: (langFromExt(ext) as SnippetItem["lang"]) ?? "JS",
-    copies: 0,
-    note: "",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    code: raw,
-  };
+/** A JSON-LD snippet used to be a .md file whose frontmatter said `type: snippet`. */
+export function isLegacySnippetMd(raw: string): boolean {
+  return /^type:\s*["']?snippet["']?\s*$/m.test(raw.slice(0, 200));
 }
 
-export function serializeSnippet(item: SnippetItem): string {
-  const ext = extForLang(item.lang);
-  const meta: SnippetMeta = {
-    id: item.id,
-    type: "snippet",
-    title: item.title,
-    folderId: item.folderId,
-    lang: item.lang,
-    copies: item.copies,
-    note: item.note,
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
+/** Old snippet file: metadata JSON in a comment on line 1, code below. Null without usable metadata. */
+export function parseLegacySnippet(
+  raw: string,
+  ext: string,
+): LegacySnippet | null {
+  const lines = raw.split("\n");
+  const json = extractMetaJson(lines[0] ?? "");
+  if (!json) return null;
+  try {
+    const meta = JSON.parse(json) as Partial<LegacySnippet>;
+    if (!meta.id) return null;
+    return {
+      id: meta.id,
+      title: meta.title ?? "",
+      folderId: meta.folderId ?? null,
+      lang: meta.lang ?? ext.slice(1),
+      note: meta.note ?? "",
+      code: lines.slice(1).join("\n").replace(/^\n/, ""),
+      createdAt: meta.createdAt ?? new Date().toISOString(),
+      updatedAt: meta.updatedAt ?? new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Code goes into a fenced block (the old language becomes the fence tag), its notes text below. */
+export function legacyToItem(
+  snippet: LegacySnippet,
+  folderId: string | null,
+): Item {
+  // JS, TS, CSS, SCSS, HTML, Bash become js, ts, css, scss, html, bash
+  const lang = snippet.lang === "JSON-LD" ? "json" : snippet.lang.toLowerCase();
+  return {
+    id: snippet.id,
+    title: snippet.title,
+    folderId,
+    createdAt: snippet.createdAt,
+    updatedAt: snippet.updatedAt,
+    body:
+      fence(snippet.code, lang) + (snippet.note ? `\n\n${snippet.note}` : ""),
   };
-  const json = JSON.stringify(meta);
-  const { line } = metaCommentForExt(ext, json);
-  return `${line}\n${item.code}`;
 }

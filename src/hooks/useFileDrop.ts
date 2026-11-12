@@ -2,23 +2,11 @@
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { readTextFile } from "@tauri-apps/plugin-fs";
 import { useEffect, useRef, useState } from "react";
-import { langFromExt, parseNoteFile } from "../lib/fileFormat";
-import type { SnippetItem } from "../types";
-import type { AddNoteFields, AddSnippetFields } from "./useItems";
-
-const SUPPORTED_EXTS = new Set([
-  ".md",
-  ".js",
-  ".ts",
-  ".css",
-  ".scss",
-  ".html",
-  ".sh",
-]);
+import { CODE_EXTS, fence, parseNoteFile } from "../lib/fileFormat";
+import type { AddItemFields } from "./useItems";
 
 export function useFileDrop(
-  addNote: (fields: AddNoteFields) => string,
-  addSnippet: (fields: AddSnippetFields) => string,
+  addItem: (fields: AddItemFields) => string,
   // Folder the files are imported into (null = vault root)
   getFolderId: () => string | null,
   // Called with the id of an imported item so the app can open it
@@ -55,7 +43,7 @@ export function useFileDrop(
               const fileBaseName =
                 dotIdx >= 0 ? fileName.slice(0, dotIdx) : fileName;
 
-              if (!SUPPORTED_EXTS.has(ext)) return;
+              if (ext !== ".md" && !CODE_EXTS.has(ext)) return;
 
               try {
                 const content = await readTextFile(filePath);
@@ -66,15 +54,13 @@ export function useFileDrop(
                     ? parsed.title || fileBaseName
                     : fileBaseName;
                   const body = parsed.id ? parsed.body : content;
-                  importedIds.push(addNote({ title, body, folderId }));
+                  importedIds.push(addItem({ title, body, folderId }));
                 } else {
-                  const lang = langFromExt(ext) as SnippetItem["lang"];
+                  // Code files become a note holding one fenced block (js, ts, css, scss, html, sh)
                   importedIds.push(
-                    addSnippet({
+                    addItem({
                       title: fileBaseName,
-                      code: content,
-                      lang,
-                      note: "",
+                      body: fence(content, ext.slice(1)),
                       folderId,
                     }),
                   );
@@ -98,7 +84,7 @@ export function useFileDrop(
       aborted = true;
       unlistenPromise.then((unlisten) => unlisten()).catch(console.error);
     };
-  }, [addNote, addSnippet]);
+  }, [addItem]);
 
   return { isDraggingOver };
 }

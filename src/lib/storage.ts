@@ -8,19 +8,21 @@ import {
   rename,
   writeTextFile,
 } from "@tauri-apps/plugin-fs";
-import type { Folder, Item, NoteItem, SnippetItem } from "../types";
+import type { Folder, Item } from "../types";
 import {
-  extForLang,
-  langFromExt,
+  CODE_EXTS,
+  isLegacySnippetMd,
+  legacyToItem,
+  parseLegacySnippet,
   parseNoteFile,
-  parseSnippetFile,
-  serializeNote,
-  serializeSnippet,
+  serializeItem,
 } from "./fileFormat";
 import { getVaultPath, setVaultPath } from "./vault";
 
 // Re-export so callers can import from one place
 export { getVaultPath as loadVaultPath, setVaultPath as saveVaultPath };
+
+const TRASH_DIR = ".trash";
 
 // ---------------------------------------------------------------------------
 // Path helpers
@@ -73,13 +75,30 @@ function folderAbsPath(vaultPath: string, folderId: string): string {
   return joinPath(vaultPath, folderId);
 }
 
+function itemFileName(item: Item): string {
+  return `${slugify(item.title)}-${item.id}.md`;
+}
+
 /** Determine absolute path for an item file */
 function itemFilePath(vaultPath: string, item: Item): string {
-  const ext =
-    item.type === "note" ? ".md" : extForLang((item as SnippetItem).lang);
   const dir =
     item.folderId !== null ? joinPath(vaultPath, item.folderId) : vaultPath;
-  return joinPath(dir, `${slugify(item.title)}-${item.id}${ext}`);
+  return joinPath(dir, itemFileName(item));
+}
+
+function trashFilePath(vaultPath: string, item: Item): string {
+  return joinPath(vaultPath, TRASH_DIR, itemFileName(item));
+}
+
+/** Move a file or directory into <vault>/.trash. A name clash (two loose notes.txt from different folders) keeps both. */
+async function moveToTrash(vaultPath: string, absPath: string): Promise<void> {
+  const trashDir = joinPath(vaultPath, TRASH_DIR);
+  await mkdir(trashDir, { recursive: true });
+  // absPath always comes from joinPath, so it uses "/"
+  const name = absPath.slice(absPath.lastIndexOf("/") + 1);
+  let dest = joinPath(trashDir, name);
+  if (await exists(dest)) dest = joinPath(trashDir, `${Date.now()}-${name}`);
+  await rename(absPath, dest);
 }
 
 // ---------------------------------------------------------------------------
@@ -112,6 +131,8 @@ export async function scanVaultRecursive(
 
   for (const entry of entries) {
     if (!entry.name) continue;
+    // Dot entries (.trash, .git, .obsidian) are not part of the vault's content
+    if (entry.name.startsWith(".")) continue;
     const absPath = joinPath(currentAbsPath, entry.name);
 
     if (entry.isDirectory) {
@@ -132,92 +153,92 @@ export async function scanVaultRecursive(
 // Items
 // ---------------------------------------------------------------------------
 
+/** Write the converted note first (a crash never loses the snippet), then retire the old file. */
+async function convertLegacy(
+  vaultPath: string,
+  legacyPath: string,
+  item: Item,
+): Promise<Item> {
+  try {
+    await saveItem(vaultPath, item);
+    // An old JSON-LD .md sits at the very same path and is already replaced; other files keep a backup in .trash
+    if (itemFilePath(vaultPath, item) !== legacyPath) {
+      await moveToTrash(vaultPath, legacyPath);
+    }
+  } catch (err) {
+    // The item still shows up; the conversion is retried on the next launch
+    console.warn("[storage] Failed to convert snippet:", legacyPath, err);
+  }
+  return item;
+}
+
+async function readItemFile(
+  vaultPath: string,
+  { absPath, name }: ScannedFile,
+): Promise<Item | null> {
+  const dotIdx = name.lastIndexOf(".");
+  if (dotIdx < 0) return null;
+  const ext = name.slice(dotIdx).toLowerCase();
+  if (ext !== ".md" && !CODE_EXTS.has(ext)) return null;
+
+  const raw = await readTextFile(absPath);
+  const folderId = folderIdFromFilePath(vaultPath, absPath);
+
+  if (ext === ".md") {
+    const parsed = parseNoteFile(raw);
+    if (!parsed.id) return null;
+    const itemFolderId = folderId ?? parsed.folderId;
+    if (!isLegacySnippetMd(raw)) return { ...parsed, folderId: itemFolderId };
+    // Old JSON-LD snippet: the body is the code
+    const converted = legacyToItem(
+      {
+        id: parsed.id,
+        title: parsed.title,
+        folderId: itemFolderId,
+        lang: "JSON-LD",
+        note: "",
+        code: parsed.body,
+        createdAt: parsed.createdAt,
+        updatedAt: parsed.updatedAt,
+      },
+      itemFolderId,
+    );
+    return convertLegacy(vaultPath, absPath, converted);
+  }
+
+  const legacy = parseLegacySnippet(raw, ext);
+  if (!legacy) return null;
+  const converted = legacyToItem(legacy, folderId ?? legacy.folderId);
+  return convertLegacy(vaultPath, absPath, converted);
+}
+
 async function itemsFromFiles(
   vaultPath: string,
   files: ScannedFile[],
 ): Promise<Item[]> {
   const items: Item[] = [];
 
-  for (const { absPath, name } of files) {
-    const dotIdx = name.lastIndexOf(".");
-    if (dotIdx < 0) continue;
-    const ext = name.slice(dotIdx).toLowerCase();
-
+  // One at a time: conversions rename files and must not race each other
+  for (const file of files) {
     try {
-      const raw = await readTextFile(absPath);
-      const folderId = folderIdFromFilePath(vaultPath, absPath);
-
-      if (ext === ".md") {
-        // Could be a note OR a JSON-LD snippet stored as .md
-        const parsed = parseNoteFile(raw);
-        if (!parsed.id) continue;
-
-        // Check if this is a JSON-LD snippet stored as .md
-        // (frontmatter has type: snippet or lang: JSON-LD)
-        const rawLower = raw.slice(0, 200);
-        if (
-          rawLower.includes("type: snippet") ||
-          rawLower.includes('type: "snippet"')
-        ) {
-          // Parse as snippet via the note format path
-          const note = parseNoteFile(raw);
-          if (!note.id) continue;
-          // The body is the JSON-LD code
-          const snippet: SnippetItem = {
-            id: note.id,
-            type: "snippet",
-            title: note.title,
-            folderId: folderId ?? note.folderId,
-            lang: "JSON-LD",
-            code: note.body,
-            note: "",
-            copies: 0,
-            createdAt: note.createdAt,
-            updatedAt: note.updatedAt,
-          };
-          items.push(snippet);
-        } else {
-          const note: NoteItem = {
-            ...parsed,
-            folderId: folderId ?? parsed.folderId,
-          };
-          items.push(note);
-        }
-      } else {
-        const lang = langFromExt(ext);
-        if (!lang) continue;
-        const snippet = parseSnippetFile(raw, ext);
-        if (!snippet.id) continue;
-        items.push({ ...snippet, folderId: folderId ?? snippet.folderId });
-      }
+      const item = await readItemFile(vaultPath, file);
+      if (item) items.push(item);
     } catch (err) {
-      console.warn("[storage] Failed to read item file:", absPath, err);
+      console.warn("[storage] Failed to read item file:", file.absPath, err);
     }
   }
 
   return items;
 }
 
-export async function loadAllItems(vaultPath: string): Promise<Item[]> {
-  const { files } = await scanVaultRecursive(vaultPath, vaultPath);
-  return itemsFromFiles(vaultPath, files);
-}
-
 export async function saveItem(vaultPath: string, item: Item): Promise<void> {
   const dir =
     item.folderId !== null ? joinPath(vaultPath, item.folderId) : vaultPath;
   await mkdir(dir, { recursive: true });
-
-  const filePath = itemFilePath(vaultPath, item);
-  const content =
-    item.type === "note"
-      ? serializeNote(item as NoteItem)
-      : serializeSnippet(item as SnippetItem);
-
-  await writeTextFile(filePath, content);
+  await writeTextFile(itemFilePath(vaultPath, item), serializeItem(item));
 }
 
-/** Save `updated`; if its file path differs from `old` (title, folder or lang changed), remove the old file first. */
+/** Save `updated`; if its file path differs from `old` (title or folder changed), remove the old file first. */
 export async function replaceItemFile(
   vaultPath: string,
   old: Item,
@@ -229,6 +250,7 @@ export async function replaceItemFile(
   await saveItem(vaultPath, updated);
 }
 
+/** Hard remove, for the stale file left behind by a rename. A user delete goes through trashItemFile. */
 export async function deleteItemFile(
   vaultPath: string,
   item: Item,
@@ -253,9 +275,7 @@ export async function moveItemFile(
 
   await mkdir(newDir, { recursive: true });
 
-  const ext =
-    item.type === "note" ? ".md" : extForLang((item as SnippetItem).lang);
-  const newPath = joinPath(newDir, `${slugify(item.title)}-${item.id}${ext}`);
+  const newPath = joinPath(newDir, itemFileName(item));
 
   try {
     const fileExists = await exists(oldPath);
@@ -265,6 +285,78 @@ export async function moveItemFile(
   } catch (err) {
     console.warn("[storage] moveItemFile failed:", oldPath, "→", newPath, err);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Trash
+// ---------------------------------------------------------------------------
+
+export async function trashItemFile(
+  vaultPath: string,
+  item: Item,
+): Promise<void> {
+  const filePath = itemFilePath(vaultPath, item);
+  try {
+    if (await exists(filePath)) await moveToTrash(vaultPath, filePath);
+  } catch (err) {
+    console.warn("[storage] trashItemFile failed:", filePath, err);
+  }
+}
+
+/** Items in <vault>/.trash. Not recursive: converted snippet originals and loose files stay out of sight. */
+export async function loadTrash(vaultPath: string): Promise<Item[]> {
+  const trashDir = joinPath(vaultPath, TRASH_DIR);
+  let entries: { name: string; isFile: boolean }[];
+  try {
+    entries = await readDir(trashDir);
+  } catch {
+    return [];
+  }
+
+  const items: Item[] = [];
+  for (const entry of entries) {
+    if (!entry.isFile || !entry.name.toLowerCase().endsWith(".md")) continue;
+    try {
+      // folderId comes from the frontmatter: the path would just say ".trash"
+      const parsed = parseNoteFile(
+        await readTextFile(joinPath(trashDir, entry.name)),
+      );
+      if (parsed.id) items.push(parsed);
+    } catch (err) {
+      console.warn("[storage] Failed to read trashed file:", entry.name, err);
+    }
+  }
+  return items;
+}
+
+/** Put a trashed item back. Returns the item as restored: its folder may be gone, then it lands in the vault root. */
+export async function restoreItemFile(
+  vaultPath: string,
+  item: Item,
+): Promise<Item> {
+  const folderExists =
+    item.folderId === null ||
+    (await exists(folderAbsPath(vaultPath, item.folderId)));
+  const restored = folderExists ? item : { ...item, folderId: null };
+  await saveItem(vaultPath, restored); // write first, so a crash never loses it
+  await remove(trashFilePath(vaultPath, item));
+  return restored;
+}
+
+/**
+ * Delete the listed items from the trash for good. Converted snippet originals and folder leftovers
+ * are never listed, so they stay. ponytail: delete the .trash folder by hand once the migration looks right.
+ */
+export async function emptyTrashFiles(
+  vaultPath: string,
+  items: Item[],
+): Promise<void> {
+  await Promise.allSettled(
+    items.map(async (item) => {
+      const path = trashFilePath(vaultPath, item);
+      if (await exists(path)) await remove(path);
+    }),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -285,18 +377,22 @@ function foldersFromDirs(dirs: ScannedDir[]): Folder[] {
   });
 }
 
-export async function loadAllFolders(vaultPath: string): Promise<Folder[]> {
-  const { dirs } = await scanVaultRecursive(vaultPath, vaultPath);
-  return foldersFromDirs(dirs);
-}
-
 export async function loadVault(
   vaultPath: string,
-): Promise<{ items: Item[]; folders: Folder[] }> {
-  const { files, dirs } = await scanVaultRecursive(vaultPath, vaultPath);
-  const items = await itemsFromFiles(vaultPath, files);
-  const folders = foldersFromDirs(dirs);
-  return { items, folders };
+): Promise<{ items: Item[]; folders: Folder[]; trashed: Item[] }> {
+  const [{ files, dirs }, trash] = await Promise.all([
+    scanVaultRecursive(vaultPath, vaultPath),
+    loadTrash(vaultPath),
+  ]);
+  const read = await itemsFromFiles(vaultPath, files);
+  // A crash between "write the new note" and "retire the old file" must not show an item twice
+  const items = Array.from(new Map(read.map((i) => [i.id, i])).values());
+  const liveIds = new Set(items.map((i) => i.id));
+  return {
+    items,
+    folders: foldersFromDirs(dirs),
+    trashed: trash.filter((i) => !liveIds.has(i.id)),
+  };
 }
 
 export async function createFolderDir(
@@ -320,14 +416,14 @@ export async function renameFolderDir(
   await rename(oldAbs, newAbs);
 }
 
+/** Items are moved out first, so what is left is non-Graphene files: keep them in .trash instead of erasing them. */
 export async function deleteFolderDir(
   vaultPath: string,
   folderId: string,
 ): Promise<void> {
   const absPath = folderAbsPath(vaultPath, folderId);
   try {
-    const dirExists = await exists(absPath);
-    if (dirExists) await remove(absPath, { recursive: true });
+    if (await exists(absPath)) await moveToTrash(vaultPath, absPath);
   } catch (err) {
     console.warn("[storage] deleteFolderDir failed:", absPath, err);
   }

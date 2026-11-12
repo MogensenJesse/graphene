@@ -2,9 +2,9 @@
 import { useEffect } from "react";
 
 interface Shortcuts {
-  mode: "new" | "detail" | "edit";
+  mode: "new" | "detail" | "edit" | "trash";
   hasSelection: boolean;
-  onNew: () => void;
+  onNew: (kind: "note" | "code") => void;
   onEdit: () => void;
   onDone: () => void;
   onFocusSearch: () => void;
@@ -22,10 +22,11 @@ export function useKeyboardShortcuts({
     const onKeyDown = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
 
-      // Also while editing: starting a new item saves the open edit first
-      if (e.key === "n") {
+      // Also while editing: starting a new item saves the open edit first.
+      // Shift is held, so the key arrives upper-case.
+      if (e.key.toLowerCase() === "n") {
         e.preventDefault();
-        onNew();
+        onNew(e.shiftKey ? "code" : "note");
       }
 
       if (e.key === "k" || e.key === "f") {

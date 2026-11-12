@@ -1,5 +1,10 @@
 // src/lib/utils.ts
-import type { Folder } from "../types";
+import type { Folder, Item } from "../types";
+
+/** A code item is a note that starts with a fenced block; it gets the code icon and the "code" filter. */
+export function isCodeItem(item: Item): boolean {
+  return /^\s*```/.test(item.body);
+}
 
 export function formatDate(iso: string): string {
   const d = new Date(iso);

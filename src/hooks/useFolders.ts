@@ -81,11 +81,12 @@ export function useFolders(
         const newParentId = target?.parentId ?? null;
 
         // Move items in the deleted folder to parent
-        for (const item of items) {
-          if (item.folderId === id || item.folderId?.startsWith(`${id}/`)) {
-            moveItemFile(vaultPath, item, newParentId).catch(console.error);
-          }
-        }
+        const moves = items
+          .filter(
+            (item) =>
+              item.folderId === id || item.folderId?.startsWith(`${id}/`),
+          )
+          .map((item) => moveItemFile(vaultPath, item, newParentId));
 
         const updated = prev
           .filter((f) => f.id !== id && !f.id.startsWith(`${id}/`))
@@ -94,7 +95,10 @@ export function useFolders(
           );
 
         onDeleteCascade(id, newParentId);
-        deleteFolderDir(vaultPath, id).catch(console.error);
+        // Only after the item files left, so the directory is never renamed under a move in flight
+        Promise.all(moves)
+          .then(() => deleteFolderDir(vaultPath, id))
+          .catch(console.error);
         return updated;
       });
     },
