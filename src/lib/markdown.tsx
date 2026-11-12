@@ -1,7 +1,8 @@
 // src/lib/markdown.tsx
 import { openUrl } from "@tauri-apps/plugin-opener";
-import type { ReactNode } from "react";
+import { type ReactNode, isValidElement } from "react";
 import type { Components } from "react-markdown";
+import rehypeHighlight from "rehype-highlight";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import CodeBlock from "../components/CodeBlock";
@@ -10,11 +11,24 @@ import { useClipboard } from "../hooks/useClipboard";
 // No `as const` — it makes the array readonly and triggers TS4104 on remarkPlugins
 export const REMARK_PLUGINS = [remarkGfm, remarkBreaks];
 
-// Fenced code in notes gets the same copy button as snippets
+// Colours fenced code by its language tag (```js). Untagged or unknown tags stay plain.
+export const REHYPE_PLUGINS = [rehypeHighlight];
+
+// The <code> inside <pre> carries the fence's language as the class "language-js"
+function languageOf(children: ReactNode): string {
+  if (!isValidElement<{ className?: string }>(children)) return "";
+  return /language-(\S+)/.exec(children.props.className ?? "")?.[1] ?? "";
+}
+
+// Fenced code in notes gets a copy button and a language label
 function MarkdownPre({ children }: { children?: ReactNode }) {
   const { copy, copied } = useClipboard();
   return (
-    <CodeBlock copied={copied} onCopy={(text) => copy(text.replace(/\n$/, ""))}>
+    <CodeBlock
+      lang={languageOf(children)}
+      copied={copied}
+      onCopy={(text) => copy(text.replace(/\n$/, ""))}
+    >
       {children}
     </CodeBlock>
   );
