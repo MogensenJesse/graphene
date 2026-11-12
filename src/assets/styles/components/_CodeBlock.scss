@@ -1,0 +1,61 @@
+// src/assets/styles/components/_CodeBlock.scss
+@use '../base/mixins' as mixins;
+
+.code-block {
+  position: relative;
+  margin: 0.5em 0;
+
+  pre {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--color-text-primary);
+    background: var(--color-background-secondary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-md);
+    padding: 14px 64px 14px 18px; // right padding keeps the copy button off the first line
+    white-space: pre;
+    overflow-x: auto;
+
+    @include mixins.custom-scrollbar;
+  }
+
+  // Markdown renders <pre><code>; undo the inline-code chip look inside a block
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  &__copy {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 11px;
+    font-family: inherit;
+    padding: 3px 9px;
+    border-radius: var(--border-radius-sm);
+    border: 0.5px solid var(--color-border-secondary);
+    background: var(--color-background-primary);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), color var(--transition-fast);
+
+    &:hover {
+      border-color: var(--color-border-primary);
+      color: var(--color-text-primary);
+    }
+
+    &--copied {
+      color: var(--color-text-success);
+      border-color: var(--color-border-success);
+    }
+
+    &:focus-visible {
+      outline: 1px solid var(--color-border-primary);
+      outline-offset: 1px;
+    }
+  }
+}
