@@ -10,6 +10,8 @@
 @use 'app/app';
 
 // Components
+@use 'components/ItemHeader';
+@use 'components/CodeBlock';
 @use 'components/NewItemPanel';
 @use 'components/FolderRow';
 @use 'components/NoteDetail';

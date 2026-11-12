@@ -1,10 +1,11 @@
 // src/components/SnippetDetail.tsx
 import { useEffect } from "react";
 import { useClipboard } from "../hooks/useClipboard";
-import { useDeleteConfirm } from "../hooks/useDeleteConfirm";
-import { formatDate, getFolderPath } from "../lib/utils";
 import { LANG_COLORS } from "../types";
 import type { Folder, SnippetItem } from "../types";
+import CodeBlock from "./CodeBlock";
+import ItemActions from "./ItemActions";
+import ItemHeader from "./ItemHeader";
 
 interface SnippetDetailProps {
   snippet: SnippetItem;
@@ -12,6 +13,10 @@ interface SnippetDetailProps {
   onEdit: () => void;
   onDelete: (id: string) => void;
   onCopied: (id: string) => void;
+  onRename: (id: string, title: string) => void;
+  onMove: (id: string, folderId: string | null) => void;
+  // False while a folder is selected, so the Del key goes to the folder instead
+  deleteKeyEnabled: boolean;
 }
 
 function SnippetDetail({
@@ -20,78 +25,75 @@ function SnippetDetail({
   onEdit,
   onDelete,
   onCopied,
+  onRename,
+  onMove,
+  deleteKeyEnabled,
 }: SnippetDetailProps) {
   const { copy, copied } = useClipboard();
-  const { confirming, startConfirm, cancelConfirm } = useDeleteConfirm(
-    snippet.id,
-  );
 
   const langStyle = LANG_COLORS[snippet.lang] ?? {
     bg: "var(--color-background-secondary)",
     color: "var(--color-text-secondary)",
   };
 
+  // Copy the exact source, not the rendered text
   const handleCopy = async () => {
     await copy(snippet.code);
     onCopied(snippet.id);
   };
 
-  const handleDeleteClick = () => {
-    if (confirming) {
-      onDelete(snippet.id);
-    } else {
-      startConfirm();
-    }
-  };
-
+  // Ctrl+C copies the snippet unless the user is typing or has text selected (then it is a normal copy)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+      if (e.key !== "c") return;
       if (
-        e.key === "Delete" &&
-        !(e.target instanceof HTMLInputElement) &&
-        !(e.target instanceof HTMLTextAreaElement)
-      ) {
-        if (confirming) {
-          onDelete(snippet.id);
-        } else {
-          startConfirm();
-        }
-      }
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
+      if (window.getSelection()?.toString()) return;
+      e.preventDefault();
+      handleCopy();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [confirming, startConfirm, onDelete, snippet.id]);
-
-  const folderPath = getFolderPath(folders, snippet.folderId);
+  });
 
   return (
     <div className="snippet-detail">
-      <div className="snippet-detail__header" data-tauri-drag-region>
-        <div className="snippet-detail__header-left">
-          <h2 className="snippet-detail__title">{snippet.title}</h2>
-          <div className="snippet-detail__meta">
-            {folderPath.length > 0 && (
-              <span className="snippet-detail__folder-path">
-                {folderPath.join(" › ")}
-              </span>
-            )}
-            <span
-              className="snippet-detail__lang-badge"
-              style={{ background: langStyle.bg, color: langStyle.color }}
-            >
-              {snippet.lang}
-            </span>
-            <span className="snippet-detail__date">
-              {formatDate(snippet.updatedAt)}
-            </span>
-          </div>
-        </div>
-      </div>
+      <ItemHeader
+        title={snippet.title}
+        onTitleChange={(title) => onRename(snippet.id, title)}
+        folders={folders}
+        folderId={snippet.folderId}
+        onFolderChange={(folderId) => onMove(snippet.id, folderId)}
+        badge={
+          <span
+            className="item-header__badge"
+            style={{ background: langStyle.bg, color: langStyle.color }}
+          >
+            {snippet.lang}
+          </span>
+        }
+        updatedAt={snippet.updatedAt}
+        actions={
+          <ItemActions
+            itemId={snippet.id}
+            noun="snippet"
+            onEdit={onEdit}
+            onDelete={onDelete}
+            deleteKeyEnabled={deleteKeyEnabled}
+          />
+        }
+      />
 
       <div className="snippet-detail__body">
         <div>
           <div className="snippet-detail__section-label">code</div>
-          <pre className="snippet-detail__code-block">{snippet.code}</pre>
+          <CodeBlock copied={copied} onCopy={handleCopy}>
+            {snippet.code}
+          </CodeBlock>
         </div>
 
         {snippet.note && (
@@ -104,98 +106,6 @@ function SnippetDetail({
         <div className="snippet-detail__copy-count">
           <span aria-hidden="true">⊕</span> copied {snippet.copies}×
         </div>
-      </div>
-
-      <div className="snippet-detail__footer">
-        <div className="snippet-detail__footer-left">
-          <button
-            type="button"
-            className="snippet-detail__action-btn snippet-detail__action-btn--edit"
-            onClick={onEdit}
-            title="Edit snippet"
-            aria-label="Edit snippet"
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path
-                d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            edit
-          </button>
-          {confirming ? (
-            <>
-              <button
-                type="button"
-                className="snippet-detail__action-btn snippet-detail__action-btn--confirm-delete"
-                onClick={handleDeleteClick}
-                title="Confirm delete"
-                aria-label="Confirm delete snippet"
-              >
-                confirm?
-              </button>
-              <button
-                type="button"
-                className="snippet-detail__action-btn snippet-detail__action-btn--cancel-delete"
-                onClick={cancelConfirm}
-                title="Cancel delete"
-                aria-label="Cancel delete"
-              >
-                cancel
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="snippet-detail__action-btn snippet-detail__action-btn--delete"
-              onClick={handleDeleteClick}
-              title="Delete snippet"
-              aria-label="Delete snippet"
-            >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M2 3h8M5 3V2h2v1M9.5 3l-.5 7a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5L3 3"
-                  stroke="currentColor"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              delete
-            </button>
-          )}
-        </div>
-        <button
-          type="button"
-          className={`snippet-detail__copy-btn${copied ? " snippet-detail__copy-btn--copied" : ""}`}
-          onClick={handleCopy}
-          aria-label="Copy snippet code"
-        >
-          {copied ? (
-            <>
-              <span aria-hidden="true">✓</span> copied!
-            </>
-          ) : (
-            <>
-              <span aria-hidden="true">⊕</span> copy snippet
-            </>
-          )}
-        </button>
       </div>
     </div>
   );

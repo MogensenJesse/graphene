@@ -1,7 +1,9 @@
 // src/components/FolderPicker.tsx
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useClickOutside } from "../hooks/useClickOutside";
+import { getFolderPath } from "../lib/utils";
 import type { Folder } from "../types";
+import { FolderIcon } from "./Icon";
 
 interface FlatFolder {
   folder: Folder;
@@ -32,12 +34,26 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const flat = useMemo(() => flattenFolders(folders), [folders]);
+  // Full path ("Notes › Prompts") so nested folders are unambiguous
   const selectedName = useMemo(
-    () => folders.find((f) => f.id === value)?.name ?? "no folder",
+    () => getFolderPath(folders, value).join(" › ") || "no folder",
     [folders, value],
   );
 
   useClickOutside(wrapRef, open, () => setOpen(false));
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    };
+    // Capture phase: runs before the editor's Escape handler, which would otherwise close the editor
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [open]);
 
   const handleSelect = (id: string | null) => {
     onChange(id);
@@ -83,7 +99,7 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
               onClick={() => handleSelect(folder.id)}
             >
               <span className="folder-picker__option-icon" aria-hidden="true">
-                📁
+                <FolderIcon />
               </span>
               {folder.name}
             </button>

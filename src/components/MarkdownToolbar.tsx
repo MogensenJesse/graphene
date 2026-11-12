@@ -6,29 +6,29 @@ interface MarkdownToolbarProps {
   onFormat: (type: FormatType) => void;
 }
 
-const GROUPS: { type: FormatType; label: string }[][] = [
+const GROUPS: { type: FormatType; label: string; title: string }[][] = [
   [
-    { type: "h1", label: "H1" },
-    { type: "h2", label: "H2" },
-    { type: "h3", label: "H3" },
+    { type: "h1", label: "H1", title: "Heading 1" },
+    { type: "h2", label: "H2", title: "Heading 2" },
+    { type: "h3", label: "H3", title: "Heading 3" },
   ],
   [
-    { type: "bold", label: "B" },
-    { type: "italic", label: "I" },
-    { type: "strikethrough", label: "S" },
+    { type: "bold", label: "B", title: "Bold (Ctrl+B)" },
+    { type: "italic", label: "I", title: "Italic (Ctrl+I)" },
+    { type: "strikethrough", label: "S", title: "Strikethrough" },
   ],
   [
-    { type: "ul", label: "\u2022" },
-    { type: "ol", label: "1." },
-    { type: "blockquote", label: "\u201C" },
+    { type: "ul", label: "\u2022", title: "Bulleted list" },
+    { type: "ol", label: "1.", title: "Numbered list" },
+    { type: "blockquote", label: "\u201C", title: "Quote" },
   ],
   [
-    { type: "code", label: "`" },
-    { type: "codeblock", label: "\u2039\u203A" },
+    { type: "code", label: "`", title: "Inline code" },
+    { type: "codeblock", label: "\u2039\u203A", title: "Code block" },
   ],
   [
-    { type: "link", label: "[ ]" },
-    { type: "hr", label: "\u2014" },
+    { type: "link", label: "link", title: "Link" },
+    { type: "hr", label: "\u2014", title: "Divider" },
   ],
 ];
 
@@ -40,13 +40,14 @@ function MarkdownToolbar({ onFormat }: MarkdownToolbarProps) {
           {gi > 0 && (
             <span className="markdown-toolbar__sep" aria-hidden="true" />
           )}
-          {group.map(({ type, label }) => (
+          {group.map(({ type, label, title }) => (
             <button
               key={type}
               type="button"
               className="markdown-toolbar__btn"
               onClick={() => onFormat(type)}
-              aria-label={type}
+              aria-label={title}
+              title={title}
             >
               {label}
             </button>
