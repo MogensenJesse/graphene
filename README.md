@@ -7,37 +7,46 @@ A minimal desktop app for writing markdown notes and storing reusable code snipp
 ## Features
 
 ### Notes
-- Write in plain text or switch to a live markdown preview
-- Markdown formatting toolbar (bold, italic, inline code, links, etc.)
+- Write in plain text; **Ctrl+E** flips between editing and the rendered view
+- Markdown formatting toolbar (bold, italic, inline code, links, etc.) with tooltips, plus **Ctrl+B** / **Ctrl+I** and Tab to indent
+- Copy button on fenced code blocks
 - Organize notes in nested folders
 
 ### Snippets
 - Store code snippets with syntax language labels (JS, TS, CSS, SCSS, HTML, Shell)
-- One-click copy to clipboard with a running copy counter
+- One-click copy from the code block, or **Ctrl+C** when no text is selected, with a running copy counter
 - Optional prose notes alongside each snippet
 
 ### Organization
 - Hierarchical folders — nest as deep as needed
 - Drag-and-drop items between folders
-- Text search across all notes and snippets
+- Text search across all notes and snippets; matching folders open automatically and the rest hide
 - Filter by type (all / notes / snippets)
+- Sort by name, recent, or most copied; sort order and collapsed folders are remembered
+- Rename (click the title or **F2**) and move (folder chip) straight from the item header
+- Drop an item on empty sidebar space to move it out of its folder
 
 ### File import
-- Drop `.md`, `.js`, `.ts`, `.css`, `.scss`, `.html`, or `.sh` files directly onto the window to import them
+- Drop `.md`, `.js`, `.ts`, `.css`, `.scss`, `.html`, or `.sh` files directly onto the window to import them into the selected folder
 
 ### Editing
 - Unsaved-changes indicator (dot next to title in the editor and sidebar)
-- Auto-save with **Ctrl+S** — keeps the editor open
-- Full save + close via the Save button
+- Autosave about a second after you stop typing, and before you leave the editor or close the window
+- **Ctrl+S** saves immediately; the done button (or Escape) closes the editor
 
 ### Keyboard shortcuts
 
 | Shortcut | Action |
 |---|---|
 | Ctrl+N | New item |
-| Ctrl+E | Edit selected item |
-| Ctrl+S | Auto-save (keep editor open) |
-| Escape | Cancel / close editor |
+| Ctrl+K / Ctrl+F | Focus search |
+| Up / Down | Move through the list (from the search box or the list) |
+| Enter | In search: open the first match and leave the box |
+| Ctrl+E | Edit selected item / go back to reading |
+| F2 | Rename the open item |
+| Ctrl+C | Copy the open snippet (when no text is selected) |
+| Ctrl+S | Save now (autosave also runs while you type) |
+| Escape | Close editor and return to the item |
 | Del | Delete item or folder (with confirmation) |
 
 ### Storage
