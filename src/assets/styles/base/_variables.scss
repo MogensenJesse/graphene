@@ -26,6 +26,9 @@ $radius-lg: 12px;
   --color-background-warning:   rgba(232, 207, 130, 0.13);
   --color-background-danger:    rgba(232, 144, 154, 0.13);
   --color-background-info:      rgba(137, 184, 232, 0.13);
+  // Row states in lists and menus: a light wash that works on any panel behind it
+  --color-background-hover:     rgba(200, 204, 214, 0.05);
+  --color-background-active:    rgba(200, 204, 214, 0.1);
 
   // Text
   --color-text-primary:   #{$light};
@@ -56,6 +59,7 @@ $radius-lg: 12px;
   --border-radius-sm: #{$radius-sm};
   --border-radius-md: #{$radius-md};
   --border-radius-lg: #{$radius-lg};
+  --border-radius-row: 8px; // list rows, nav rows and their selected pills
 
   // Transitions
   --transition-fast: 0.1s ease;

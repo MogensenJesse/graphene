@@ -135,7 +135,7 @@ body {
 }
 
 .vault-picker__icon {
-  font-size: 36px;
+  display: flex;
   line-height: 1;
   color: var(--color-text-secondary);
 }

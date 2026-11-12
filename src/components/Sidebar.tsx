@@ -5,24 +5,28 @@ import { filterItems } from "../lib/search";
 import { compareNames } from "../lib/utils";
 import type { Folder, Item } from "../types";
 import FolderRow from "./FolderRow";
+import {
+  CodeIcon,
+  HexagonIcon,
+  PlusIcon,
+  SearchIcon,
+  SortIcon,
+  TrashIcon,
+} from "./Icon";
 import ItemRow from "./ItemRow";
 
-type SortBy = "name" | "edited" | "copied";
+type SortBy = "name" | "edited";
 
-const SORT_ORDER: SortBy[] = ["name", "edited", "copied"];
+const SORT_ORDER: SortBy[] = ["name", "edited"];
 const SORT_LABEL: Record<SortBy, string> = {
-  name: "name",
-  edited: "recent",
-  copied: "copied",
+  name: "Name",
+  edited: "Recent",
 };
 const SORT_KEY = "graphene.sort";
-
-const copiesOf = (item: Item) => (item.type === "snippet" ? item.copies : -1);
 
 const COMPARE: Record<SortBy, (a: Item, b: Item) => number> = {
   name: (a, b) => compareNames(a.title, b.title),
   edited: (a, b) => b.updatedAt.localeCompare(a.updatedAt),
-  copied: (a, b) => copiesOf(b) - copiesOf(a) || compareNames(a.title, b.title),
 };
 
 function readSort(): SortBy {
@@ -40,18 +44,21 @@ interface SidebarProps {
   selectedId: string | null;
   selectedFolderId: string | null;
   unsavedItemId: string | null;
-  typeFilter: "all" | "note" | "snippet";
+  typeFilter: "all" | "note" | "code";
   searchQuery: string;
   searchInputRef: React.RefObject<HTMLInputElement | null>;
+  trashedCount: number;
+  trashOpen: boolean;
   onSelect: (id: string) => void;
   onSelectFolder: (id: string | null) => void;
-  onNew: () => void;
+  onNew: (kind: "note" | "code") => void;
+  onOpenTrash: () => void;
   onAddFolder: (name: string, parentId: string | null) => void;
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
   onMoveItem: (itemId: string, targetFolderId: string | null) => void;
   onSearchChange: (q: string) => void;
-  onTypeFilterChange: (filter: "all" | "note" | "snippet") => void;
+  onTypeFilterChange: (filter: "all" | "note" | "code") => void;
 }
 
 function Sidebar({
@@ -63,9 +70,12 @@ function Sidebar({
   typeFilter,
   searchQuery,
   searchInputRef,
+  trashedCount,
+  trashOpen,
   onSelect,
   onSelectFolder,
   onNew,
+  onOpenTrash,
   onAddFolder,
   onRenameFolder,
   onDeleteFolder,
@@ -238,43 +248,63 @@ function Sidebar({
       {/* Header — drag region */}
       <div className="sidebar__header" data-tauri-drag-region>
         <div className="sidebar__brand" data-tauri-drag-region>
-          <span aria-hidden="true">⬡</span>
+          <HexagonIcon size={14} />
           <span>graphene</span>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="sidebar__search">
-        <div className="sidebar__search-box">
-          <span className="sidebar__search-icon" aria-hidden="true">
-            ⌕
-          </span>
+      {/* Type filter */}
+      <div className="sidebar__segments">
+        {(["all", "note", "code"] as const).map((f) => (
+          <button
+            key={f}
+            type="button"
+            className={`sidebar__segment${typeFilter === f ? " sidebar__segment--active" : ""}`}
+            aria-pressed={typeFilter === f}
+            onClick={() => onTypeFilterChange(f)}
+          >
+            {f === "all" ? "All" : f === "note" ? "Notes" : "Code"}
+          </button>
+        ))}
+      </div>
+
+      {/* New note, new code, search */}
+      <nav className="sidebar__nav">
+        <button
+          type="button"
+          className="sidebar__nav-item"
+          onClick={() => onNew("note")}
+          title="New note (Ctrl+N)"
+        >
+          <PlusIcon size={16} />
+          <span>New note</span>
+        </button>
+        <button
+          type="button"
+          className="sidebar__nav-item"
+          onClick={() => onNew("code")}
+          title="New code (Ctrl+Shift+N)"
+        >
+          <CodeIcon size={16} />
+          <span>New code</span>
+        </button>
+        <label
+          className="sidebar__nav-item sidebar__nav-item--search"
+          title="Search (Ctrl+K)"
+        >
+          <SearchIcon size={16} />
           <input
             ref={searchInputRef}
             className="sidebar__search-input"
             type="text"
-            placeholder="search…  (Ctrl+K)"
+            placeholder="Search"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             onKeyDown={handleSearchKeyDown}
             aria-label="Search items"
           />
-        </div>
-      </div>
-
-      {/* Type filter pills */}
-      <div className="sidebar__filters">
-        {(["all", "note", "snippet"] as const).map((f) => (
-          <button
-            key={f}
-            type="button"
-            className={`sidebar__filter-pill${typeFilter === f ? " sidebar__filter-pill--active" : ""}`}
-            onClick={() => onTypeFilterChange(f)}
-          >
-            {f === "note" ? "notes" : f === "snippet" ? "snippets" : "all"}
-          </button>
-        ))}
-      </div>
+        </label>
+      </nav>
 
       {/* Folder + tree section */}
       <div
@@ -297,18 +327,19 @@ function Sidebar({
               type="button"
               className="sidebar__sort-btn"
               onClick={cycleSort}
-              title={`Sorted by ${SORT_LABEL[sortBy]} (click to change)`}
+              title={`Sorted by ${SORT_LABEL[sortBy].toLowerCase()} (click to change)`}
             >
+              <SortIcon size={11} />
               {SORT_LABEL[sortBy]}
             </button>
             <button
               type="button"
-              className="sidebar__folders-add-btn"
+              className="sidebar__icon-btn"
               onClick={() => setShowAddFolder((v) => !v)}
               aria-label="Add folder"
               title="Add folder"
             >
-              +
+              <PlusIcon size={13} />
             </button>
           </div>
         </div>
@@ -319,7 +350,7 @@ function Sidebar({
               ref={newFolderInputRef}
               className="sidebar__folder-add-input"
               type="text"
-              placeholder="folder name…"
+              placeholder="Folder name…"
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
               onBlur={handleAddRootFolder}
@@ -369,7 +400,6 @@ function Sidebar({
             selectedId={selectedId}
             unsavedItemId={unsavedItemId}
             dragOverId={dragOverId}
-            depth={0}
             forceExpand={isFiltering}
             onSelect={onSelectFolder}
             onSelectItem={selectItem}
@@ -389,28 +419,29 @@ function Sidebar({
             isUnsaved={unsavedItemId === item.id}
             onSelect={selectItem}
             onPointerDown={startDrag}
-            style={{ paddingLeft: "14px" }}
           />
         ))}
 
         {filtered.length === 0 && (
           <div className="sidebar__empty">
-            {items.length === 0 ? "nothing here yet" : "no results"}
+            {items.length === 0 ? "Nothing here yet" : "No results"}
           </div>
         )}
       </div>
 
-      {/* New item button */}
-      <div className="sidebar__new-footer">
+      {/* Trash */}
+      <div className="sidebar__footer">
         <button
           type="button"
-          className="sidebar__new-footer-btn"
-          onClick={onNew}
-          aria-label="New item"
-          title="New item (Ctrl+N)"
+          className={`sidebar__nav-item${trashOpen ? " sidebar__nav-item--active" : ""}`}
+          onClick={onOpenTrash}
+          title="Trash"
         >
-          <span aria-hidden="true">+</span>
-          new item
+          <TrashIcon size={16} />
+          <span>Trash</span>
+          {trashedCount > 0 && (
+            <span className="sidebar__nav-count">{trashedCount}</span>
+          )}
         </button>
       </div>
 

@@ -3,7 +3,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useClickOutside } from "../hooks/useClickOutside";
 import { compareNames, readCollapsed, setFolderCollapsed } from "../lib/utils";
 import type { Folder, Item } from "../types";
-import { FolderIcon, FolderOpenIcon } from "./Icon";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  EllipsisIcon,
+  PlusIcon,
+} from "./Icon";
 import ItemRow from "./ItemRow";
 
 interface FolderRowProps {
@@ -15,7 +20,6 @@ interface FolderRowProps {
   unsavedItemId: string | null;
   // undefined = no drag active / not over this folder; null = unfiled zone matched; string = folder id matched
   dragOverId: string | null | undefined;
-  depth: number;
   // While searching/filtering: hide folders with no match and show matches expanded
   forceExpand: boolean;
   onSelect: (id: string | null) => void;
@@ -38,7 +42,6 @@ function FolderRow({
   selectedId,
   unsavedItemId,
   dragOverId,
-  depth,
   forceExpand,
   onSelect,
   onSelectItem,
@@ -145,24 +148,9 @@ function FolderRow({
     <div className="folder-row__group" data-folder-drop-id={folder.id}>
       <div
         className={`folder-row${isSelected ? " folder-row--selected" : ""}${isDragOver ? " folder-row--drag-over" : ""}`}
-        style={{ paddingLeft: `${8 + depth * 16}px` }}
         role="treeitem"
         aria-selected={isSelected}
       >
-        <button
-          type="button"
-          className="folder-row__chevron"
-          onClick={() => setExpanded(!isExpanded)}
-          aria-label={expanded ? "Collapse folder" : "Expand folder"}
-          tabIndex={-1}
-        >
-          {hasContents ? (expanded ? "▾" : "▸") : ""}
-        </button>
-
-        <span className="folder-row__icon" aria-hidden="true">
-          {expanded && hasContents ? <FolderOpenIcon /> : <FolderIcon />}
-        </span>
-
         {isRenaming ? (
           <input
             ref={renameInputRef}
@@ -176,16 +164,28 @@ function FolderRow({
           <button
             type="button"
             className="folder-row__name"
+            aria-expanded={hasContents ? expanded : undefined}
             onClick={() => {
               onSelect(folder.id);
               setExpanded(!isExpanded);
             }}
           >
-            {folder.name}
+            <span className="folder-row__label">{folder.name}</span>
+            {hasContents && (
+              <span className="folder-row__chevron" aria-hidden="true">
+                {expanded ? (
+                  <ChevronDownIcon size={12} />
+                ) : (
+                  <ChevronRightIcon size={12} />
+                )}
+              </span>
+            )}
           </button>
         )}
 
-        <div className="folder-row__actions">
+        <div
+          className={`folder-row__actions${showMenu ? " folder-row__actions--open" : ""}`}
+        >
           <button
             type="button"
             className="folder-row__action-btn"
@@ -193,7 +193,7 @@ function FolderRow({
             aria-label={`Add subfolder to ${folder.name}`}
             title="Add subfolder"
           >
-            +
+            <PlusIcon size={13} />
           </button>
           <div className="folder-row__menu-wrap" ref={menuRef}>
             <button
@@ -204,7 +204,7 @@ function FolderRow({
               aria-haspopup="true"
               aria-expanded={showMenu}
             >
-              ···
+              <EllipsisIcon size={13} />
             </button>
             {showMenu && (
               <div className="folder-row__dropdown" role="menu">
@@ -237,57 +237,53 @@ function FolderRow({
         </div>
       </div>
 
-      {showAddChild && (
-        <div
-          className="folder-row__add-child"
-          style={{ paddingLeft: `${8 + (depth + 1) * 16}px` }}
-        >
-          <input
-            ref={childInputRef}
-            className="folder-row__rename-input"
-            placeholder="subfolder name…"
-            value={childName}
-            onChange={(e) => setChildName(e.target.value)}
-            onBlur={handleAddChildConfirm}
-            onKeyDown={handleAddChildKeyDown}
-          />
+      {((expanded && hasContents) || showAddChild) && (
+        <div className="folder-row__children">
+          {showAddChild && (
+            <div className="folder-row__add-child">
+              <input
+                ref={childInputRef}
+                className="folder-row__rename-input"
+                placeholder="Subfolder name…"
+                value={childName}
+                onChange={(e) => setChildName(e.target.value)}
+                onBlur={handleAddChildConfirm}
+                onKeyDown={handleAddChildKeyDown}
+              />
+            </div>
+          )}
+          {expanded &&
+            children.map((child) => (
+              <FolderRow
+                key={child.id}
+                folder={child}
+                allFolders={allFolders}
+                items={items}
+                selectedFolderId={selectedFolderId}
+                selectedId={selectedId}
+                unsavedItemId={unsavedItemId}
+                dragOverId={dragOverId}
+                forceExpand={forceExpand}
+                onSelect={onSelect}
+                onSelectItem={onSelectItem}
+                onItemPointerDown={onItemPointerDown}
+                onAddSubfolder={onAddSubfolder}
+                onRename={onRename}
+                onDelete={onDelete}
+              />
+            ))}
+          {expanded &&
+            myItems.map((item) => (
+              <ItemRow
+                key={item.id}
+                item={item}
+                isSelected={selectedId === item.id}
+                isUnsaved={unsavedItemId === item.id}
+                onSelect={onSelectItem}
+                onPointerDown={onItemPointerDown}
+              />
+            ))}
         </div>
-      )}
-
-      {expanded && (
-        <>
-          {children.map((child) => (
-            <FolderRow
-              key={child.id}
-              folder={child}
-              allFolders={allFolders}
-              items={items}
-              selectedFolderId={selectedFolderId}
-              selectedId={selectedId}
-              unsavedItemId={unsavedItemId}
-              dragOverId={dragOverId}
-              depth={depth + 1}
-              forceExpand={forceExpand}
-              onSelect={onSelect}
-              onSelectItem={onSelectItem}
-              onItemPointerDown={onItemPointerDown}
-              onAddSubfolder={onAddSubfolder}
-              onRename={onRename}
-              onDelete={onDelete}
-            />
-          ))}
-          {myItems.map((item) => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              isSelected={selectedId === item.id}
-              isUnsaved={unsavedItemId === item.id}
-              onSelect={onSelectItem}
-              onPointerDown={onItemPointerDown}
-              style={{ paddingLeft: `${8 + (depth + 1) * 16}px` }}
-            />
-          ))}
-        </>
       )}
     </div>
   );

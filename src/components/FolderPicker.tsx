@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useClickOutside } from "../hooks/useClickOutside";
 import { getFolderPath } from "../lib/utils";
 import type { Folder } from "../types";
-import { FolderIcon } from "./Icon";
+import { ChevronDownIcon, FolderIcon, NoFolderIcon } from "./Icon";
 
 interface FlatFolder {
   folder: Folder;
@@ -71,7 +71,7 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
       >
         <span className="folder-picker__label">{selectedName}</span>
         <span className="folder-picker__chevron" aria-hidden="true">
-          ▾
+          <ChevronDownIcon />
         </span>
       </button>
 
@@ -84,7 +84,7 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
             onClick={() => handleSelect(null)}
           >
             <span className="folder-picker__option-icon" aria-hidden="true">
-              ◈
+              <NoFolderIcon />
             </span>
             no folder
           </button>

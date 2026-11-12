@@ -225,7 +225,7 @@
   }
 
   &__chevron {
-    font-size: 9px;
+    display: inline-flex;
     color: var(--color-text-tertiary);
     flex-shrink: 0;
   }
