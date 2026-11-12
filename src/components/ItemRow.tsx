@@ -1,6 +1,6 @@
 // src/components/ItemRow.tsx
-import { formatDate } from "../lib/utils";
 import type { Item } from "../types";
+import { NoteIcon } from "./Icon";
 
 interface ItemRowProps {
   item: Item;
@@ -25,6 +25,8 @@ function ItemRow({
     <div
       className={`item-row${isSelected ? " item-row--selected" : ""}${isDragOver ? " item-row--drag-over" : ""}`}
       style={style}
+      data-item-id={item.id}
+      title={item.title}
       onPointerDown={(e) => onPointerDown(e, item.id, item.title)}
       onClick={() => onSelect(item.id)}
       onKeyDown={(e) => {
@@ -38,7 +40,7 @@ function ItemRow({
           className={`item-row__type-icon item-row__type-icon--${item.type}`}
           aria-hidden="true"
         >
-          {item.type === "note" ? "📝" : "</>"}
+          {item.type === "note" ? <NoteIcon /> : "</>"}
         </span>
         <span className="item-row__title">{item.title}</span>
         {isUnsaved && (
@@ -48,7 +50,6 @@ function ItemRow({
             title="unsaved changes"
           />
         )}
-        <span className="item-row__date">{formatDate(item.updatedAt)}</span>
       </div>
     </div>
   );

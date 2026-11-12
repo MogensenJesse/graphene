@@ -1,7 +1,9 @@
 // src/components/FolderRow.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useClickOutside } from "../hooks/useClickOutside";
+import { compareNames, readCollapsed, setFolderCollapsed } from "../lib/utils";
 import type { Folder, Item } from "../types";
+import { FolderIcon, FolderOpenIcon } from "./Icon";
 import ItemRow from "./ItemRow";
 
 interface FolderRowProps {
@@ -14,6 +16,8 @@ interface FolderRowProps {
   // undefined = no drag active / not over this folder; null = unfiled zone matched; string = folder id matched
   dragOverId: string | null | undefined;
   depth: number;
+  // While searching/filtering: hide folders with no match and show matches expanded
+  forceExpand: boolean;
   onSelect: (id: string | null) => void;
   onSelectItem: (id: string) => void;
   onItemPointerDown: (
@@ -35,6 +39,7 @@ function FolderRow({
   unsavedItemId,
   dragOverId,
   depth,
+  forceExpand,
   onSelect,
   onSelectItem,
   onItemPointerDown,
@@ -42,7 +47,10 @@ function FolderRow({
   onRename,
   onDelete,
 }: FolderRowProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // ponytail: collapsed state is keyed by folder path, so a renamed folder comes back expanded
+  const [isExpanded, setIsExpanded] = useState(
+    () => !readCollapsed().has(folder.id),
+  );
   const [showMenu, setShowMenu] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(folder.name);
@@ -54,16 +62,29 @@ function FolderRow({
   const childInputRef = useRef<HTMLInputElement>(null);
 
   const children = useMemo(
-    () => allFolders.filter((f) => f.parentId === folder.id),
+    () =>
+      allFolders
+        .filter((f) => f.parentId === folder.id)
+        .sort((a, b) => compareNames(a.name, b.name)),
     [allFolders, folder.id],
   );
   const myItems = useMemo(
     () => items.filter((i) => i.folderId === folder.id),
     [items, folder.id],
   );
+  // Any match in this folder or below it (folder ids are paths, so descendants share the prefix)
+  const hasMatch = useMemo(
+    () =>
+      items.some(
+        (i) =>
+          i.folderId === folder.id || i.folderId?.startsWith(`${folder.id}/`),
+      ),
+    [items, folder.id],
+  );
   const hasContents = children.length > 0 || myItems.length > 0;
   const isSelected = selectedFolderId === folder.id;
   const isDragOver = dragOverId === folder.id;
+  const expanded = forceExpand || isExpanded;
 
   useEffect(() => {
     if (isRenaming && renameInputRef.current) {
@@ -79,6 +100,13 @@ function FolderRow({
   }, [showAddChild]);
 
   useClickOutside(menuRef, showMenu, () => setShowMenu(false));
+
+  if (forceExpand && !hasMatch) return null;
+
+  const setExpanded = (value: boolean) => {
+    setIsExpanded(value);
+    setFolderCollapsed(folder.id, !value);
+  };
 
   const handleRenameConfirm = () => {
     const trimmed = renameValue.trim();
@@ -101,7 +129,7 @@ function FolderRow({
     if (trimmed) onAddSubfolder(folder.id, trimmed);
     setChildName("");
     setShowAddChild(false);
-    setIsExpanded(true);
+    setExpanded(true);
   };
 
   const handleAddChildKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -124,15 +152,15 @@ function FolderRow({
         <button
           type="button"
           className="folder-row__chevron"
-          onClick={() => setIsExpanded((v) => !v)}
-          aria-label={isExpanded ? "Collapse folder" : "Expand folder"}
+          onClick={() => setExpanded(!isExpanded)}
+          aria-label={expanded ? "Collapse folder" : "Expand folder"}
           tabIndex={-1}
         >
-          {hasContents ? (isExpanded ? "▾" : "▸") : ""}
+          {hasContents ? (expanded ? "▾" : "▸") : ""}
         </button>
 
         <span className="folder-row__icon" aria-hidden="true">
-          {isExpanded && hasContents ? "📂" : "📁"}
+          {expanded && hasContents ? <FolderOpenIcon /> : <FolderIcon />}
         </span>
 
         {isRenaming ? (
@@ -148,7 +176,10 @@ function FolderRow({
           <button
             type="button"
             className="folder-row__name"
-            onClick={() => onSelect(folder.id)}
+            onClick={() => {
+              onSelect(folder.id);
+              setExpanded(!isExpanded);
+            }}
           >
             {folder.name}
           </button>
@@ -223,7 +254,7 @@ function FolderRow({
         </div>
       )}
 
-      {isExpanded && (
+      {expanded && (
         <>
           {children.map((child) => (
             <FolderRow
@@ -236,6 +267,7 @@ function FolderRow({
               unsavedItemId={unsavedItemId}
               dragOverId={dragOverId}
               depth={depth + 1}
+              forceExpand={forceExpand}
               onSelect={onSelect}
               onSelectItem={onSelectItem}
               onItemPointerDown={onItemPointerDown}
