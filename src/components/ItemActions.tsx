@@ -4,17 +4,15 @@ import { EditIcon, TrashIcon } from "./Icon";
 
 interface ItemActionsProps {
   itemId: string;
-  noun: "note" | "snippet";
   onEdit: () => void;
   onDelete: (id: string) => void;
   // False while a folder is selected, so the Del key goes to the folder instead
   deleteKeyEnabled: boolean;
 }
 
-// Edit + two-step delete for the read view; shared by notes and snippets
+// Edit + two-step delete for the read view
 function ItemActions({
   itemId,
-  noun,
   onEdit,
   onDelete,
   deleteKeyEnabled,
@@ -32,7 +30,7 @@ function ItemActions({
         className="item-header__btn"
         onClick={onEdit}
         title="Edit (Ctrl+E)"
-        aria-label={`Edit ${noun}`}
+        aria-label="Edit item"
       >
         <EditIcon />
         edit
@@ -44,7 +42,7 @@ function ItemActions({
             className="item-header__btn item-header__btn--danger"
             onClick={requestDelete}
             title="Confirm delete"
-            aria-label={`Confirm delete ${noun}`}
+            aria-label="Confirm delete item"
           >
             confirm?
           </button>
@@ -63,8 +61,8 @@ function ItemActions({
           type="button"
           className="item-header__btn item-header__btn--danger"
           onClick={requestDelete}
-          title="Delete (Del)"
-          aria-label={`Delete ${noun}`}
+          title="Move to trash (Del)"
+          aria-label="Delete item"
         >
           <TrashIcon />
           delete

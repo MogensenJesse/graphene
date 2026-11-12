@@ -18,6 +18,7 @@
 
   &__markdown {
     max-width: 720px; // comfortable line length; the panel is much wider than that
+    margin: 0 auto;
     font-size: 13px;
     line-height: 1.7;
     color: var(--color-text-secondary);
