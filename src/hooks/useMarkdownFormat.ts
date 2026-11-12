@@ -1,6 +1,7 @@
 // src/hooks/useMarkdownFormat.ts
-import { useCallback } from "react";
+
 import type { RefObject } from "react";
+import { useCallback } from "react";
 
 export type FormatType =
   | "h1"

@@ -146,6 +146,7 @@ function FolderRow({
   return (
     // data-folder-drop-id marks this group as a drop target for the pointer-event DnD system
     <div className="folder-row__group" data-folder-drop-id={folder.id}>
+      {/* biome-ignore lint/a11y/useFocusableInteractive: the tree container is the single tab stop and takes the arrow keys, so rows are not focusable */}
       <div
         className={`folder-row${isSelected ? " folder-row--selected" : ""}${isDragOver ? " folder-row--drag-over" : ""}`}
         role="treeitem"

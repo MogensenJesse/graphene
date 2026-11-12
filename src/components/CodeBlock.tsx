@@ -21,7 +21,7 @@ function CodeBlock({ children, lang, copied, onCopy }: CodeBlockProps) {
         <button
           type="button"
           className={`code-block__copy${copied ? " code-block__copy--copied" : ""}`}
-          onClick={() => onCopy(preRef.current?.innerText ?? "")}
+          onClick={() => onCopy(preRef.current?.textContent ?? "")}
           aria-label="Copy code"
         >
           {copied ? "copied" : "copy"}

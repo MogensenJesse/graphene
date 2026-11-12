@@ -75,7 +75,7 @@ function NoteDetail({
         }
       />
 
-      {/* Double-click on empty space (not on text, so word-select still works) starts editing */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only shortcut, keyboard users have Ctrl+E and the Edit button. Double-click on empty space (not on text, so word-select still works) starts editing */}
       <div
         className="note-detail__body"
         onDoubleClick={(e) => {

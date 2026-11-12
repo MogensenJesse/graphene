@@ -21,6 +21,7 @@ function ItemRow({
   onPointerDown,
 }: ItemRowProps) {
   return (
+    // biome-ignore lint/a11y/useFocusableInteractive: the tree container is the single tab stop and takes the arrow keys, so rows are not focusable
     <div
       className={`item-row${isSelected ? " item-row--selected" : ""}${isDragOver ? " item-row--drag-over" : ""}`}
       data-item-id={item.id}
@@ -40,6 +41,7 @@ function ItemRow({
       {isUnsaved && (
         <span
           className="item-row__unsaved-dot"
+          role="img"
           aria-label="unsaved changes"
           title="unsaved changes"
         />

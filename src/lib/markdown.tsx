@@ -1,6 +1,6 @@
 // src/lib/markdown.tsx
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { type ReactNode, isValidElement } from "react";
+import { isValidElement, type ReactNode } from "react";
 import type { Components } from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkBreaks from "remark-breaks";

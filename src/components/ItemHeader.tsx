@@ -117,6 +117,7 @@ function ItemHeader({
         {isDirty && (
           <span
             className="item-header__dirty-dot"
+            role="img"
             aria-label="unsaved changes"
             title="unsaved changes"
           />

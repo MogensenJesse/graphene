@@ -312,7 +312,7 @@ function Sidebar({
         className={`sidebar__folders${isRootDragOver ? " sidebar__folders--drag-over" : ""}`}
         data-folder-drop-id="unfiled"
         role="tree"
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: a tree is a composite widget; the container takes focus so the arrow keys can move the selection
+        // a tree is a composite widget: the container is the single tab stop and takes the arrow keys
         tabIndex={0}
         onKeyDown={handleTreeKeyDown}
         onClick={(e) => {
