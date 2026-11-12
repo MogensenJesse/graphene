@@ -1,9 +1,11 @@
 // src/components/MarkdownToolbar.tsx
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import type { FormatType } from "../hooks/useMarkdownFormat";
 
 interface MarkdownToolbarProps {
   onFormat: (type: FormatType) => void;
+  // Shown at the right end of the toolbar (the code block language chip)
+  children?: ReactNode;
 }
 
 const GROUPS: { type: FormatType; label: string; title: string }[][] = [
@@ -32,7 +34,7 @@ const GROUPS: { type: FormatType; label: string; title: string }[][] = [
   ],
 ];
 
-function MarkdownToolbar({ onFormat }: MarkdownToolbarProps) {
+function MarkdownToolbar({ onFormat, children }: MarkdownToolbarProps) {
   return (
     <div className="markdown-toolbar">
       {GROUPS.map((group, gi) => (
@@ -54,6 +56,7 @@ function MarkdownToolbar({ onFormat }: MarkdownToolbarProps) {
           ))}
         </Fragment>
       ))}
+      {children && <div className="markdown-toolbar__trailing">{children}</div>}
     </div>
   );
 }
