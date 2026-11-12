@@ -1,7 +1,7 @@
 // src/hooks/useFileDrop.ts
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { readTextFile } from "@tauri-apps/plugin-fs";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { langFromExt, parseNoteFile } from "../lib/fileFormat";
 import type { SnippetItem } from "../types";
 import type { AddNoteFields, AddSnippetFields } from "./useItems";
@@ -19,8 +19,18 @@ const SUPPORTED_EXTS = new Set([
 export function useFileDrop(
   addNote: (fields: AddNoteFields) => string,
   addSnippet: (fields: AddSnippetFields) => string,
+  // Folder the files are imported into (null = vault root)
+  getFolderId: () => string | null,
+  // Called with the id of an imported item so the app can open it
+  onImported: (id: string) => void,
 ): { isDraggingOver: boolean } {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+  // Latest callbacks without re-subscribing the native drop listener on every render
+  const latest = useRef({ getFolderId, onImported });
+  useEffect(() => {
+    latest.current = { getFolderId, onImported };
+  });
 
   useEffect(() => {
     let aborted = false;
@@ -33,6 +43,8 @@ export function useFileDrop(
           setIsDraggingOver(false);
         } else if (payload.type === "drop") {
           setIsDraggingOver(false);
+          const folderId = latest.current.getFolderId();
+          const importedIds: string[] = [];
           await Promise.allSettled(
             payload.paths.map(async (rawPath) => {
               const filePath = rawPath.replace(/\\/g, "/");
@@ -54,16 +66,18 @@ export function useFileDrop(
                     ? parsed.title || fileBaseName
                     : fileBaseName;
                   const body = parsed.id ? parsed.body : content;
-                  addNote({ title, body, folderId: null });
+                  importedIds.push(addNote({ title, body, folderId }));
                 } else {
                   const lang = langFromExt(ext) as SnippetItem["lang"];
-                  addSnippet({
-                    title: fileBaseName,
-                    code: content,
-                    lang,
-                    note: "",
-                    folderId: null,
-                  });
+                  importedIds.push(
+                    addSnippet({
+                      title: fileBaseName,
+                      code: content,
+                      lang,
+                      note: "",
+                      folderId,
+                    }),
+                  );
                 }
               } catch (err) {
                 console.error(
@@ -74,6 +88,8 @@ export function useFileDrop(
               }
             }),
           );
+          const lastId = importedIds[importedIds.length - 1];
+          if (lastId && !aborted) latest.current.onImported(lastId);
         }
       },
     );
