@@ -11,7 +11,47 @@ export function formatDate(iso: string): string {
   if (diffDays < 14) return "1w ago";
   if (diffDays < 28) return `${Math.floor(diffDays / 7)}w ago`;
   if (diffDays < 60) return "1mo ago";
-  return `${Math.floor(diffDays / 30)}mo ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+  return `${Math.floor(diffDays / 365)}y ago`;
+}
+
+const nameCollator = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: "base",
+});
+
+/** Natural-order name comparison ("note 2" before "note 10"), ignoring case. */
+export function compareNames(a: string, b: string): number {
+  return nameCollator.compare(a, b);
+}
+
+const COLLAPSED_KEY = "graphene.collapsed";
+
+/** Folder ids the user collapsed. localStorage can be missing or corrupt, so fall back to "none". */
+export function readCollapsed(): Set<string> {
+  try {
+    const parsed: unknown = JSON.parse(
+      localStorage.getItem(COLLAPSED_KEY) ?? "[]",
+    );
+    return new Set(
+      Array.isArray(parsed)
+        ? parsed.filter((v): v is string => typeof v === "string")
+        : [],
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+export function setFolderCollapsed(id: string, collapsed: boolean): void {
+  try {
+    const set = readCollapsed();
+    if (collapsed) set.add(id);
+    else set.delete(id);
+    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...set]));
+  } catch {
+    // Persistence is a convenience; the tree still works without it
+  }
 }
 
 /** Returns ordered folder names from root down to `folderId`, e.g. ["Notes", "boop", "ragdollll"] */

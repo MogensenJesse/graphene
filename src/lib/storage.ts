@@ -217,6 +217,18 @@ export async function saveItem(vaultPath: string, item: Item): Promise<void> {
   await writeTextFile(filePath, content);
 }
 
+/** Save `updated`; if its file path differs from `old` (title, folder or lang changed), remove the old file first. */
+export async function replaceItemFile(
+  vaultPath: string,
+  old: Item,
+  updated: Item,
+): Promise<void> {
+  if (itemFilePath(vaultPath, old) !== itemFilePath(vaultPath, updated)) {
+    await deleteItemFile(vaultPath, old);
+  }
+  await saveItem(vaultPath, updated);
+}
+
 export async function deleteItemFile(
   vaultPath: string,
   item: Item,

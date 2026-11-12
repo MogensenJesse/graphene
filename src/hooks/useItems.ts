@@ -1,7 +1,12 @@
 // src/hooks/useItems.ts
 import { nanoid } from "nanoid";
 import { useCallback, useState } from "react";
-import { deleteItemFile, moveItemFile, saveItem } from "../lib/storage";
+import {
+  deleteItemFile,
+  moveItemFile,
+  replaceItemFile,
+  saveItem,
+} from "../lib/storage";
 import type { Item, NoteItem, SnippetItem } from "../types";
 
 export type AddNoteFields = Omit<
@@ -58,7 +63,8 @@ export function useItems(vaultPath: string) {
   );
 
   const updateItem = useCallback(
-    (id: string, fields: UpdateItemFields) => {
+    // touch=false keeps updatedAt (folder renames/deletes must not make every item look edited)
+    (id: string, fields: UpdateItemFields, touch = true) => {
       setItems((prev) => {
         const old = prev.find((i) => i.id === id);
         const next = prev.map((item) =>
@@ -66,17 +72,17 @@ export function useItems(vaultPath: string) {
             ? ({
                 ...item,
                 ...fields,
-                updatedAt: new Date().toISOString(),
+                updatedAt: touch ? new Date().toISOString() : item.updatedAt,
               } as Item)
             : item,
         );
         const updated = next.find((i) => i.id === id);
         if (updated) {
-          // If the title changed the filename changes — delete the stale old file
-          if (old && "title" in fields && old.title !== updated.title) {
-            deleteItemFile(vaultPath, old).catch(console.error);
-          }
-          saveItem(vaultPath, updated).catch(console.error);
+          // Title, folder or lang changes move the file — replaceItemFile drops the stale one
+          (old
+            ? replaceItemFile(vaultPath, old, updated)
+            : saveItem(vaultPath, updated)
+          ).catch(console.error);
         }
         return next;
       });
