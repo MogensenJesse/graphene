@@ -54,6 +54,7 @@ body {
   background: rgba(v.$onyx, 0.58);
   border-radius: v.$radius-lg;
   position: relative;
+  --win-controls-width: 90px; // three 26px buttons and two 6px gaps; the header bar clears it
 }
 
 .app__drag-strip {
@@ -61,18 +62,18 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: 52px; // same height as .item-header
   z-index: 5;
   -webkit-app-region: drag;
 }
 
 .app__win-controls {
   position: absolute;
-  top: 12px;
+  top: 13px; // centred in the 52px header bar
   right: 14px;
   z-index: 10;
   display: flex;
-  gap: 2px;
+  gap: 6px;
 }
 
 .app__win-btn {
@@ -145,7 +146,6 @@ body {
   font-weight: 600;
   color: var(--color-text-primary);
   letter-spacing: 0.04em;
-  text-transform: lowercase;
   margin: 0;
 }
 

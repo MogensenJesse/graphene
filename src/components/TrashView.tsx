@@ -33,47 +33,45 @@ function TrashView({ trashed, folders, onRestore, onEmpty }: TrashViewProps) {
   return (
     <div className="trash-view">
       <div className="item-header" data-tauri-drag-region>
-        <div className="item-header__title-row">
-          <h2 className="trash-view__title">Trash</h2>
-        </div>
-        <div className="item-header__meta">
-          <span className="trash-view__count">{count}</span>
-          {trashed.length > 0 && (
-            <div className="item-header__actions">
-              {confirming ? (
-                <>
-                  <button
-                    type="button"
-                    className="item-header__btn item-header__btn--danger"
-                    onClick={() => {
-                      onEmpty();
-                      setConfirming(false);
-                    }}
-                    title="Permanently delete everything in the trash"
-                  >
-                    delete {count} forever?
-                  </button>
-                  <button
-                    type="button"
-                    className="item-header__btn item-header__btn--quiet"
-                    onClick={() => setConfirming(false)}
-                  >
-                    cancel
-                  </button>
-                </>
-              ) : (
+        <h2 className="trash-view__title">Trash</h2>
+        <span className="trash-view__count">{count}</span>
+        <div className="item-header__spacer" data-tauri-drag-region />
+        {trashed.length > 0 && (
+          <div className="item-header__actions">
+            {confirming ? (
+              <>
                 <button
                   type="button"
                   className="item-header__btn item-header__btn--danger"
-                  onClick={() => setConfirming(true)}
+                  onClick={() => {
+                    onEmpty();
+                    setConfirming(false);
+                  }}
+                  title="Permanently delete everything in the trash"
                 >
-                  <TrashIcon />
-                  empty trash
+                  delete {count} forever?
                 </button>
-              )}
-            </div>
-          )}
-        </div>
+                <button
+                  type="button"
+                  className="item-header__btn item-header__btn--quiet"
+                  onClick={() => setConfirming(false)}
+                >
+                  cancel
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="item-header__btn item-header__btn--danger"
+                onClick={() => setConfirming(true)}
+                aria-label="Empty trash"
+              >
+                <TrashIcon />
+                <span className="item-header__btn-label">empty trash</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="trash-view__body">

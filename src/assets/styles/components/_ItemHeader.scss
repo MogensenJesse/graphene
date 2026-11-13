@@ -4,27 +4,38 @@
 // Shared header for the read view and the editor: title, folder, date, actions
 
 .item-header {
-  padding: 24px 28px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  // the right padding clears the window controls, which sit over this bar
+  padding: 0 calc(var(--win-controls-width) + 24px) 0 28px;
   border-bottom: 0.5px solid var(--color-border-tertiary);
   flex-shrink: 0;
+  container-type: inline-size;
   -webkit-app-region: drag;
   user-select: none;
 
-  &__title-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    padding-right: 80px; // leave room for the window controls
-  }
-
   &__heading {
     margin: 0;
-    min-width: 0;
+    flex: 0 1 auto;
+    min-width: 80px;
 
+    // While renaming, the input takes the free space
     &--editing {
-      flex: 1;
+      flex: 1 1 auto;
+      min-width: 120px;
+
+      ~ .item-header__spacer {
+        flex-grow: 0;
+      }
     }
+  }
+
+  // Free space between the title group and the date/actions; still part of the drag region
+  &__spacer {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   // Interactive items inside the top drag strip sit above it and opt out of dragging
@@ -97,18 +108,10 @@
     display: inline-block;
   }
 
-  &__meta {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 10px;
-  }
-
   &__date {
-    margin-left: auto;
     font-size: 11px;
     color: var(--color-text-tertiary);
+    white-space: nowrap;
   }
 
   &__badge {
@@ -124,12 +127,6 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-left: auto;
-  }
-
-  // With a date shown, the date takes the auto margin and the actions follow it
-  &__date + &__actions {
-    margin-left: 0;
   }
 
   &__btn {
@@ -184,14 +181,29 @@
   }
 }
 
+// Narrow panel: drop the date and the button words (the icons and tooltips remain)
+@container (max-width: 470px) {
+  .item-header__date,
+  .item-header__btn-label {
+    display: none;
+  }
+
+  .folder-picker__label {
+    max-width: 120px;
+  }
+}
+
 // ── Folder picker (the folder chip in the header) ─────────────────────────────
 
 .folder-picker {
   position: relative;
   z-index: 6;
+  flex: 0 1 auto;
+  min-width: 0;
   -webkit-app-region: no-drag;
 
   &__trigger {
+    max-width: 100%;
     display: flex;
     align-items: center;
     gap: 5px;

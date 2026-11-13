@@ -33,7 +33,7 @@ function ItemActions({
         aria-label="Edit item"
       >
         <EditIcon />
-        edit
+        <span className="item-header__btn-label">edit</span>
       </button>
       {confirming ? (
         <>
@@ -65,7 +65,7 @@ function ItemActions({
           aria-label="Delete item"
         >
           <TrashIcon />
-          delete
+          <span className="item-header__btn-label">delete</span>
         </button>
       )}
     </div>

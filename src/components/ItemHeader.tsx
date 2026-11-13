@@ -77,70 +77,67 @@ function ItemHeader({
 
   return (
     <div className="item-header" data-tauri-drag-region>
-      <div className="item-header__title-row">
-        <h2
-          className={`item-header__heading${editing ? " item-header__heading--editing" : ""}`}
-        >
-          {editing ? (
-            <input
-              ref={inputRef}
-              className="item-header__title-input"
-              type="text"
-              placeholder="untitled"
-              aria-label="Title"
-              value={draft}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                if (liveTitle) onTitleChange(e.target.value);
-              }}
-              onBlur={() => finish(true)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") finish(true);
-                if (e.key === "Escape") {
-                  // Keep the editor's own Escape handler from also closing the whole editor
-                  e.stopPropagation();
-                  finish(false);
-                }
-              }}
-            />
-          ) : (
-            <button
-              type="button"
-              className={`item-header__title${title ? "" : " item-header__title--placeholder"}`}
-              onClick={startEditing}
-              title="Rename (F2)"
-            >
-              {title || "untitled"}
-            </button>
-          )}
-        </h2>
-        {isDirty && (
-          <span
-            className="item-header__dirty-dot"
-            role="img"
-            aria-label="unsaved changes"
-            title="unsaved changes"
+      <h2
+        className={`item-header__heading${editing ? " item-header__heading--editing" : ""}`}
+      >
+        {editing ? (
+          <input
+            ref={inputRef}
+            className="item-header__title-input"
+            type="text"
+            placeholder="untitled"
+            aria-label="Title"
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (liveTitle) onTitleChange(e.target.value);
+            }}
+            onBlur={() => finish(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") finish(true);
+              if (e.key === "Escape") {
+                // Keep the editor's own Escape handler from also closing the whole editor
+                e.stopPropagation();
+                finish(false);
+              }
+            }}
           />
-        )}
-      </div>
-
-      <div className="item-header__meta">
-        <FolderPicker
-          folders={folders}
-          value={folderId}
-          onChange={onFolderChange}
-        />
-        {badge}
-        {updatedAt && (
-          <span
-            className="item-header__date"
-            title={new Date(updatedAt).toLocaleString()}
+        ) : (
+          <button
+            type="button"
+            className={`item-header__title${title ? "" : " item-header__title--placeholder"}`}
+            onClick={startEditing}
+            title="Rename (F2)"
           >
-            {formatDate(updatedAt)}
-          </span>
+            {title || "untitled"}
+          </button>
         )}
-        {actions}
-      </div>
+      </h2>
+      {isDirty && (
+        <span
+          className="item-header__dirty-dot"
+          role="img"
+          aria-label="unsaved changes"
+          title="unsaved changes"
+        />
+      )}
+
+      <FolderPicker
+        folders={folders}
+        value={folderId}
+        onChange={onFolderChange}
+      />
+      {badge}
+      <div className="item-header__spacer" data-tauri-drag-region />
+      {updatedAt && (
+        <span
+          className="item-header__date"
+          title={new Date(updatedAt).toLocaleString()}
+        >
+          {formatDate(updatedAt)}
+        </span>
+      )}
+      {actions}
     </div>
   );
 }
