@@ -21,7 +21,8 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 ### Organization
 - Hierarchical folders — nest as deep as needed
 - Drag-and-drop items between folders
-- Text search across all notes; matching folders open automatically and the rest hide
+- Search palette (**Ctrl+K**): your recent items while the box is empty, live matches while you type, **Enter** opens the highlighted one
+- Right-click in the sidebar. Items: open, edit, rename, duplicate, copy code, move to a folder, reveal in Explorer, move to trash. Folders: new note or code here, new subfolder, rename, reveal, delete. Empty space: new note, code or folder. **Shift+F10** (or the menu key) opens the menu of the selected item
 - Filter by type (all / notes / code)
 - Sort by name or recent; sort order and collapsed folders are remembered
 - Rename (click the title or **F2**) and move (folder chip) straight from the item header
@@ -47,16 +48,21 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 |---|---|
 | Ctrl+N | New note |
 | Ctrl+Shift+N | New code (a note that starts with a code block) |
-| Ctrl+K / Ctrl+F | Focus search |
-| Up / Down | Move through the list (from the search box or the list) |
-| Enter | In search: open the first match and leave the box |
+| Ctrl+K / Ctrl+F | Open the search palette |
+| Up / Down | Move through the sidebar list; in the search palette, through the results |
+| Enter | In the search palette: open the highlighted result |
+| Shift+F10 | Open the context menu of the selected item |
 | Ctrl+E | Edit selected item / go back to reading |
 | Ctrl+L | In the editor, inside a code block: set the block's language |
-| F2 | Rename the open item |
+| F2 | Rename the open item (in the sidebar, the selected one) |
 | Ctrl+C | Copy the code of the open note (when no text is selected and it has one code block) |
 | Ctrl+S | Save now (autosave also runs while you type) |
 | Escape | Close editor and return to the item |
 | Del | Move the item to the trash, or delete the selected folder (both ask first) |
+
+### Updates
+- Graphene looks for a new version a few seconds after launch (Windows only). An **Update** pill appears next to the version at the top of the sidebar; it opens the changes of every version you have not installed yet, newest first, with an **Install and restart** button
+- Click the version number to check again
 
 ### Storage
 - File-based vault at a user-chosen directory
@@ -74,7 +80,6 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 - Vite — build tooling
 - SCSS + CSS custom properties — styling
 - [Lucide](https://lucide.dev) icons (ISC license), copied as inline SVG in `src/components/Icon.tsx`, so no icon package is bundled
-- [gray-matter](https://github.com/jonschlinkert/gray-matter) — frontmatter parsing
 - [Biome](https://biomejs.dev) — linting and formatting
 
 ## Development
@@ -89,3 +94,16 @@ npm run tauri dev
 ```bash
 npm run tauri build
 ```
+
+Builds sign the updater files, so set `TAURI_SIGNING_PRIVATE_KEY` (the path to the key file, or its contents) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` first; without them the build fails at the end. `npm run tauri dev` needs neither.
+
+## Releases
+
+A GitHub Action builds the Windows installer when a version tag is pushed, and installed copies update themselves from it.
+
+1. While you work, add short lines under `## Unreleased` at the top of `CHANGELOG.md`, grouped as `### New`, `### Changed`, `### Fixes` and `### Other`. Plain language, one line per change. The same text becomes the GitHub release notes and the changelog inside the app.
+2. `npm version patch` (or `minor` / `major` / an exact number like `0.3.0`). It checks the changelog, bumps `package.json` and `src-tauri`, turns `## Unreleased` into `## vX.Y.Z`, commits "Release vX.Y.Z" and tags it. The working tree must be clean.
+3. `git push --follow-tags`
+4. Review the draft release on GitHub and publish it. Installed apps only see published releases.
+
+One-time setup: generate a signing key with `npx tauri signer generate -w %USERPROFILE%\.tauri\graphene.key`, put the public key in `src-tauri/tauri.conf.json` (`plugins.updater.pubkey`), and add the repository secrets `TAURI_SIGNING_PRIVATE_KEY` (the contents of the key file) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Keep the private key safe: without it, installed copies can no longer update. Copies that predate the updater (before v0.2.0) have to be reinstalled by hand once.

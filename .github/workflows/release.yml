@@ -1,0 +1,66 @@
+# .github/workflows/release.yml
+# Pushing a tag like v0.2.0 builds the Windows installer and opens a DRAFT release with the
+# CHANGELOG section as its notes. Installed apps only see it once you publish the draft.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Check the tag matches package.json
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version v$version"
+            exit 1
+          fi
+
+      # Everything under "## vX.Y.Z" up to the next "## v" heading
+      - name: Read the release notes from CHANGELOG.md
+        id: notes
+        shell: bash
+        run: |
+          body=$(awk -v tag="## $GITHUB_REF_NAME" 'index($0, tag) == 1 { found = 1; next } found && /^## v/ { exit } found' CHANGELOG.md)
+          if [ -z "$body" ]; then
+            echo "CHANGELOG.md has no section starting with '## $GITHUB_REF_NAME'"
+            exit 1
+          fi
+          {
+            echo 'body<<CHANGELOG_EOF'
+            echo "$body"
+            echo 'CHANGELOG_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Graphene ${{ github.ref_name }}
+          releaseBody: ${{ steps.notes.outputs.body }}
+          releaseDraft: true

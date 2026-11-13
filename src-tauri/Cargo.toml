@@ -1,14 +1,14 @@
 [package]
-name = "flowvault"
+name = "graphene"
 version = "0.1.0"
-description = "Graphene — Webflow code snippet manager"
+description = "Graphene — markdown notes with code blocks"
 authors = ["you"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "flowvault_lib"
+name = "graphene_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -22,3 +22,6 @@ tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
