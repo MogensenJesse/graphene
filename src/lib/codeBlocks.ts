@@ -59,3 +59,21 @@ export function setFenceLang(
 ): string {
   return text.slice(0, block.langStart) + lang + text.slice(block.langEnd);
 }
+
+/** The code between the first opening fence and its closing fence ("" when the text has no block). */
+export function firstCodeBlock(text: string): string {
+  let open: { char: string; len: number } | null = null;
+  const code: string[] = [];
+
+  for (const line of text.split(/\r?\n/)) {
+    if (!open) {
+      const m = OPENING_FENCE.exec(line);
+      if (m) open = { char: m[2][0], len: m[2].length };
+    } else {
+      const m = CLOSING_FENCE.exec(line);
+      if (m && m[1][0] === open.char && m[1].length >= open.len) break;
+      code.push(line);
+    }
+  }
+  return code.join("\n");
+}

@@ -116,10 +116,6 @@
     opacity: 0;
     transition: opacity var(--transition-fast);
     flex-shrink: 0;
-
-    &--open {
-      opacity: 1;
-    }
   }
 
   &__action-btn {
@@ -143,51 +139,6 @@
     &:focus-visible {
       outline: 1px solid var(--color-border-primary);
       outline-offset: 1px;
-    }
-  }
-
-  &__menu-wrap {
-    position: relative;
-  }
-
-  &__dropdown {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 2px);
-    z-index: 100;
-    background: var(--color-background-primary);
-    border: 0.5px solid var(--color-border-primary);
-    border-radius: var(--border-radius-md);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-    overflow: hidden;
-    min-width: 108px;
-  }
-
-  &__dropdown-item {
-    display: block;
-    width: 100%;
-    padding: 7px 12px;
-    font-size: 12px;
-    font-family: inherit;
-    text-align: left;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--color-text-secondary);
-    transition: background var(--transition-fast), color var(--transition-fast);
-
-    &:hover {
-      background: var(--color-background-active);
-      color: var(--color-text-primary);
-    }
-
-    &--danger {
-      color: var(--color-text-danger);
-
-      &:hover {
-        background: var(--color-background-danger);
-        color: var(--color-text-danger);
-      }
     }
   }
 

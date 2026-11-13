@@ -1,19 +1,24 @@
 // src/App.tsx
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HexagonIcon } from "./components/Icon";
 import NewItemPanel from "./components/NewItemPanel";
 import NoteDetail from "./components/NoteDetail";
+import SearchPalette from "./components/SearchPalette";
 import Sidebar from "./components/Sidebar";
 import TrashView from "./components/TrashView";
+import UpdateDialog from "./components/UpdateDialog";
 import WindowControls from "./components/WindowControls";
 import { useFileDrop } from "./hooks/useFileDrop";
 import { useFolders } from "./hooks/useFolders";
 import type { AddItemFields, UpdateItemFields } from "./hooks/useItems";
 import { useItems } from "./hooks/useItems";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
-import { loadVault } from "./lib/storage";
+import { useUpdater } from "./hooks/useUpdater";
+import { folderAbsPath, itemFilePath, loadVault } from "./lib/storage";
 import { getVaultPath, pickVaultPath, setVaultPath } from "./lib/vault";
+import type { Item } from "./types";
 
 type Mode = "new" | "detail" | "edit" | "trash";
 
@@ -46,7 +51,7 @@ function VaultPicker({ onVaultSet }: { onVaultSet: (path: string) => void }) {
         <div className="vault-picker__icon" aria-hidden="true">
           <HexagonIcon size={36} />
         </div>
-        <h1 className="vault-picker__title">graphene</h1>
+        <h1 className="vault-picker__title">Graphene</h1>
         <p className="vault-picker__desc">
           Choose a folder to use as your vault. Notes and snippets will be
           stored as files inside it.
@@ -135,7 +140,8 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<"all" | "note" | "code">("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
   const [mode, setMode] = useState<Mode>("new");
 
   // One "+ new" session: remount key, kind, default folder, and the item "done" returns to
@@ -150,7 +156,6 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
   const editingIdRef = useRef<string | null>(null);
   // Set by NewItemPanel: save now if dirty
   const flushRef = useRef<(() => void) | null>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (selectedId && !items.some((i) => i.id === selectedId)) {
@@ -190,13 +195,17 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     setSelectedFolderId(id);
   };
 
-  const handleNew = (kind: "note" | "code") => {
+  // folderId omitted = wherever the selection is (folder, else the open item's folder); null = no folder
+  const handleNew = (kind: "note" | "code", folderId?: string | null) => {
     if (mode === "new" && isDirtyEdit) return; // keep a draft that has content
     leaveEditor();
     setDraft((d) => ({
       key: d.key + 1,
       kind,
-      folderId: selectedFolderId ?? selectedItem?.folderId ?? null,
+      folderId:
+        folderId !== undefined
+          ? folderId
+          : (selectedFolderId ?? selectedItem?.folderId ?? null),
       // Starting over from an empty draft keeps the item it would return to
       returnToId: mode === "new" ? d.returnToId : selectedId,
     }));
@@ -229,10 +238,7 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     onNew: handleNew,
     onEdit: handleEdit,
     onDone: handleDone,
-    onFocusSearch: () => {
-      searchInputRef.current?.focus();
-      searchInputRef.current?.select();
-    },
+    onOpenSearch: () => setSearchOpen(true),
   });
 
   // First save of a draft creates the item; later saves update it. The mode flips new -> edit
@@ -257,18 +263,24 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     [saveFromEditor, addItem],
   );
 
-  // Flush a pending edit before the window closes
+  // Save a pending edit before the window goes away (close, or the updater's installer)
+  const flushPendingSave = useCallback(async () => {
+    flushRef.current?.();
+    // ponytail: saves are fire-and-forget inside state updaters, so a fixed delay lets the write land.
+    // Upgrade to awaiting tracked writes if saves ever get slow.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }, []);
+
   useEffect(() => {
-    const unlisten = appWindow.onCloseRequested(async () => {
-      flushRef.current?.();
-      // ponytail: saves are fire-and-forget inside state updaters, so a fixed delay lets the write land.
-      // Upgrade to awaiting tracked writes if saves ever get slow.
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    });
+    const unlisten = appWindow.onCloseRequested(flushPendingSave);
     return () => {
       unlisten.then((fn) => fn()).catch(console.error);
     };
-  }, []);
+  }, [flushPendingSave]);
+
+  const updater = useUpdater(flushPendingSave);
+  const [updateOpen, setUpdateOpen] = useState(false);
+  const closeUpdate = useCallback(() => setUpdateOpen(false), []);
 
   // Dropped files land in the selected folder, and the last one imported opens
   const { isDraggingOver } = useFileDrop(
@@ -283,6 +295,37 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
 
   const handleRename = (id: string, title: string) => {
     updateItem(id, { title });
+  };
+
+  // Open an item straight in the editor (sidebar menu). The editor may already be open on
+  // something else, so bump the key to remount it on this item.
+  const handleEditItem = (id: string) => {
+    leaveEditor();
+    setSelectedId(id);
+    setSelectedFolderId(null);
+    editingIdRef.current = id;
+    setDraft((d) => ({ ...d, key: d.key + 1 }));
+    setMode("edit");
+  };
+
+  const handleDuplicate = (id: string) => {
+    const source = itemsRef.current.find((i) => i.id === id);
+    if (!source) return;
+    handleSelect(
+      addItem({
+        title: `${source.title} copy`,
+        body: source.body,
+        folderId: source.folderId,
+      }),
+    );
+  };
+
+  const handleRevealItem = (item: Item) => {
+    revealItemInDir(itemFilePath(vaultPath, item)).catch(console.error);
+  };
+
+  const handleRevealFolder = (folderId: string) => {
+    revealItemInDir(folderAbsPath(vaultPath, folderId)).catch(console.error);
   };
 
   const handleDeleteFolder = useCallback(
@@ -349,19 +392,29 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
               isDirtyEdit && mode === "edit" && selectedId ? selectedId : null
             }
             typeFilter={typeFilter}
-            searchQuery={searchQuery}
-            searchInputRef={searchInputRef}
             trashedCount={trashed.length}
             trashOpen={mode === "trash"}
+            version={updater.version}
+            updateStatus={updater.status}
+            updateAvailable={updater.update !== null}
+            onCheckUpdates={updater.checkNow}
+            onShowUpdate={() => setUpdateOpen(true)}
+            editingItemId={mode === "edit" ? selectedId : null}
             onSelect={handleSelect}
             onSelectFolder={handleSelectFolder}
             onNew={handleNew}
+            onEditItem={handleEditItem}
+            onDuplicateItem={handleDuplicate}
+            onDeleteItem={handleDelete}
+            onRenameItem={handleRename}
+            onRevealItem={handleRevealItem}
+            onRevealFolder={handleRevealFolder}
             onOpenTrash={handleOpenTrash}
             onAddFolder={addFolder}
             onRenameFolder={updateFolder}
             onDeleteFolder={handleDeleteFolder}
             onMoveItem={moveItem}
-            onSearchChange={setSearchQuery}
+            onOpenSearch={() => setSearchOpen(true)}
             onTypeFilterChange={setTypeFilter}
           />
         </div>
@@ -371,6 +424,30 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
           {renderMain()}
         </main>
       </div>
+      {updateOpen && updater.update && (
+        <UpdateDialog
+          current={updater.version}
+          update={updater.update}
+          notes={updater.notes}
+          status={updater.status}
+          progress={updater.progress}
+          error={updater.error}
+          canInstall={updater.canInstall}
+          onInstall={updater.install}
+          onClose={closeUpdate}
+        />
+      )}
+      {searchOpen && (
+        <SearchPalette
+          items={items}
+          folders={folders}
+          onOpen={(id) => {
+            setSearchOpen(false);
+            handleSelect(id);
+          }}
+          onClose={closeSearch}
+        />
+      )}
     </div>
   );
 }

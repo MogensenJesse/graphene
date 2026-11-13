@@ -1,0 +1,158 @@
+// src/assets/styles/components/_UpdateDialog.scss
+@use '../base/mixins' as mixins;
+
+.update-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, calc(100vw - 40px));
+  max-height: min(600px, 80vh);
+
+  &__header {
+    flex-shrink: 0;
+    padding: 18px 22px 14px;
+    border-bottom: 0.5px solid var(--color-border-secondary);
+  }
+
+  &__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  &__sub {
+    margin-top: 3px;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+  }
+
+  // Versions stack here, newest on top
+  &__body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 6px 22px 10px;
+
+    @include mixins.custom-scrollbar;
+  }
+
+  &__release {
+    padding: 14px 0;
+
+    & + & {
+      border-top: 0.5px solid var(--color-border-secondary);
+    }
+  }
+
+  &__version {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  &__date {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--color-text-tertiary);
+  }
+
+  &__markdown {
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--color-text-secondary);
+    word-break: break-word;
+
+    @include mixins.markdown-prose;
+  }
+
+  &__footer {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 22px 16px;
+    border-top: 0.5px solid var(--color-border-secondary);
+  }
+
+  &__progress {
+    width: 100%;
+    height: 4px;
+    appearance: none;
+    border: none;
+    border-radius: 2px;
+    overflow: hidden;
+    background: var(--color-background-active);
+
+    &::-webkit-progress-bar {
+      background: var(--color-background-active);
+    }
+
+    &::-webkit-progress-value {
+      background: rgb(var(--rgb-blue));
+      transition: width var(--transition-fast);
+    }
+  }
+
+  &__error {
+    font-size: 12px;
+    color: var(--color-text-danger);
+  }
+
+  &__link {
+    padding: 0;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    text-decoration: underline;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  &__btn {
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    background: none;
+    border: 0.5px solid var(--color-border-primary);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+
+    &:hover:not(:disabled) {
+      color: var(--color-text-primary);
+      background: var(--color-background-hover);
+    }
+
+    &:focus-visible {
+      outline: 1px solid var(--color-border-primary);
+      outline-offset: 1px;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    &--primary {
+      color: rgb(var(--rgb-blue));
+      background: rgba(var(--rgb-blue), 0.12);
+      border-color: rgba(var(--rgb-blue), 0.35);
+
+      &:hover:not(:disabled) {
+        color: rgb(var(--rgb-blue));
+        background: rgba(var(--rgb-blue), 0.2);
+      }
+    }
+  }
+}

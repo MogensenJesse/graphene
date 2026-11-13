@@ -7,7 +7,7 @@ interface Shortcuts {
   onNew: (kind: "note" | "code") => void;
   onEdit: () => void;
   onDone: () => void;
-  onFocusSearch: () => void;
+  onOpenSearch: () => void;
 }
 
 export function useKeyboardShortcuts({
@@ -16,11 +16,13 @@ export function useKeyboardShortcuts({
   onNew,
   onEdit,
   onDone,
-  onFocusSearch,
+  onOpenSearch,
 }: Shortcuts): void {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
+      // A dialog (search, update) owns the keyboard while it is open
+      if (document.querySelector('[aria-modal="true"]')) return;
 
       // Also while editing: starting a new item saves the open edit first.
       // Shift is held, so the key arrives upper-case.
@@ -31,7 +33,7 @@ export function useKeyboardShortcuts({
 
       if (e.key === "k" || e.key === "f") {
         e.preventDefault();
-        onFocusSearch();
+        onOpenSearch();
       }
 
       // Ctrl+E toggles between reading and editing
@@ -48,5 +50,5 @@ export function useKeyboardShortcuts({
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [mode, hasSelection, onNew, onEdit, onDone, onFocusSearch]);
+  }, [mode, hasSelection, onNew, onEdit, onDone, onOpenSearch]);
 }

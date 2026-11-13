@@ -18,6 +18,53 @@
     cursor: default;
   }
 
+  // Right end of the header: update pill + version, both clickable inside the drag region
+  &__version-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    -webkit-app-region: no-drag;
+  }
+
+  &__version,
+  &__update-pill {
+    font-family: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  &__version {
+    padding: 2px 4px;
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+    border-radius: var(--border-radius-sm);
+    transition: color var(--transition-fast);
+
+    &:hover:not(:disabled) {
+      color: var(--color-text-secondary);
+    }
+
+    &:disabled {
+      cursor: default;
+    }
+  }
+
+  &__update-pill {
+    padding: 1px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgb(var(--rgb-blue));
+    background: rgba(var(--rgb-blue), 0.14);
+    border-radius: 999px;
+    transition: background var(--transition-fast);
+
+    &:hover {
+      background: rgba(var(--rgb-blue), 0.24);
+    }
+  }
+
   &__brand {
     display: flex;
     align-items: center;
@@ -122,15 +169,6 @@
       outline-offset: -1px;
     }
 
-    // The search row is an input that looks like the other rows
-    &--search {
-      cursor: text;
-
-      &:focus-within {
-        background: var(--color-background-active);
-        color: var(--color-text-primary);
-      }
-    }
   }
 
   &__nav-count {
@@ -139,20 +177,6 @@
     color: var(--color-text-tertiary);
   }
 
-  &__search-input {
-    flex: 1;
-    min-width: 0;
-    border: none;
-    background: none;
-    font-size: 13px;
-    font-family: inherit;
-    color: var(--color-text-primary);
-    outline: none;
-
-    &::placeholder {
-      color: var(--color-text-secondary);
-    }
-  }
 
   &__footer {
     padding: 4px 8px 8px;
@@ -371,6 +395,20 @@
 
   &--selected &__type-icon {
     color: var(--color-text-secondary);
+  }
+
+  // Inline rename, same look as the folder rename input
+  &__rename-input {
+    flex: 1;
+    min-width: 0;
+    padding: 2px 6px;
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--color-text-primary);
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-primary);
+    border-radius: var(--border-radius-sm);
+    outline: none;
   }
 
   &__unsaved-dot {

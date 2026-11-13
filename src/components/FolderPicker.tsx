@@ -1,27 +1,9 @@
 // src/components/FolderPicker.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useClickOutside } from "../hooks/useClickOutside";
-import { getFolderPath } from "../lib/utils";
+import { flattenFolders, getFolderPath } from "../lib/utils";
 import type { Folder } from "../types";
 import { ChevronDownIcon, FolderIcon, NoFolderIcon } from "./Icon";
-
-interface FlatFolder {
-  folder: Folder;
-  depth: number;
-}
-
-function flattenFolders(
-  folders: Folder[],
-  parentId: string | null = null,
-  depth = 0,
-): FlatFolder[] {
-  return folders
-    .filter((f) => f.parentId === parentId)
-    .flatMap((f) => [
-      { folder: f, depth },
-      ...flattenFolders(folders, f.id, depth + 1),
-    ]);
-}
 
 interface FolderPickerProps {
   folders: Folder[];

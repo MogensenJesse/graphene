@@ -75,3 +75,23 @@ export function getFolderPath(
   }
   return result;
 }
+
+export interface FlatFolder {
+  folder: Folder;
+  depth: number;
+}
+
+/** Every folder, depth-first with siblings in name order, each with its nesting depth. */
+export function flattenFolders(
+  folders: Folder[],
+  parentId: string | null = null,
+  depth = 0,
+): FlatFolder[] {
+  return folders
+    .filter((f) => f.parentId === parentId)
+    .sort((a, b) => compareNames(a.name, b.name))
+    .flatMap((f) => [
+      { folder: f, depth },
+      ...flattenFolders(folders, f.id, depth + 1),
+    ]);
+}

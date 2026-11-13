@@ -1,0 +1,101 @@
+// src/assets/styles/components/_ContextMenu.scss
+@use '../base/variables' as v;
+
+// Right-click menu; the top level is placed at the cursor, a submenu hangs off its parent row
+
+.context-menu {
+  position: fixed;
+  z-index: 400;
+  min-width: 188px;
+  padding: 4px;
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-primary);
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  outline: none;
+
+  &--sub {
+    position: absolute;
+    top: -5px;
+    left: calc(100% - 4px);
+    z-index: 1;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  &__slot {
+    position: relative;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 28px;
+    padding: 0 8px;
+    font-family: inherit;
+    font-size: 12px;
+    text-align: left;
+    white-space: nowrap;
+    color: var(--color-text-secondary);
+    background: none;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+
+    // Hovering moves focus, so :focus covers both mouse and keyboard
+    &:focus:not(:disabled),
+    &[aria-expanded='true'] {
+      outline: none;
+      color: var(--color-text-primary);
+      background: var(--color-background-active);
+    }
+
+    &:disabled {
+      color: var(--color-text-tertiary);
+      cursor: default;
+    }
+
+    &--danger {
+      color: var(--color-text-danger);
+
+      &:focus:not(:disabled) {
+        color: var(--color-text-danger);
+        background: var(--color-background-danger);
+      }
+    }
+  }
+
+  &__icon {
+    display: inline-flex;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 14px;
+    color: var(--color-text-tertiary);
+  }
+
+  &__item--danger &__icon {
+    color: inherit;
+  }
+
+  &__label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__chevron {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+  }
+
+  &__sep {
+    height: 1px;
+    border: none;
+    margin: 4px 0;
+    background: var(--color-border-secondary);
+  }
+}

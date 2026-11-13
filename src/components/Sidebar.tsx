@@ -1,16 +1,37 @@
 // src/components/Sidebar.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useClipboard } from "../hooks/useClipboard";
 import { useDragToFolder } from "../hooks/useDragToFolder";
+import type { UpdateStatus } from "../hooks/useUpdater";
+import { firstCodeBlock } from "../lib/codeBlocks";
 import { filterItems } from "../lib/search";
-import { compareNames } from "../lib/utils";
+import { compareNames, flattenFolders, isCodeItem } from "../lib/utils";
 import type { Folder, Item } from "../types";
+import ContextMenu, { type MenuEntry } from "./ContextMenu";
 import FolderRow from "./FolderRow";
 import {
+  ClipboardCopyIcon,
   CodeIcon,
+  CopyIcon,
+  EditIcon,
+  ExternalLinkIcon,
+  FolderIcon,
+  FolderInputIcon,
+  FolderPlusIcon,
   HexagonIcon,
+  NoFolderIcon,
+  NoteIcon,
   PlusIcon,
   SearchIcon,
   SortIcon,
+  TextCursorInputIcon,
   TrashIcon,
 } from "./Icon";
 import ItemRow from "./ItemRow";
@@ -23,6 +44,13 @@ const SORT_LABEL: Record<SortBy, string> = {
   edited: "Recent",
 };
 const SORT_KEY = "graphene.sort";
+
+// What the version button says while an update check is in flight or has just finished
+const VERSION_LABEL: Partial<Record<UpdateStatus, string>> = {
+  checking: "checking…",
+  "up-to-date": "up to date",
+  error: "check failed",
+};
 
 const COMPARE: Record<SortBy, (a: Item, b: Item) => number> = {
   name: (a, b) => compareNames(a.title, b.title),
@@ -45,19 +73,31 @@ interface SidebarProps {
   selectedFolderId: string | null;
   unsavedItemId: string | null;
   typeFilter: "all" | "note" | "code";
-  searchQuery: string;
-  searchInputRef: React.RefObject<HTMLInputElement | null>;
   trashedCount: number;
   trashOpen: boolean;
+  version: string;
+  updateStatus: UpdateStatus;
+  updateAvailable: boolean;
+  // Item open in the editor: its title and folder belong to the editor until it closes
+  editingItemId: string | null;
   onSelect: (id: string) => void;
   onSelectFolder: (id: string | null) => void;
-  onNew: (kind: "note" | "code") => void;
+  // folderId omitted = wherever the selection is; null = no folder
+  onNew: (kind: "note" | "code", folderId?: string | null) => void;
+  onEditItem: (id: string) => void;
+  onDuplicateItem: (id: string) => void;
+  onDeleteItem: (id: string) => void;
+  onRenameItem: (id: string, title: string) => void;
+  onRevealItem: (item: Item) => void;
+  onRevealFolder: (folderId: string) => void;
+  onCheckUpdates: () => void;
+  onShowUpdate: () => void;
   onOpenTrash: () => void;
   onAddFolder: (name: string, parentId: string | null) => void;
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
   onMoveItem: (itemId: string, targetFolderId: string | null) => void;
-  onSearchChange: (q: string) => void;
+  onOpenSearch: () => void;
   onTypeFilterChange: (filter: "all" | "note" | "code") => void;
 }
 
@@ -68,19 +108,29 @@ function Sidebar({
   selectedFolderId,
   unsavedItemId,
   typeFilter,
-  searchQuery,
-  searchInputRef,
   trashedCount,
   trashOpen,
+  version,
+  updateStatus,
+  updateAvailable,
+  editingItemId,
   onSelect,
   onSelectFolder,
   onNew,
+  onEditItem,
+  onDuplicateItem,
+  onDeleteItem,
+  onRenameItem,
+  onRevealItem,
+  onRevealFolder,
+  onCheckUpdates,
+  onShowUpdate,
   onOpenTrash,
   onAddFolder,
   onRenameFolder,
   onDeleteFolder,
   onMoveItem,
-  onSearchChange,
+  onOpenSearch,
   onTypeFilterChange,
 }: SidebarProps) {
   const [showAddFolder, setShowAddFolder] = useState(false);
@@ -89,6 +139,13 @@ function Sidebar({
     string | null
   >(null);
   const [sortBy, setSortBy] = useState<SortBy>(readSort);
+  const [menu, setMenu] = useState<{
+    x: number;
+    y: number;
+    entries: MenuEntry[];
+  } | null>(null);
+  const [renamingItemId, setRenamingItemId] = useState<string | null>(null);
+  const { copy } = useClipboard();
 
   const newFolderInputRef = useRef<HTMLInputElement>(null);
   const treeRef = useRef<HTMLDivElement>(null);
@@ -140,8 +197,8 @@ function Sidebar({
   // No folder filter — the tree handles folder grouping visually.
   // filterItems returns a fresh array, so sorting it in place is safe.
   const filtered = useMemo(
-    () => filterItems(items, searchQuery, typeFilter).sort(COMPARE[sortBy]),
-    [items, searchQuery, typeFilter, sortBy],
+    () => filterItems(items, "", typeFilter).sort(COMPARE[sortBy]),
+    [items, typeFilter, sortBy],
   );
 
   const unfiledItems = useMemo(
@@ -149,8 +206,8 @@ function Sidebar({
     [filtered],
   );
 
-  // While searching or filtering, folders without a match disappear and the rest open up
-  const isFiltering = searchQuery.trim() !== "" || typeFilter !== "all";
+  // While filtering by type, folders without a match disappear and the rest open up
+  const isFiltering = typeFilter !== "all";
 
   const cycleSort = () => {
     const next =
@@ -177,26 +234,6 @@ function Sidebar({
     next.scrollIntoView({ block: "nearest" });
   };
 
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Escape") {
-      onSearchChange("");
-      e.currentTarget.blur();
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      moveSelection(1);
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      moveSelection(-1);
-    } else if (e.key === "Enter") {
-      // Open the first match if nothing visible is selected, then leave the box so Ctrl+C works
-      const visible = treeRef.current?.querySelector(
-        `[data-item-id="${selectedId}"]`,
-      );
-      if (!visible) moveSelection(1);
-      e.currentTarget.blur();
-    }
-  };
-
   const handleTreeKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     // Ignore keys typed into the folder name inputs that live inside the tree
     if (e.target !== e.currentTarget) return;
@@ -206,6 +243,30 @@ function Sidebar({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       moveSelection(-1);
+    } else if (
+      e.key === "F2" ||
+      e.key === "ContextMenu" ||
+      (e.key === "F10" && e.shiftKey)
+    ) {
+      const row = selectedId
+        ? treeRef.current?.querySelector<HTMLElement>(
+            `[data-item-id="${selectedId}"]`,
+          )
+        : null;
+      const item = items.find((i) => i.id === selectedId);
+      e.preventDefault();
+      if (e.key === "F2") {
+        if (row && item) setRenamingItemId(item.id);
+        return;
+      }
+      // Anchored on the selected row, or on the tree when nothing visible is selected
+      const rect = (row ?? treeRef.current)?.getBoundingClientRect();
+      if (rect)
+        openMenu(
+          rect.left + 24,
+          rect.bottom,
+          row && item ? itemEntries(item) : treeEntries(),
+        );
     }
   };
 
@@ -240,6 +301,121 @@ function Sidebar({
     setFolderConfirmDeleteId(id);
   };
 
+  const openMenu = (x: number, y: number, entries: MenuEntry[]) =>
+    setMenu({ x, y, entries });
+  const closeMenu = useCallback(() => setMenu(null), []);
+
+  const treeEntries = (): MenuEntry[] => [
+    {
+      label: "New note",
+      icon: <PlusIcon size={14} />,
+      onSelect: () => onNew("note", null),
+    },
+    {
+      label: "New code",
+      icon: <CodeIcon size={14} />,
+      onSelect: () => onNew("code", null),
+    },
+    "separator",
+    {
+      label: "New folder",
+      icon: <FolderPlusIcon size={14} />,
+      onSelect: () => setShowAddFolder(true),
+    },
+  ];
+
+  const moveEntries = (item: Item): MenuEntry[] => {
+    const to = (
+      folderId: string | null,
+      label: string,
+      icon: ReactNode,
+      indent = 0,
+    ): MenuEntry => ({
+      label,
+      icon,
+      indent,
+      checked: item.folderId === folderId,
+      disabled: item.folderId === folderId || item.id === editingItemId,
+      onSelect: () => onMoveItem(item.id, folderId),
+    });
+    return [
+      to(null, "Unfiled", <NoFolderIcon size={14} />),
+      ...flattenFolders(folders).map(({ folder, depth }) =>
+        to(folder.id, folder.name, <FolderIcon size={14} />, depth),
+      ),
+    ];
+  };
+
+  const itemEntries = (item: Item): MenuEntry[] => {
+    const code = isCodeItem(item);
+    return [
+      {
+        label: "Open",
+        icon: code ? <CodeIcon size={14} /> : <NoteIcon size={14} />,
+        onSelect: () => selectItem(item.id),
+      },
+      {
+        label: "Edit",
+        icon: <EditIcon size={14} />,
+        onSelect: () => onEditItem(item.id),
+      },
+      {
+        label: "Rename",
+        icon: <TextCursorInputIcon size={14} />,
+        disabled: item.id === editingItemId,
+        onSelect: () => setRenamingItemId(item.id),
+      },
+      {
+        label: "Duplicate",
+        icon: <CopyIcon size={14} />,
+        onSelect: () => onDuplicateItem(item.id),
+      },
+      ...(code
+        ? [
+            {
+              label: "Copy code",
+              icon: <ClipboardCopyIcon size={14} />,
+              onSelect: () => copy(firstCodeBlock(item.body)),
+            },
+          ]
+        : []),
+      "separator",
+      {
+        label: "Move to",
+        icon: <FolderInputIcon size={14} />,
+        submenu: moveEntries(item),
+      },
+      {
+        label: "Reveal in Explorer",
+        icon: <ExternalLinkIcon size={14} />,
+        onSelect: () => onRevealItem(item),
+      },
+      "separator",
+      {
+        label: "Move to trash",
+        icon: <TrashIcon size={14} />,
+        danger: true,
+        onSelect: () => onDeleteItem(item.id),
+      },
+    ];
+  };
+
+  const handleItemContextMenu = (e: React.MouseEvent, item: Item) => {
+    e.preventDefault();
+    e.stopPropagation(); // the tree behind has its own menu
+    openMenu(e.clientX, e.clientY, itemEntries(item));
+  };
+
+  const handleItemRenameEnd = (id: string, title: string | null) => {
+    setRenamingItemId(null);
+    const current = items.find((i) => i.id === id);
+    if (title !== null && current && title !== current.title)
+      onRenameItem(id, title);
+    // Enter/Escape leave focus on the removed input; a blur (click elsewhere) must keep its new target
+    if (document.activeElement instanceof HTMLInputElement)
+      treeRef.current?.focus({ preventScroll: true });
+  };
+
   // The tree itself is the "unfiled" drop target: folder groups win, empty space and root items unfile
   const isRootDragOver = dragState !== null && dragOverId === null;
 
@@ -249,7 +425,32 @@ function Sidebar({
       <div className="sidebar__header" data-tauri-drag-region>
         <div className="sidebar__brand" data-tauri-drag-region>
           <HexagonIcon size={14} />
-          <span>graphene</span>
+          <span>Graphene</span>
+        </div>
+        <div className="sidebar__version-wrap">
+          {updateAvailable && (
+            <button
+              type="button"
+              className="sidebar__update-pill"
+              onClick={onShowUpdate}
+              title="A new version is available"
+            >
+              Update
+            </button>
+          )}
+          {version && (
+            <button
+              type="button"
+              className="sidebar__version"
+              onClick={onCheckUpdates}
+              disabled={
+                updateStatus === "checking" || updateStatus === "installing"
+              }
+              title="Check for updates"
+            >
+              {VERSION_LABEL[updateStatus] ?? `v${version}`}
+            </button>
+          )}
         </div>
       </div>
 
@@ -288,22 +489,16 @@ function Sidebar({
           <CodeIcon size={16} />
           <span>New code</span>
         </button>
-        <label
-          className="sidebar__nav-item sidebar__nav-item--search"
+        <button
+          type="button"
+          className="sidebar__nav-item"
+          onClick={onOpenSearch}
           title="Search (Ctrl+K)"
         >
           <SearchIcon size={16} />
-          <input
-            ref={searchInputRef}
-            className="sidebar__search-input"
-            type="text"
-            placeholder="Search"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            aria-label="Search items"
-          />
-        </label>
+          <span>Search</span>
+          <span className="sidebar__nav-count">Ctrl K</span>
+        </button>
       </nav>
 
       {/* Folder + tree section */}
@@ -315,6 +510,11 @@ function Sidebar({
         // a tree is a composite widget: the container is the single tab stop and takes the arrow keys
         tabIndex={0}
         onKeyDown={handleTreeKeyDown}
+        onContextMenu={(e) => {
+          if (e.target instanceof HTMLInputElement) return; // keep the input's own copy/paste menu
+          e.preventDefault();
+          openMenu(e.clientX, e.clientY, treeEntries());
+        }}
         onClick={(e) => {
           // Empty space deselects the folder
           if (e.target === e.currentTarget) onSelectFolder(null);
@@ -401,12 +601,18 @@ function Sidebar({
             unsavedItemId={unsavedItemId}
             dragOverId={dragOverId}
             forceExpand={isFiltering}
+            renamingItemId={renamingItemId}
             onSelect={onSelectFolder}
             onSelectItem={selectItem}
             onItemPointerDown={startDrag}
             onAddSubfolder={handleAddSubfolder}
             onRename={onRenameFolder}
             onDelete={requestDeleteFolder}
+            onNew={onNew}
+            onReveal={onRevealFolder}
+            onOpenMenu={openMenu}
+            onItemContextMenu={handleItemContextMenu}
+            onItemRenameEnd={handleItemRenameEnd}
           />
         ))}
 
@@ -417,8 +623,11 @@ function Sidebar({
             item={item}
             isSelected={selectedId === item.id}
             isUnsaved={unsavedItemId === item.id}
+            isRenaming={renamingItemId === item.id}
             onSelect={selectItem}
             onPointerDown={startDrag}
+            onContextMenu={handleItemContextMenu}
+            onRenameEnd={handleItemRenameEnd}
           />
         ))}
 
@@ -444,6 +653,15 @@ function Sidebar({
           )}
         </button>
       </div>
+
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          entries={menu.entries}
+          onClose={closeMenu}
+        />
+      )}
 
       {/* Drag ghost — follows cursor while dragging */}
       {dragState && (

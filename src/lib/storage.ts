@@ -71,7 +71,7 @@ function folderIdFromFilePath(
 }
 
 /** Build absolute path for a folder id (which is a relative path from vault) */
-function folderAbsPath(vaultPath: string, folderId: string): string {
+export function folderAbsPath(vaultPath: string, folderId: string): string {
   return joinPath(vaultPath, folderId);
 }
 
@@ -80,7 +80,7 @@ function itemFileName(item: Item): string {
 }
 
 /** Determine absolute path for an item file */
-function itemFilePath(vaultPath: string, item: Item): string {
+export function itemFilePath(vaultPath: string, item: Item): string {
   const dir =
     item.folderId !== null ? joinPath(vaultPath, item.folderId) : vaultPath;
   return joinPath(dir, itemFileName(item));

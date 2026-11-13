@@ -11,7 +11,9 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "check": "biome check --write .",
-    "lint": "biome lint ."
+    "lint": "biome lint .",
+    "preversion": "node scripts/release.mjs check",
+    "version": "node scripts/release.mjs apply"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -19,6 +21,7 @@
     "@tauri-apps/plugin-dialog": "^2.8.4",
     "@tauri-apps/plugin-fs": "^2.7.1",
     "@tauri-apps/plugin-opener": "^2.7.3",
+    "@tauri-apps/plugin-updater": "^2.14.1",
     "nanoid": "^6.0.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
