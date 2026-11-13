@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### New
+- Undo and redo (Ctrl+Z, Ctrl+Shift+Z) keep working after you use the formatting buttons
+- Right-click works everywhere in the app, including the editor
+- Copy a whole note with one click
+- Drag a note onto Trash to delete it
+
+### Changed
+- The formatting buttons now work on highlighted text: code block wraps it, pressing bold again removes it, numbered lists count up
+- The copy button on code blocks is now an icon
+
+### Fixes
+- Deleting the note you are editing no longer stops the next new note from saving
+- A dialog no longer closes when you right-click outside it
+
 ## v1.0.0
 
 ### New

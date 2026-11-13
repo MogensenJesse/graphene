@@ -1,23 +1,18 @@
 // src/components/Sidebar.tsx
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useClipboard } from "../hooks/useClipboard";
-import { useDragToFolder } from "../hooks/useDragToFolder";
+import { TRASH_DROP_ID, useDragToFolder } from "../hooks/useDragToFolder";
 import type { UpdateStatus } from "../hooks/useUpdater";
 import { firstCodeBlock } from "../lib/codeBlocks";
 import { filterItems } from "../lib/search";
 import { compareNames, flattenFolders, isCodeItem } from "../lib/utils";
 import type { Folder, Item } from "../types";
-import ContextMenu, { type MenuEntry } from "./ContextMenu";
+import type { MenuEntry } from "./ContextMenu";
+import { useContextMenu } from "./ContextMenuProvider";
 import FolderRow from "./FolderRow";
 import {
   ClipboardCopyIcon,
+  ClipboardIcon,
   CodeIcon,
   CopyIcon,
   EditIcon,
@@ -139,11 +134,7 @@ function Sidebar({
     string | null
   >(null);
   const [sortBy, setSortBy] = useState<SortBy>(readSort);
-  const [menu, setMenu] = useState<{
-    x: number;
-    y: number;
-    entries: MenuEntry[];
-  } | null>(null);
+  const { open, openAt } = useContextMenu();
   const [renamingItemId, setRenamingItemId] = useState<string | null>(null);
   const { copy } = useClipboard();
 
@@ -178,7 +169,9 @@ function Sidebar({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [selectedFolderId, folderConfirmDeleteId, onDeleteFolder]);
 
-  const { dragState, dragOverId, startDrag } = useDragToFolder(onMoveItem);
+  const { dragState, dragOverId, startDrag } = useDragToFolder((id, target) =>
+    target === TRASH_DROP_ID ? onDeleteItem(id) : onMoveItem(id, target),
+  );
 
   useEffect(() => {
     if (showAddFolder && newFolderInputRef.current) {
@@ -262,7 +255,7 @@ function Sidebar({
       // Anchored on the selected row, or on the tree when nothing visible is selected
       const rect = (row ?? treeRef.current)?.getBoundingClientRect();
       if (rect)
-        openMenu(
+        openAt(
           rect.left + 24,
           rect.bottom,
           row && item ? itemEntries(item) : treeEntries(),
@@ -300,10 +293,6 @@ function Sidebar({
     onSelectFolder(id); // the banner only renders for the selected folder
     setFolderConfirmDeleteId(id);
   };
-
-  const openMenu = (x: number, y: number, entries: MenuEntry[]) =>
-    setMenu({ x, y, entries });
-  const closeMenu = useCallback(() => setMenu(null), []);
 
   const treeEntries = (): MenuEntry[] => [
     {
@@ -370,6 +359,11 @@ function Sidebar({
         icon: <CopyIcon size={14} />,
         onSelect: () => onDuplicateItem(item.id),
       },
+      {
+        label: "Copy note",
+        icon: <ClipboardIcon size={14} />,
+        onSelect: () => copy(item.body),
+      },
       ...(code
         ? [
             {
@@ -400,11 +394,8 @@ function Sidebar({
     ];
   };
 
-  const handleItemContextMenu = (e: React.MouseEvent, item: Item) => {
-    e.preventDefault();
-    e.stopPropagation(); // the tree behind has its own menu
-    openMenu(e.clientX, e.clientY, itemEntries(item));
-  };
+  const handleItemContextMenu = (e: React.MouseEvent, item: Item) =>
+    open(e, itemEntries(item)); // stops the event: the tree behind has its own menu
 
   const handleItemRenameEnd = (id: string, title: string | null) => {
     setRenamingItemId(null);
@@ -510,11 +501,7 @@ function Sidebar({
         // a tree is a composite widget: the container is the single tab stop and takes the arrow keys
         tabIndex={0}
         onKeyDown={handleTreeKeyDown}
-        onContextMenu={(e) => {
-          if (e.target instanceof HTMLInputElement) return; // keep the input's own copy/paste menu
-          e.preventDefault();
-          openMenu(e.clientX, e.clientY, treeEntries());
-        }}
+        onContextMenu={(e) => open(e, treeEntries())}
         onClick={(e) => {
           // Empty space deselects the folder
           if (e.target === e.currentTarget) onSelectFolder(null);
@@ -610,7 +597,7 @@ function Sidebar({
             onDelete={requestDeleteFolder}
             onNew={onNew}
             onReveal={onRevealFolder}
-            onOpenMenu={openMenu}
+            onOpenMenu={openAt}
             onItemContextMenu={handleItemContextMenu}
             onItemRenameEnd={handleItemRenameEnd}
           />
@@ -642,8 +629,18 @@ function Sidebar({
       <div className="sidebar__footer">
         <button
           type="button"
-          className={`sidebar__nav-item${trashOpen ? " sidebar__nav-item--active" : ""}`}
+          className={`sidebar__nav-item${trashOpen ? " sidebar__nav-item--active" : ""}${dragState && dragOverId === TRASH_DROP_ID ? " sidebar__nav-item--drag-over" : ""}`}
           onClick={onOpenTrash}
+          onContextMenu={(e) =>
+            open(e, [
+              {
+                label: "Open trash",
+                icon: <TrashIcon size={14} />,
+                onSelect: onOpenTrash,
+              },
+            ])
+          }
+          data-folder-drop-id={TRASH_DROP_ID}
           title="Trash"
         >
           <TrashIcon size={16} />
@@ -653,15 +650,6 @@ function Sidebar({
           )}
         </button>
       </div>
-
-      {menu && (
-        <ContextMenu
-          x={menu.x}
-          y={menu.y}
-          entries={menu.entries}
-          onClose={closeMenu}
-        />
-      )}
 
       {/* Drag ghost — follows cursor while dragging */}
       {dragState && (

@@ -2,7 +2,11 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { HexagonIcon } from "./components/Icon";
+import type { MenuEntry } from "./components/ContextMenu";
+import ContextMenuProvider, {
+  useContextMenu,
+} from "./components/ContextMenuProvider";
+import { CodeIcon, HexagonIcon, PlusIcon, SearchIcon } from "./components/Icon";
 import NewItemPanel from "./components/NewItemPanel";
 import NoteDetail from "./components/NoteDetail";
 import SearchPalette from "./components/SearchPalette";
@@ -72,6 +76,7 @@ function VaultPicker({ onVaultSet }: { onVaultSet: (path: string) => void }) {
 }
 
 function MainApp({ vaultPath }: { vaultPath: string }) {
+  const { open } = useContextMenu();
   const {
     items,
     setItems,
@@ -290,6 +295,9 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
   );
 
   const handleDelete = (id: string) => {
+    // The editor goes with the item. Left set, the next new draft's first save would update a
+    // missing item instead of creating one. Edits typed in the last moment go with the note.
+    if (editingIdRef.current === id) editingIdRef.current = null;
     deleteItem(id);
   };
 
@@ -378,8 +386,33 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     );
   };
 
+  // Right-click on any part of the window that has no menu of its own
+  const appEntries: MenuEntry[] = [
+    {
+      label: "New note",
+      icon: <PlusIcon size={14} />,
+      onSelect: () => handleNew("note"),
+    },
+    {
+      label: "New code",
+      icon: <CodeIcon size={14} />,
+      onSelect: () => handleNew("code"),
+    },
+    "separator",
+    {
+      label: "Search",
+      icon: <SearchIcon size={14} />,
+      onSelect: () => setSearchOpen(true),
+    },
+  ];
+
   return (
-    <div className="app" data-tauri-drag-region>
+    // biome-ignore lint/a11y/noStaticElementInteractions: right-click is a mouse shortcut; every entry has a shortcut or button elsewhere
+    <div
+      className="app"
+      data-tauri-drag-region
+      onContextMenu={(e) => open(e, appEntries)}
+    >
       {isDraggingOver && <div className="drop-overlay" aria-hidden="true" />}
       <div className="app__body">
         <div className="app__sidebar">
@@ -470,12 +503,16 @@ function App() {
   // Still loading
   if (vaultPath === undefined) return null;
 
-  // No vault chosen yet — show picker
-  if (vaultPath === null) {
-    return <VaultPicker onVaultSet={handleVaultSet} />;
-  }
-
-  return <MainApp vaultPath={vaultPath} />;
+  return (
+    <ContextMenuProvider>
+      {vaultPath === null ? (
+        // No vault chosen yet — show picker
+        <VaultPicker onVaultSet={handleVaultSet} />
+      ) : (
+        <MainApp vaultPath={vaultPath} />
+      )}
+    </ContextMenuProvider>
+  );
 }
 
 export default App;

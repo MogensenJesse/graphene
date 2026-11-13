@@ -1,6 +1,7 @@
 // src/components/MarkdownToolbar.tsx
 import { Fragment, type ReactNode } from "react";
-import type { FormatType } from "../hooks/useMarkdownFormat";
+import type { FormatType } from "../lib/markdownFormat";
+import type { MenuEntry } from "./ContextMenu";
 
 interface MarkdownToolbarProps {
   onFormat: (type: FormatType) => void;
@@ -34,6 +35,20 @@ const GROUPS: { type: FormatType; label: string; title: string }[][] = [
   ],
 ];
 
+/** The toolbar's formats as one "Format" submenu, for the editor's right-click menu. */
+export const formatMenuEntry = (
+  onFormat: (type: FormatType) => void,
+): MenuEntry => ({
+  label: "Format",
+  submenu: GROUPS.flatMap((group, i) => [
+    ...(i > 0 ? ["separator" as const] : []),
+    ...group.map(({ type, title }) => ({
+      label: title,
+      onSelect: () => onFormat(type),
+    })),
+  ]),
+});
+
 function MarkdownToolbar({ onFormat, children }: MarkdownToolbarProps) {
   return (
     <div className="markdown-toolbar">
@@ -47,6 +62,8 @@ function MarkdownToolbar({ onFormat, children }: MarkdownToolbarProps) {
               key={type}
               type="button"
               className="markdown-toolbar__btn"
+              // Keep focus and the highlighted text in the editor while clicking
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => onFormat(type)}
               aria-label={title}
               title={title}

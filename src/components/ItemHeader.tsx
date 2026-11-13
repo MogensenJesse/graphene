@@ -8,7 +8,10 @@ import {
 } from "react";
 import { formatDate } from "../lib/utils";
 import type { Folder } from "../types";
+import type { MenuEntry } from "./ContextMenu";
+import { useContextMenu } from "./ContextMenuProvider";
 import FolderPicker from "./FolderPicker";
+import { TextCursorInputIcon } from "./Icon";
 
 interface ItemHeaderProps {
   title: string;
@@ -22,6 +25,8 @@ interface ItemHeaderProps {
   updatedAt?: string;
   isDirty?: boolean;
   actions?: ReactNode;
+  // Right-click menu of the bar, below its own "Rename"
+  menuEntries?: MenuEntry[];
 }
 
 function ItemHeader({
@@ -35,7 +40,9 @@ function ItemHeader({
   updatedAt,
   isDirty = false,
   actions,
+  menuEntries = [],
 }: ItemHeaderProps) {
+  const { open } = useContextMenu();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -50,7 +57,10 @@ function ItemHeader({
   }, [title]);
 
   useEffect(() => {
-    if (editing) inputRef.current?.select();
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
   }, [editing]);
 
   // F2 renames from anywhere, as in a file manager
@@ -76,7 +86,21 @@ function ItemHeader({
   };
 
   return (
-    <div className="item-header" data-tauri-drag-region>
+    // biome-ignore lint/a11y/noStaticElementInteractions: right-click is a mouse shortcut; Rename has F2 and the title button
+    <div
+      className="item-header"
+      data-tauri-drag-region
+      onContextMenu={(e) =>
+        open(e, [
+          {
+            label: "Rename",
+            icon: <TextCursorInputIcon size={14} />,
+            onSelect: startEditing,
+          },
+          ...(menuEntries.length ? ["separator" as const, ...menuEntries] : []),
+        ])
+      }
+    >
       <h2
         className={`item-header__heading${editing ? " item-header__heading--editing" : ""}`}
       >

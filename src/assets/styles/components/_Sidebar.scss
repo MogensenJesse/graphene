@@ -164,6 +164,14 @@
       color: var(--color-text-primary);
     }
 
+    // A note is being dragged over the Trash button (after --active so it also wins while the Trash is open)
+    &--drag-over,
+    &--drag-over:hover {
+      background: var(--color-background-danger);
+      color: var(--color-text-danger);
+      box-shadow: inset 0 0 0 1px var(--color-border-danger);
+    }
+
     &:focus-visible {
       outline: 1px solid var(--color-border-primary);
       outline-offset: -1px;

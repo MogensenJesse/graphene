@@ -2,7 +2,9 @@
 import { useEffect, useState } from "react";
 import { formatDate, getFolderPath } from "../lib/utils";
 import type { Folder, Item } from "../types";
-import { TrashIcon } from "./Icon";
+import type { MenuEntry } from "./ContextMenu";
+import { useContextMenu } from "./ContextMenuProvider";
+import { TrashIcon, UndoIcon } from "./Icon";
 
 interface TrashViewProps {
   trashed: Item[];
@@ -13,6 +15,7 @@ interface TrashViewProps {
 
 function TrashView({ trashed, folders, onRestore, onEmpty }: TrashViewProps) {
   const [confirming, setConfirming] = useState(false);
+  const { open } = useContextMenu();
 
   // Nothing left to empty: drop a pending confirmation
   useEffect(() => {
@@ -30,8 +33,24 @@ function TrashView({ trashed, folders, onRestore, onEmpty }: TrashViewProps) {
 
   const count = `${trashed.length} ${trashed.length === 1 ? "item" : "items"}`;
 
+  // Emptying only asks for the confirmation, like the button does
+  const emptyEntries: MenuEntry[] = [
+    {
+      label: "Empty trash…",
+      icon: <TrashIcon size={14} />,
+      danger: true,
+      onSelect: () => setConfirming(true),
+    },
+  ];
+
   return (
-    <div className="trash-view">
+    // biome-ignore lint/a11y/noStaticElementInteractions: right-click is a mouse shortcut; every entry has a button elsewhere
+    <div
+      className="trash-view"
+      onContextMenu={(e) => {
+        if (trashed.length > 0) open(e, emptyEntries);
+      }}
+    >
       <div className="item-header" data-tauri-drag-region>
         <h2 className="trash-view__title">Trash</h2>
         <span className="trash-view__count">{count}</span>
@@ -80,7 +99,21 @@ function TrashView({ trashed, folders, onRestore, onEmpty }: TrashViewProps) {
         ) : (
           <ul className="trash-view__list">
             {trashed.map((item) => (
-              <li key={item.id} className="trash-view__row">
+              <li
+                key={item.id}
+                className="trash-view__row"
+                onContextMenu={(e) =>
+                  open(e, [
+                    {
+                      label: "Restore",
+                      icon: <UndoIcon size={14} />,
+                      onSelect: () => onRestore(item.id),
+                    },
+                    "separator",
+                    ...emptyEntries,
+                  ])
+                }
+              >
                 <div className="trash-view__info">
                   <span className="trash-view__row-title">
                     {item.title || "untitled"}

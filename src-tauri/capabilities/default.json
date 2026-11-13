@@ -43,6 +43,7 @@
     "dialog:allow-open",
     "opener:default",
     "clipboard-manager:allow-write-text",
+    "clipboard-manager:allow-read-text",
     "updater:default"
   ]
 }

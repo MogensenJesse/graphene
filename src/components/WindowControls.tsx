@@ -25,7 +25,11 @@ function WindowControls({ className }: WindowControlsProps) {
   const maximizeLabel = maximized ? "Restore" : "Maximize";
 
   return (
-    <div className={`app__win-controls${className ? ` ${className}` : ""}`}>
+    // biome-ignore lint/a11y/noStaticElementInteractions: swallows the right-click so the app menu does not open over the window buttons
+    <div
+      className={`app__win-controls${className ? ` ${className}` : ""}`}
+      onContextMenu={(e) => e.stopPropagation()}
+    >
       <button
         type="button"
         className="app__win-btn"

@@ -8,8 +8,12 @@ export interface DragState {
   y: number;
 }
 
+// Drop id of the Trash button. Not a folder id (those are generated, never start with a dot), so
+// the drop handler can tell "delete" from "move to folder".
+export const TRASH_DROP_ID = ".trash";
+
 // Scans elements at a point for the nearest one with data-folder-drop-id.
-// Returns: undefined = no target, null = unfiled zone, string = folder id
+// Returns: undefined = no target, null = unfiled zone, TRASH_DROP_ID = trash, other string = folder id
 function getFolderDropTarget(x: number, y: number): string | null | undefined {
   const els = document.elementsFromPoint(x, y) as HTMLElement[];
   for (const el of els) {

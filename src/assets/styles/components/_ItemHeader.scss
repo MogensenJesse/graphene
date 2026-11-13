@@ -172,6 +172,34 @@
       border-color: transparent;
     }
 
+    // Icon only (copy note): a square button
+    &--icon {
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+    }
+
+    &--copied {
+      color: var(--color-text-success);
+      border-color: var(--color-border-success);
+
+      &:hover {
+        color: var(--color-text-success);
+        border-color: var(--color-border-success);
+      }
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: default;
+
+      &:hover {
+        border-color: var(--color-border-secondary);
+        color: var(--color-text-secondary);
+      }
+    }
+
     &--primary {
       background: var(--color-background-primary);
       border-color: var(--color-border-primary);

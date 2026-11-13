@@ -1,12 +1,17 @@
 // src/components/NewItemPanel.tsx
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useClipboard } from "../hooks/useClipboard";
 import type { AddItemFields } from "../hooks/useItems";
-import { useMarkdownFormat } from "../hooks/useMarkdownFormat";
+import { replaceText, useMarkdownFormat } from "../hooks/useMarkdownFormat";
 import { findFenceAt, setFenceLang } from "../lib/codeBlocks";
 import type { Folder, Item } from "../types";
 import CodeLanguagePicker from "./CodeLanguagePicker";
+import type { MenuEntry } from "./ContextMenu";
+import { useContextMenu } from "./ContextMenuProvider";
+import CopyNoteButton from "./CopyNoteButton";
+import { CheckIcon, ClipboardIcon } from "./Icon";
 import ItemHeader from "./ItemHeader";
-import MarkdownToolbar from "./MarkdownToolbar";
+import MarkdownToolbar, { formatMenuEntry } from "./MarkdownToolbar";
 
 const AUTOSAVE_DELAY_MS = 800;
 
@@ -66,7 +71,9 @@ function NewItemPanel({
 
   const panelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const applyFormat = useMarkdownFormat(textareaRef, body, setBody);
+  const applyFormat = useMarkdownFormat(textareaRef);
+  const { open, openText } = useContextMenu();
+  const { copy } = useClipboard();
 
   // The code block the caret is in, if any. A textarea value always uses "\n", so match that.
   const block = useMemo(
@@ -153,7 +160,6 @@ function NewItemPanel({
   const applyLang = (lang: string) => {
     const el = textareaRef.current;
     if (!block || !el) return;
-    const next = setFenceLang(body.replace(/\r\n/g, "\n"), block, lang);
     const delta = lang.length - block.lang.length;
     const nextCaret =
       caret <= block.langStart
@@ -161,15 +167,44 @@ function NewItemPanel({
         : caret >= block.langEnd
           ? caret + delta
           : block.langStart + lang.length;
-    setBody(next);
-    setCaret(nextCaret);
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(nextCaret, nextCaret);
+    replaceText(el, {
+      value: setFenceLang(el.value, block, lang),
+      ss: nextCaret,
+      se: nextCaret,
     });
   };
 
+  // What a right-click offers on the header, toolbar and empty space (the text has its own menu)
+  const panelEntries: MenuEntry[] = [
+    ...(canLeave
+      ? [
+          {
+            label: "Done",
+            icon: <CheckIcon size={14} />,
+            onSelect: onDone,
+          },
+        ]
+      : []),
+    {
+      label: "Copy note",
+      icon: <ClipboardIcon size={14} />,
+      disabled: !body,
+      onSelect: () => copy(body),
+    },
+  ];
+
   const handleBodyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Ctrl+Z and Ctrl+Y are native; spell out Ctrl+Shift+Z in case the webview does not map it
+    if (
+      (e.ctrlKey || e.metaKey) &&
+      e.shiftKey &&
+      !e.altKey &&
+      e.key.toLowerCase() === "z"
+    ) {
+      e.preventDefault();
+      document.execCommand("redo");
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
       if (e.key === "l" && block) {
         e.preventDefault();
@@ -191,8 +226,14 @@ function NewItemPanel({
   };
 
   return (
-    <div className="new-item-panel" ref={panelRef}>
+    // biome-ignore lint/a11y/noStaticElementInteractions: right-click is a mouse shortcut; every entry has a button or shortcut elsewhere
+    <div
+      className="new-item-panel"
+      ref={panelRef}
+      onContextMenu={(e) => open(e, panelEntries)}
+    >
       <ItemHeader
+        menuEntries={panelEntries}
         title={title}
         onTitleChange={setTitle}
         liveTitle
@@ -202,8 +243,9 @@ function NewItemPanel({
         updatedAt={initialItem?.updatedAt}
         isDirty={isDirty}
         actions={
-          canLeave ? (
-            <div className="item-header__actions">
+          <div className="item-header__actions">
+            <CopyNoteButton text={body} />
+            {canLeave && (
               <button
                 type="button"
                 className="item-header__btn item-header__btn--primary"
@@ -212,8 +254,8 @@ function NewItemPanel({
               >
                 done
               </button>
-            </div>
-          ) : undefined
+            )}
+          </div>
         }
       />
 
@@ -240,6 +282,9 @@ function NewItemPanel({
             }}
             onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
             onKeyDown={handleBodyKeyDown}
+            onContextMenu={(e) =>
+              openText(e, ["separator", formatMenuEntry(applyFormat)])
+            }
           />
         </div>
       </div>

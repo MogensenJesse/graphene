@@ -1,9 +1,12 @@
 // src/components/ItemActions.tsx
 import { useDeleteConfirm } from "../hooks/useDeleteConfirm";
+import CopyNoteButton from "./CopyNoteButton";
 import { EditIcon, TrashIcon } from "./Icon";
 
 interface ItemActionsProps {
   itemId: string;
+  // Markdown of the note, for the copy button
+  body: string;
   onEdit: () => void;
   onDelete: (id: string) => void;
   // False while a folder is selected, so the Del key goes to the folder instead
@@ -13,6 +16,7 @@ interface ItemActionsProps {
 // Edit + two-step delete for the read view
 function ItemActions({
   itemId,
+  body,
   onEdit,
   onDelete,
   deleteKeyEnabled,
@@ -25,6 +29,7 @@ function ItemActions({
 
   return (
     <div className="item-header__actions">
+      <CopyNoteButton text={body} />
       <button
         type="button"
         className="item-header__btn"

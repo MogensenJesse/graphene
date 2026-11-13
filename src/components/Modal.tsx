@@ -1,5 +1,6 @@
 // src/components/Modal.tsx
 import { type ReactNode, useEffect } from "react";
+import { isTextField } from "../lib/textMenu";
 
 interface ModalProps {
   /** Accessible name of the dialog */
@@ -15,7 +16,8 @@ function Modal({ label, onClose, className, children }: ModalProps) {
   // handler does not also leave the editor (same trick as FolderPicker)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      // A right-click menu over the dialog takes this Escape; the next one closes the dialog
+      if (e.key === "Escape" && !document.querySelector(".context-menu")) {
         e.stopPropagation();
         onClose();
       }
@@ -38,7 +40,14 @@ function Modal({ label, onClose, className, children }: ModalProps) {
       className="modal"
       role="presentation"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        // Primary button only: a right-click on the backdrop must not close the dialog
+        if (e.target === e.currentTarget && e.button === 0) onClose();
+      }}
+      // The app's right-click menu is for the window behind; only text fields keep theirs
+      onContextMenu={(e) => {
+        if (isTextField(e.target)) return;
+        e.preventDefault();
+        e.stopPropagation();
       }}
     >
       <div

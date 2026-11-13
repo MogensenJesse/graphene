@@ -14,6 +14,13 @@ export const REMARK_PLUGINS = [remarkGfm, remarkBreaks];
 // Colours fenced code by its language tag (```js). Untagged or unknown tags stay plain.
 export const REHYPE_PLUGINS = [rehypeHighlight];
 
+/** Hands a web or mail link to the default app; anything else (file:, javascript:) is ignored. */
+export function openLink(href?: string): void {
+  if (href && /^(https?:|mailto:)/i.test(href)) {
+    openUrl(href).catch(console.error);
+  }
+}
+
 // The <code> inside <pre> carries the fence's language as the class "language-js"
 function languageOf(children: ReactNode): string {
   if (!isValidElement<{ className?: string }>(children)) return "";
@@ -43,9 +50,7 @@ export const MARKDOWN_COMPONENTS: Components = {
       onClick={(e) => {
         // Never let a link navigate the app window; hand it to the default browser
         e.preventDefault();
-        if (href && /^(https?:|mailto:)/i.test(href)) {
-          openUrl(href).catch(console.error);
-        }
+        openLink(href);
       }}
     >
       {children}

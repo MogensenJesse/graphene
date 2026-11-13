@@ -237,6 +237,26 @@ export function CheckIcon(props: IconProps) {
   );
 }
 
+// lucide: undo-2
+export function UndoIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />
+    </Svg>
+  );
+}
+
+// lucide: clipboard
+export function ClipboardIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+    </Svg>
+  );
+}
+
 // lucide: clipboard-copy
 export function ClipboardCopyIcon(props: IconProps) {
   return (

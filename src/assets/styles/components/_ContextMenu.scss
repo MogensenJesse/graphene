@@ -67,6 +67,17 @@
     }
   }
 
+  // A menu that never takes focus (text fields): the pointer, not focus, drives the highlight
+  &--static &__item:hover:not(:disabled) {
+    color: var(--color-text-primary);
+    background: var(--color-background-active);
+  }
+
+  &--static &__item--danger:hover:not(:disabled) {
+    color: var(--color-text-danger);
+    background: var(--color-background-danger);
+  }
+
   &__icon {
     display: inline-flex;
     justify-content: center;

@@ -1,5 +1,6 @@
 // src/components/CodeBlock.tsx
 import { type ReactNode, useRef } from "react";
+import { CheckIcon, CopyIcon } from "./Icon";
 
 interface CodeBlockProps {
   children: ReactNode;
@@ -23,8 +24,9 @@ function CodeBlock({ children, lang, copied, onCopy }: CodeBlockProps) {
           className={`code-block__copy${copied ? " code-block__copy--copied" : ""}`}
           onClick={() => onCopy(preRef.current?.textContent ?? "")}
           aria-label="Copy code"
+          title={copied ? "Copied" : "Copy code"}
         >
-          {copied ? "copied" : "copy"}
+          {copied ? <CheckIcon /> : <CopyIcon />}
         </button>
       </div>
     </div>

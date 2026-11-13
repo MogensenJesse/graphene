@@ -8,21 +8,24 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 
 ### Notes
 - One kind of item: a markdown note. Write in plain text; **Ctrl+E** flips between editing and the rendered view
-- Markdown formatting toolbar (bold, italic, inline code, links, etc.) with tooltips, plus **Ctrl+B** / **Ctrl+I** and Tab to indent
+- Markdown formatting toolbar (bold, italic, inline code, links, etc.) with tooltips, plus **Ctrl+B** / **Ctrl+I** and Tab to indent. It works on highlighted text: code block wraps the selection, lists prefix every line, and pressing a format again takes it off
+- **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or **Ctrl+Y**) redoes, formatting included
+- Copy a whole note with the copy icon in the item header (the markdown, without the title)
 - Organize notes in nested folders
 
 ### Code
 - **+ code** (or **Ctrl+Shift+N**) starts a note with an empty fenced block and the cursor inside it; the word after the opening fence is the language
 - While the cursor is inside a code block, a language chip appears at the right of the editor toolbar (or press **Ctrl+L**): pick a language, or type any name and press Enter. It rewrites the block's opening fence for you
-- Fenced code is syntax highlighted (JS, TS, CSS, SCSS, HTML, shell, JSON, Python, SQL and more) and has a copy button
+- Fenced code is syntax highlighted (JS, TS, CSS, SCSS, HTML, shell, JSON, Python, SQL and more) and has a copy icon
 - **Ctrl+C** with nothing selected copies the code when the open note has exactly one code block
 - A note that starts with a code block counts as code in the sidebar (icon and filter)
 
 ### Organization
 - Hierarchical folders — nest as deep as needed
-- Drag-and-drop items between folders
+- Drag-and-drop items between folders, or onto Trash to delete them
 - Search palette (**Ctrl+K**): your recent items while the box is empty, live matches while you type, **Enter** opens the highlighted one
-- Right-click in the sidebar. Items: open, edit, rename, duplicate, copy code, move to a folder, reveal in Explorer, move to trash. Folders: new note or code here, new subfolder, rename, reveal, delete. Empty space: new note, code or folder. **Shift+F10** (or the menu key) opens the menu of the selected item
+- Right-click works everywhere in the app. In the sidebar, items: open, edit, rename, duplicate, copy note or code, move to a folder, reveal in Explorer, move to trash; folders: new note or code here, new subfolder, rename, reveal, delete; empty space: new note, code or folder. **Shift+F10** (or the menu key) opens the menu of the selected item
+- Text fields (the editor, titles, search) get undo, redo, cut, copy, paste and select all, and the editor adds a Format submenu. The read view offers copy, links and code blocks, and the header, trash and empty space have menus too
 - Filter by type (all / notes / code)
 - Sort by name or recent; sort order and collapsed folders are remembered
 - Rename (click the title or **F2**) and move (folder chip) straight from the item header
@@ -52,6 +55,8 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 | Up / Down | Move through the sidebar list; in the search palette, through the results |
 | Enter | In the search palette: open the highlighted result |
 | Shift+F10 | Open the context menu of the selected item |
+| Ctrl+Z | Undo in the editor |
+| Ctrl+Shift+Z / Ctrl+Y | Redo in the editor |
 | Ctrl+E | Edit selected item / go back to reading |
 | Ctrl+L | In the editor, inside a code block: set the block's language |
 | F2 | Rename the open item (in the sidebar, the selected one) |

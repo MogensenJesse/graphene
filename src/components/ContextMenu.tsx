@@ -39,6 +39,8 @@ interface MenuListProps {
   origin?: { x: number; y: number };
   /** Focus the first row on mount (a submenu opened from the keyboard) */
   focusFirst?: boolean;
+  /** Never take focus from the page (the menu of a text field). The pointer drives it. */
+  keepFocus?: boolean;
   onDone: () => void;
   /** Close this submenu and hand focus back to its parent row */
   onBack?: () => void;
@@ -48,6 +50,7 @@ function MenuList({
   entries,
   origin,
   focusFirst,
+  keepFocus,
   onDone,
   onBack,
 }: MenuListProps) {
@@ -79,11 +82,11 @@ function MenuList({
 
   // The top-level menu takes focus itself so the arrow keys work without highlighting a row
   useEffect(() => {
-    if (!origin && !focusFirst) return;
+    if (keepFocus || (!origin && !focusFirst)) return;
     const el = ref.current;
     const target = focusFirst ? el?.querySelector<HTMLElement>(ROWS) : el;
     target?.focus({ preventScroll: true });
-  }, [origin, focusFirst]);
+  }, [origin, focusFirst, keepFocus]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const rows = Array.from(
@@ -117,11 +120,13 @@ function MenuList({
   return (
     <div
       ref={ref}
-      className={`context-menu${origin ? "" : " context-menu--sub"}`}
+      className={`context-menu${origin ? "" : " context-menu--sub"}${keepFocus && origin ? " context-menu--static" : ""}`}
       role="menu"
       tabIndex={-1}
       style={origin && { left: origin.x, top: origin.y }}
       onKeyDown={handleKeyDown}
+      // A click on the menu must not blur the text field it belongs to (a blur can commit a rename)
+      onMouseDown={keepFocus ? (e) => e.preventDefault() : undefined}
     >
       {entries.map((entry, i) => {
         if (entry === "separator")
@@ -149,7 +154,7 @@ function MenuList({
               onMouseEnter={(e) => {
                 setOpenSub(sub ? { index: i, focus: false } : null);
                 // One highlight: hovering moves focus, so the focus style is the hover style
-                e.currentTarget.focus({ preventScroll: true });
+                if (!keepFocus) e.currentTarget.focus({ preventScroll: true });
               }}
               className={`context-menu__item${action?.danger ? " context-menu__item--danger" : ""}`}
               style={
@@ -165,7 +170,7 @@ function MenuList({
                   action.onSelect();
                   onDone();
                 } else {
-                  setOpenSub({ index: i, focus: true });
+                  setOpenSub({ index: i, focus: !keepFocus });
                 }
               }}
             >
@@ -183,6 +188,7 @@ function MenuList({
               <MenuList
                 entries={entry.submenu}
                 focusFirst={openSub?.focus}
+                keepFocus={keepFocus}
                 onDone={onDone}
                 onBack={() => {
                   setOpenSub(null);
@@ -203,14 +209,18 @@ interface ContextMenuProps {
   x: number;
   y: number;
   entries: MenuEntry[];
+  /** The menu of a text field: focus stays in the field, and typing closes the menu */
+  keepFocus?: boolean;
   onClose: () => void;
 }
 
 const insideMenu = (target: EventTarget | null) =>
   target instanceof Element && target.closest(".context-menu") !== null;
 
+const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta"]);
+
 // Cursor-positioned menu: closes on a click outside, Escape, losing the window, resize or scroll
-function ContextMenu({ x, y, entries, onClose }: ContextMenuProps) {
+function ContextMenu({ x, y, entries, keepFocus, onClose }: ContextMenuProps) {
   // Read during the first render, before the menu takes focus, so closing can hand it back
   const previous = useRef(document.activeElement);
 
@@ -226,6 +236,9 @@ function ContextMenu({ x, y, entries, onClose }: ContextMenuProps) {
         // Capture phase + stop: an open editor's own Escape must not also fire
         e.stopPropagation();
         onClose();
+      } else if (keepFocus && !MODIFIER_KEYS.has(e.key)) {
+        // The key goes on to the field; the menu's Cut/Copy state would be stale after it
+        onClose();
       }
     };
     document.addEventListener("pointerdown", onPointerDown, true);
@@ -240,7 +253,7 @@ function ContextMenu({ x, y, entries, onClose }: ContextMenuProps) {
       window.removeEventListener("blur", onClose);
       window.removeEventListener("resize", onClose);
     };
-  }, [onClose]);
+  }, [onClose, keepFocus]);
 
   // Hand focus back to the tree (or whatever had it) once the menu is gone
   useEffect(() => {
@@ -253,7 +266,14 @@ function ContextMenu({ x, y, entries, onClose }: ContextMenuProps) {
   // Stable, so MenuList does not re-clamp or re-take focus when the sidebar re-renders
   const origin = useMemo(() => ({ x, y }), [x, y]);
 
-  return <MenuList entries={entries} origin={origin} onDone={onClose} />;
+  return (
+    <MenuList
+      entries={entries}
+      origin={origin}
+      keepFocus={keepFocus}
+      onDone={onClose}
+    />
+  );
 }
 
 export default ContextMenu;
