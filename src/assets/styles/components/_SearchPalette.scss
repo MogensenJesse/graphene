@@ -1,0 +1,124 @@
+// src/assets/styles/components/_SearchPalette.scss
+@use '../base/mixins' as mixins;
+
+.search-palette {
+  display: flex;
+  flex-direction: column;
+  width: min(620px, calc(100vw - 40px));
+  max-height: min(520px, 72vh);
+
+  &__input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    height: 52px;
+    padding: 0 12px 0 16px;
+    border-bottom: 0.5px solid var(--color-border-secondary);
+    color: var(--color-text-tertiary);
+  }
+
+  &__input {
+    flex: 1;
+    min-width: 0;
+    background: none;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--color-text-primary);
+
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  &__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: var(--border-radius-md);
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-background-hover);
+      color: var(--color-text-primary);
+    }
+
+    &:focus-visible {
+      outline: 1px solid var(--color-border-primary);
+    }
+  }
+
+  &__list {
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    overflow-y: auto;
+
+    @include mixins.custom-scrollbar;
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 38px;
+    padding: 0 12px;
+    border-radius: var(--border-radius-row);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    outline: none;
+
+    &--active {
+      background: var(--color-background-active);
+      color: var(--color-text-primary);
+    }
+  }
+
+  &__icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+  }
+
+  &__title {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // The folder path takes the slack and truncates first
+  &__path {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__date {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+  }
+
+  &__empty {
+    margin: 0;
+    padding: 28px 16px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+  }
+}

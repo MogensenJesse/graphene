@@ -9,58 +9,110 @@
   overflow: hidden;
 
   &__header {
-    padding: 12px 14px;
-    border-bottom: 0.5px solid var(--color-border-tertiary);
+    padding: 12px 18px 10px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
     flex-shrink: 0;
     -webkit-app-region: drag;
     user-select: none;
     cursor: default;
   }
 
+  // Right end of the header: update pill + version, both clickable inside the drag region
+  &__version-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    -webkit-app-region: no-drag;
+  }
+
+  &__version,
+  &__update-pill {
+    font-family: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  &__version {
+    padding: 2px 4px;
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+    border-radius: var(--border-radius-sm);
+    transition: color var(--transition-fast);
+
+    &:hover:not(:disabled) {
+      color: var(--color-text-secondary);
+    }
+
+    &:disabled {
+      cursor: default;
+    }
+  }
+
+  &__update-pill {
+    padding: 1px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgb(var(--rgb-blue));
+    background: rgba(var(--rgb-blue), 0.14);
+    border-radius: 999px;
+    transition: background var(--transition-fast);
+
+    &:hover {
+      background: rgba(var(--rgb-blue), 0.24);
+    }
+  }
+
   &__brand {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--color-text-primary);
     letter-spacing: -0.01em;
     pointer-events: none;
+
+    svg {
+      color: var(--color-text-secondary);
+    }
   }
 
-  // ── New item footer button ───────────────────────────────────────────────
+  // ── Type filter: segmented control ──────────────────────────────────────
 
-  &__new-footer {
-    padding: 10px 12px;
-    flex-shrink: 0;
-    border-top: 0.5px solid var(--color-border-tertiary);
-  }
-
-  &__new-footer-btn {
+  &__segments {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    width: 100%;
-    padding: 8px 0;
+    gap: 2px;
+    margin: 0 8px 8px;
+    padding: 2px;
+    border-radius: calc(var(--border-radius-row) + 3px);
+    background: var(--color-background-hover);
+    flex-shrink: 0;
+  }
+
+  &__segment {
+    flex: 1;
+    padding: 5px 0;
     font-size: 12px;
     font-family: inherit;
-    font-weight: 500;
-    border: 0.5px solid var(--color-border-secondary);
-    border-radius: var(--border-radius-md);
+    border: none;
+    border-radius: var(--border-radius-row);
     background: none;
     color: var(--color-text-tertiary);
     cursor: pointer;
-    transition: background var(--transition-fast), color var(--transition-fast),
-      border-color var(--transition-fast);
+    transition: background var(--transition-fast), color var(--transition-fast);
 
     &:hover {
-      background: color-mix(in srgb, var(--color-background-secondary) 30%, transparent);
-      border-color: var(--color-border-primary);
+      color: var(--color-text-secondary);
+    }
+
+    &--active,
+    &--active:hover {
+      background: var(--color-background-active);
       color: var(--color-text-primary);
+      font-weight: 500;
     }
 
     &:focus-visible {
@@ -69,77 +121,66 @@
     }
   }
 
-  // ── Search ──────────────────────────────────────────────────────────────
+  // ── Nav rows: new note, new code, search, trash ─────────────────────────
 
-  &__search {
-    padding: 10px 12px;
-    border-bottom: 0.5px solid var(--color-border-tertiary);
+  &__nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 8px;
     flex-shrink: 0;
+  }
 
-    &-box {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--color-background-primary);
-      border: 0.5px solid var(--color-border-tertiary);
-      border-radius: var(--border-radius-md);
-      padding: 6px 10px;
-    }
+  &__nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 32px;
+    padding: 0 10px;
+    box-sizing: border-box;
+    font-size: 13px;
+    font-family: inherit;
+    text-align: left;
+    color: var(--color-text-secondary);
+    background: none;
+    border: none;
+    border-radius: var(--border-radius-row);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
 
-    &-icon {
-      font-size: 12px;
-      color: var(--color-text-tertiary);
+    svg {
       flex-shrink: 0;
     }
 
-    &-input {
-      border: none;
-      background: none;
-      font-size: 12px;
-      width: 100%;
-      color: var(--color-text-primary);
-      outline: none;
-      font-family: inherit;
-
-      &::placeholder {
-        color: var(--color-text-tertiary);
-      }
-    }
-  }
-
-  // ── Type filter pills ───────────────────────────────────────────────────
-
-  &__filters {
-    padding: 8px 12px;
-    display: flex;
-    gap: 5px;
-    border-bottom: 0.5px solid var(--color-border-tertiary);
-    flex-shrink: 0;
-  }
-
-  &__filter-pill {
-    cursor: pointer;
-    font-size: 11px;
-    padding: 3px 8px;
-    border-radius: 99px;
-    border: 0.5px solid var(--color-border-tertiary);
-    background: none;
-    color: var(--color-text-tertiary);
-    font-family: inherit;
-    transition: background var(--transition-fast), color var(--transition-fast),
-      border-color var(--transition-fast);
-
     &:hover {
-      color: var(--color-text-secondary);
-      border-color: var(--color-border-secondary);
+      background: var(--color-background-hover);
+      color: var(--color-text-primary);
     }
 
-    &--active {
-      border-color: var(--color-border-primary);
-      background: var(--color-background-primary);
+    &--active,
+    &--active:hover {
+      background: var(--color-background-active);
       color: var(--color-text-primary);
-      font-weight: 500;
     }
+
+    &:focus-visible {
+      outline: 1px solid var(--color-border-primary);
+      outline-offset: -1px;
+    }
+
+  }
+
+  &__nav-count {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+  }
+
+
+  &__footer {
+    padding: 4px 8px 8px;
+    flex-shrink: 0;
   }
 
   // ── Folder section ──────────────────────────────────────────────────────
@@ -147,42 +188,82 @@
   &__folders {
     flex: 1;
     overflow-y: auto;
-    padding: 6px 0 4px;
+    margin-top: 8px;
+    padding: 8px 8px 4px;
+    outline: none;
 
     @include mixins.custom-scrollbar;
+
+    // Keyboard focus only; clicking an item parks focus here without a ring
+    &:focus-visible {
+      box-shadow: inset 0 0 0 1px var(--color-border-secondary);
+    }
+
+    // Dropping on empty space (or a root item) unfiles the dragged item
+    &--drag-over {
+      background: rgba(var(--rgb-blue), 0.06);
+      box-shadow: inset 0 0 0 1px rgba(var(--rgb-blue), 0.3);
+    }
   }
 
   &__folders-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 14px 4px;
+    padding: 0 4px 4px 10px;
   }
 
   &__folders-label {
-    font-size: 10px;
-    font-weight: 500;
-    color: var(--color-text-tertiary);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
   }
 
-  &__folders-add-btn {
-    width: 16px;
-    height: 16px;
+  &__folders-tools {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  &__sort-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-family: inherit;
+    padding: 2px 6px;
+    background: none;
+    border: none;
+    border-radius: var(--border-radius-md);
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-background-hover);
+      color: var(--color-text-secondary);
+    }
+
+    &:focus-visible {
+      outline: 1px solid var(--color-border-primary);
+      outline-offset: 1px;
+    }
+  }
+
+  &__icon-btn {
+    width: 22px;
+    height: 22px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 14px;
     color: var(--color-text-tertiary);
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--border-radius-md);
     padding: 0;
 
     &:hover {
-      background: var(--color-border-secondary);
+      background: var(--color-background-hover);
       color: var(--color-text-secondary);
     }
 
@@ -193,7 +274,7 @@
   }
 
   &__folder-add-row {
-    padding: 3px 10px 3px 14px;
+    padding: 3px 4px 3px 10px;
   }
 
   &__folder-add-input {
@@ -202,51 +283,13 @@
     font-family: inherit;
     background: var(--color-background-primary);
     border: 0.5px solid var(--color-border-primary);
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--border-radius-md);
     color: var(--color-text-primary);
-    padding: 3px 7px;
+    padding: 4px 8px;
     outline: none;
     box-sizing: border-box;
 
     &::placeholder {
-      color: var(--color-text-tertiary);
-    }
-  }
-
-  &__all-items {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-    padding: 4px 14px;
-    font-size: 12px;
-    font-family: inherit;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--color-text-secondary);
-    text-align: left;
-    border-radius: var(--border-radius-sm);
-    transition: background var(--transition-fast), color var(--transition-fast);
-
-    &:hover {
-      background: color-mix(in srgb, var(--color-background-secondary) 25%, transparent);
-      color: var(--color-text-primary);
-    }
-
-    &--active {
-      color: var(--color-text-primary);
-      font-weight: 500;
-    }
-
-    &--drag-over {
-      background: rgba(var(--rgb-blue), 0.12);
-      outline: 1px solid rgba(var(--rgb-blue), 0.3);
-      outline-offset: -1px;
-    }
-
-    &-icon {
-      font-size: 11px;
       color: var(--color-text-tertiary);
     }
   }
@@ -262,7 +305,7 @@
 // ── Folder delete confirmation ─────────────────────────────────────────────────
 
 .sidebar__folder-confirm-delete {
-  margin: 4px 8px;
+  margin: 4px 0;
   padding: 8px 10px;
   border-radius: v.$radius-sm;
   background: color-mix(in srgb, #{v.$red} 12%, transparent);
@@ -308,35 +351,31 @@
 // ── Item row ──────────────────────────────────────────────────────────────────
 
 .item-row {
-  padding: 8px 8px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  margin-top: 2px; // space between rows
+  padding: 0 8px 0 10px;
   cursor: pointer;
-  border-radius: var(--border-radius-sm);
+  border-radius: var(--border-radius-row);
   transition: background var(--transition-fast);
   list-style: none;
 
   &:hover {
-    background: color-mix(in srgb, var(--color-background-secondary) 25%, transparent);
+    background: var(--color-background-hover);
   }
 
-  &--selected {
-    background: color-mix(in srgb, var(--color-background-primary) 40%, transparent);
-  }
-
-  &__top {
-    display: flex;
-    align-items: center;
-    gap: 5px;
+  &--selected,
+  &--selected:hover {
+    background: var(--color-background-active);
   }
 
   &__type-icon {
-    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
     flex-shrink: 0;
     color: var(--color-text-tertiary);
-
-    &--snippet {
-      font-size: 9px;
-      font-family: var(--font-mono);
-    }
   }
 
   &__title {
@@ -354,10 +393,22 @@
     font-weight: 500;
   }
 
-  &__date {
-    font-size: 10px;
-    color: var(--color-text-tertiary);
-    flex-shrink: 0;
+  &--selected &__type-icon {
+    color: var(--color-text-secondary);
+  }
+
+  // Inline rename, same look as the folder rename input
+  &__rename-input {
+    flex: 1;
+    min-width: 0;
+    padding: 2px 6px;
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--color-text-primary);
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-primary);
+    border-radius: var(--border-radius-sm);
+    outline: none;
   }
 
   &__unsaved-dot {

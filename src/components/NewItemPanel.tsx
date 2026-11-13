@@ -1,317 +1,247 @@
 // src/components/NewItemPanel.tsx
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkBreaks from "remark-breaks";
-import remarkGfm from "remark-gfm";
-import type { AddNoteFields, AddSnippetFields } from "../hooks/useItems";
+import type { AddItemFields } from "../hooks/useItems";
 import { useMarkdownFormat } from "../hooks/useMarkdownFormat";
-import type { Folder, NoteItem, SnippetItem } from "../types";
-import { LANGUAGES } from "../types";
-import FolderPicker from "./FolderPicker";
+import { findFenceAt, setFenceLang } from "../lib/codeBlocks";
+import type { Folder, Item } from "../types";
+import CodeLanguagePicker from "./CodeLanguagePicker";
+import ItemHeader from "./ItemHeader";
 import MarkdownToolbar from "./MarkdownToolbar";
 
-type Lang = (typeof LANGUAGES)[number];
+const AUTOSAVE_DELAY_MS = 800;
 
-const REMARK_PLUGINS = [remarkGfm, remarkBreaks];
+// A new code draft starts as an empty fenced block (the same text the toolbar's code-block button
+// inserts) with the caret inside it. The word after the opening fence is the language.
+const CODE_SEED = "```\n\n```";
+const CODE_SEED_CARET = 4;
+
+// Tab inserts spaces instead of leaving the field. execCommand is deprecated but is the only way
+// to insert text without wiping the textarea's undo history.
+function insertTabOnTab(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
+  if (e.key !== "Tab" || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) {
+    return;
+  }
+  e.preventDefault();
+  document.execCommand("insertText", false, "  ");
+}
 
 interface NewItemPanelProps {
   folders: Folder[];
-  initialNote?: NoteItem;
-  initialSnippet?: SnippetItem;
-  defaultType?: "note" | "snippet";
-  onSaveNote: (fields: AddNoteFields) => void;
-  onSaveSnippet: (fields: AddSnippetFields) => void;
-  onAutoSaveNote?: (fields: AddNoteFields) => void;
-  onAutoSaveSnippet?: (fields: AddSnippetFields) => void;
+  initialItem?: Item;
+  // Only used for a brand-new draft
+  newKind?: "note" | "code";
+  // Only used for a brand-new draft; existing items always keep their own folder
+  defaultFolderId?: string | null;
+  // Create-or-update and keep the editor open (the parent decides which)
+  onSave: (fields: AddItemFields) => void;
   onDirtyChange?: (isDirty: boolean) => void;
-  onCancel: () => void;
+  onDone: () => void;
+  canLeave: boolean;
+  // Parent calls flushRef.current() before navigating away so pending edits are saved
+  flushRef: React.RefObject<(() => void) | null>;
 }
 
 function NewItemPanel({
   folders,
-  initialNote,
-  initialSnippet,
-  defaultType = "note",
-  onSaveNote,
-  onSaveSnippet,
-  onAutoSaveNote,
-  onAutoSaveSnippet,
+  initialItem,
+  newKind = "note",
+  defaultFolderId,
+  onSave,
   onDirtyChange,
-  onCancel,
+  onDone,
+  canLeave,
+  flushRef,
 }: NewItemPanelProps) {
-  const isEditing = !!(initialNote || initialSnippet);
-  const [itemType, setItemType] = useState<"note" | "snippet">(
-    initialSnippet ? "snippet" : isEditing ? "note" : defaultType,
-  );
-  const [title, setTitle] = useState(
-    initialNote?.title ?? initialSnippet?.title ?? "",
-  );
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [body, setBody] = useState(initialNote?.body ?? "");
-  const [mdMode, setMdMode] = useState(false);
-  const [lang, setLang] = useState<Lang>(initialSnippet?.lang ?? "JS");
-  const [code, setCode] = useState(initialSnippet?.code ?? "");
-  const [snippetNote, setSnippetNote] = useState(initialSnippet?.note ?? "");
-  const [folderId, setFolderId] = useState<string | null>(
-    initialNote?.folderId ?? initialSnippet?.folderId ?? null,
-  );
+  const seedBody = newKind === "code" ? CODE_SEED : "";
+  const [title, setTitle] = useState(initialItem?.title ?? "");
+  const [body, setBody] = useState(initialItem?.body ?? seedBody);
+  // An existing root-level item has folderId null, so `??` chaining would wrongly pick the default
+  const [folderId, setFolderId] = useState<string | null>(() => {
+    if (initialItem) return initialItem.folderId;
+    return defaultFolderId ?? null;
+  });
 
-  const titleInputRef = useRef<HTMLInputElement>(null);
+  const [caret, setCaret] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const panelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const applyFormat = useMarkdownFormat(textareaRef, body, setBody);
 
+  // The code block the caret is in, if any. A textarea value always uses "\n", so match that.
+  const block = useMemo(
+    () => findFenceAt(body.replace(/\r\n/g, "\n"), caret),
+    [body, caret],
+  );
+
+  // Start typing straight away: focus the body on mount
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount only; a new draft remounts the panel through its key
   useEffect(() => {
-    if (editingTitle) titleInputRef.current?.select();
-  }, [editingTitle]);
+    const el = textareaRef.current;
+    if (!el) return;
+    const start =
+      !initialItem && newKind === "code" ? CODE_SEED_CARET : el.value.length;
+    el.focus();
+    el.setSelectionRange(start, start);
+    setCaret(start);
+  }, []);
+
+  // Empty title saves as "untitled", so compare the resolved value or an untitled item is dirty forever
+  const resolvedTitle = title.trim() || "untitled";
 
   const isDirty = useMemo(() => {
-    if (initialNote) {
+    if (initialItem) {
       return (
-        title !== initialNote.title ||
-        body !== initialNote.body ||
-        folderId !== initialNote.folderId
+        resolvedTitle !== initialItem.title ||
+        body !== initialItem.body ||
+        folderId !== initialItem.folderId
       );
     }
-    if (initialSnippet) {
-      return (
-        title !== initialSnippet.title ||
-        code !== initialSnippet.code ||
-        lang !== initialSnippet.lang ||
-        snippetNote !== initialSnippet.note ||
-        folderId !== initialSnippet.folderId
-      );
-    }
-    return title.length > 0 || body.length > 0 || code.length > 0;
-  }, [
-    title,
-    body,
-    code,
-    lang,
-    snippetNote,
-    folderId,
-    initialNote,
-    initialSnippet,
-  ]);
+    // A new draft only counts once there is content beyond the seed, so an untouched draft never creates an item
+    return title.length > 0 || body !== seedBody;
+  }, [title, resolvedTitle, body, seedBody, folderId, initialItem]);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
-  const handleSave = useCallback(() => {
-    const resolvedTitle = title.trim() || "untitled";
-    if (itemType === "note") {
-      onSaveNote({ title: resolvedTitle, body, folderId });
-    } else {
-      onSaveSnippet({
-        title: resolvedTitle,
-        lang,
-        code,
-        note: snippetNote,
-        folderId,
-      });
-    }
-  }, [
-    itemType,
-    title,
-    body,
-    lang,
-    code,
-    snippetNote,
-    folderId,
-    onSaveNote,
-    onSaveSnippet,
-  ]);
+  const save = useCallback(() => {
+    onSave({ title: resolvedTitle, body, folderId });
+  }, [resolvedTitle, body, folderId, onSave]);
 
-  const handleAutoSave = useCallback(() => {
-    const resolvedTitle = title.trim() || "untitled";
-    if (itemType === "note" && onAutoSaveNote) {
-      onAutoSaveNote({ title: resolvedTitle, body, folderId });
-    } else if (itemType === "snippet" && onAutoSaveSnippet) {
-      onAutoSaveSnippet({
-        title: resolvedTitle,
-        lang,
-        code,
-        note: snippetNote,
-        folderId,
-      });
-    } else {
-      handleSave();
-    }
-  }, [
-    itemType,
-    title,
-    body,
-    lang,
-    code,
-    snippetNote,
-    folderId,
-    onAutoSaveNote,
-    onAutoSaveSnippet,
-    handleSave,
-  ]);
+  // Autosave: `save` changes identity on every edit, which restarts the timer (debounce)
+  useEffect(() => {
+    if (!isDirty) return;
+    const t = setTimeout(save, AUTOSAVE_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [isDirty, save]);
+
+  // The parent calls this before it navigates away so pending edits are never dropped
+  useEffect(() => {
+    flushRef.current = () => {
+      if (isDirty) save();
+    };
+    return () => {
+      flushRef.current = null;
+    };
+  }, [flushRef, isDirty, save]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        handleAutoSave();
+        if (isDirty) save();
       }
-      if (
-        e.key === "Escape" &&
-        document.activeElement !== titleInputRef.current
-      ) {
-        onCancel();
+      if (e.key === "Escape") {
+        // Only when focus is in the editor or nowhere; sidebar inputs handle their own Escape
+        const target = e.target as Node;
+        if (target === document.body || panelRef.current?.contains(target)) {
+          onDone();
+        }
       }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [handleAutoSave, onCancel]);
+  }, [isDirty, save, onDone]);
+
+  const changePickerOpen = (open: boolean) => {
+    setPickerOpen(open);
+    if (!open) textareaRef.current?.focus({ preventScroll: true });
+  };
+
+  // Rewrite the opening fence of the block the caret is in; keep the caret where it was in the text
+  const applyLang = (lang: string) => {
+    const el = textareaRef.current;
+    if (!block || !el) return;
+    const next = setFenceLang(body.replace(/\r\n/g, "\n"), block, lang);
+    const delta = lang.length - block.lang.length;
+    const nextCaret =
+      caret <= block.langStart
+        ? caret
+        : caret >= block.langEnd
+          ? caret + delta
+          : block.langStart + lang.length;
+    setBody(next);
+    setCaret(nextCaret);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(nextCaret, nextCaret);
+    });
+  };
+
+  const handleBodyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+      if (e.key === "l" && block) {
+        e.preventDefault();
+        setPickerOpen(true);
+        return;
+      }
+      if (e.key === "b") {
+        e.preventDefault();
+        applyFormat("bold");
+        return;
+      }
+      if (e.key === "i") {
+        e.preventDefault();
+        applyFormat("italic");
+        return;
+      }
+    }
+    insertTabOnTab(e);
+  };
 
   return (
-    <div className="new-item-panel">
-      <div className="new-item-panel__header">
-        {editingTitle ? (
-          <input
-            ref={titleInputRef}
-            className="new-item-panel__title-input"
-            type="text"
-            placeholder="untitled"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => setEditingTitle(false)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === "Escape") {
-                setEditingTitle(false);
-              }
-            }}
-          />
-        ) : (
-          <div className="new-item-panel__title-row">
-            <button
-              type="button"
-              className={`new-item-panel__title-display${!title ? " new-item-panel__title-display--placeholder" : ""}`}
-              onClick={() => setEditingTitle(true)}
-            >
-              {title || "untitled"}
-            </button>
-            {isDirty && (
-              <span
-                className="new-item-panel__dirty-dot"
-                aria-label="unsaved changes"
-                title="unsaved changes"
-              />
-            )}
-          </div>
-        )}
-
-        {!isEditing && (
-          <div className="new-item-panel__type-row">
-            <div className="new-item-panel__type-pills">
+    <div className="new-item-panel" ref={panelRef}>
+      <ItemHeader
+        title={title}
+        onTitleChange={setTitle}
+        liveTitle
+        folders={folders}
+        folderId={folderId}
+        onFolderChange={setFolderId}
+        updatedAt={initialItem?.updatedAt}
+        isDirty={isDirty}
+        actions={
+          canLeave ? (
+            <div className="item-header__actions">
               <button
                 type="button"
-                className={`new-item-panel__type-pill${itemType === "note" ? " new-item-panel__type-pill--active" : ""}`}
-                onClick={() => setItemType("note")}
+                className="item-header__btn item-header__btn--primary"
+                onClick={onDone}
+                title="Done (Esc)"
               >
-                📝 note
-              </button>
-              <button
-                type="button"
-                className={`new-item-panel__type-pill${itemType === "snippet" ? " new-item-panel__type-pill--active" : ""}`}
-                onClick={() => setItemType("snippet")}
-              >
-                {"</>"} snippet
+                done
               </button>
             </div>
-          </div>
-        )}
-      </div>
+          ) : undefined
+        }
+      />
 
       <div className="new-item-panel__body">
-        {itemType === "note" ? (
-          <div className="new-item-panel__editor-wrap">
-            <div className="new-item-panel__md-toggle-wrap">
-              <button
-                type="button"
-                className={`new-item-panel__md-toggle${mdMode ? " new-item-panel__md-toggle--active" : ""}`}
-                onClick={() => setMdMode((v) => !v)}
-                aria-label={
-                  mdMode ? "Switch to plain text" : "Switch to markdown preview"
-                }
-              >
-                {mdMode ? "edit" : "preview"}
-              </button>
-            </div>
-            {mdMode ? (
-              <div className="new-item-panel__preview">
-                <ReactMarkdown remarkPlugins={REMARK_PLUGINS}>
-                  {body}
-                </ReactMarkdown>
-              </div>
-            ) : (
-              <>
-                <MarkdownToolbar onFormat={applyFormat} />
-                <textarea
-                  ref={textareaRef}
-                  className="new-item-panel__textarea"
-                  placeholder="start writing…"
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                />
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="new-item-panel__snippet-wrap">
-            <div className="new-item-panel__lang-row">
-              {LANGUAGES.map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  className={`new-item-panel__lang-pill${lang === l ? " new-item-panel__lang-pill--active" : ""}`}
-                  onClick={() => setLang(l)}
-                >
-                  {l}
-                </button>
-              ))}
-            </div>
-            <textarea
-              className="new-item-panel__textarea new-item-panel__textarea--code"
-              placeholder="paste your snippet here…"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-            />
-            {isEditing && (
-              <textarea
-                className="new-item-panel__textarea new-item-panel__textarea--snippet-note"
-                placeholder="notes (caveats, usage context…)"
-                value={snippetNote}
-                onChange={(e) => setSnippetNote(e.target.value)}
+        <div className="new-item-panel__editor-wrap">
+          <MarkdownToolbar onFormat={applyFormat}>
+            {block && (
+              <CodeLanguagePicker
+                lang={block.lang}
+                open={pickerOpen}
+                onOpenChange={changePickerOpen}
+                onPick={applyLang}
               />
             )}
-          </div>
-        )}
-      </div>
-
-      <div className="new-item-panel__footer">
-        <FolderPicker
-          folders={folders}
-          value={folderId}
-          onChange={setFolderId}
-        />
-        <button
-          type="button"
-          className="new-item-panel__btn new-item-panel__btn--cancel"
-          onClick={onCancel}
-        >
-          cancel
-        </button>
-        <button
-          type="button"
-          className="new-item-panel__btn new-item-panel__btn--save"
-          onClick={handleSave}
-        >
-          {isEditing ? "save changes" : "save"}
-        </button>
+          </MarkdownToolbar>
+          <textarea
+            ref={textareaRef}
+            className="new-item-panel__textarea"
+            placeholder="start writing…"
+            value={body}
+            onChange={(e) => {
+              setBody(e.target.value);
+              setCaret(e.target.selectionStart);
+            }}
+            onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+            onKeyDown={handleBodyKeyDown}
+          />
+        </div>
       </div>
     </div>
   );

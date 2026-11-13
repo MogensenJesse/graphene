@@ -10,8 +10,15 @@
 @use 'app/app';
 
 // Components
+@use 'components/ItemHeader';
+@use 'components/CodeBlock';
+@use 'components/Highlight';
 @use 'components/NewItemPanel';
 @use 'components/FolderRow';
 @use 'components/NoteDetail';
 @use 'components/Sidebar';
-@use 'components/SnippetDetail';
+@use 'components/TrashView';
+@use 'components/Modal';
+@use 'components/SearchPalette';
+@use 'components/ContextMenu';
+@use 'components/UpdateDialog';

@@ -1,0 +1,57 @@
+// src/assets/styles/components/_Highlight.scss
+
+// Syntax colours for fenced code (rehype-highlight emits highlight.js classes).
+// No highlight.js theme is imported, so everything comes from the app's own tokens.
+
+.code-block {
+  .hljs-comment,
+  .hljs-quote {
+    color: var(--color-text-tertiary);
+    font-style: italic;
+  }
+
+  .hljs-keyword,
+  .hljs-selector-tag,
+  .hljs-doctag {
+    color: var(--color-text-info);
+  }
+
+  .hljs-string,
+  .hljs-regexp,
+  .hljs-addition {
+    color: var(--color-text-success);
+  }
+
+  .hljs-number,
+  .hljs-literal,
+  .hljs-symbol,
+  .hljs-bullet,
+  .hljs-built_in,
+  .hljs-type,
+  .hljs-title,
+  .hljs-section {
+    color: var(--color-text-warning);
+  }
+
+  .hljs-name,
+  .hljs-tag,
+  .hljs-attr,
+  .hljs-attribute,
+  .hljs-deletion {
+    color: var(--color-text-danger);
+  }
+
+  .hljs-meta,
+  .hljs-params,
+  .hljs-variable {
+    color: var(--color-text-secondary);
+  }
+
+  .hljs-emphasis {
+    font-style: italic;
+  }
+
+  .hljs-strong {
+    font-weight: 700;
+  }
+}

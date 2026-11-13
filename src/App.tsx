@@ -1,19 +1,26 @@
 // src/App.tsx
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { HexagonIcon } from "./components/Icon";
 import NewItemPanel from "./components/NewItemPanel";
 import NoteDetail from "./components/NoteDetail";
+import SearchPalette from "./components/SearchPalette";
 import Sidebar from "./components/Sidebar";
-import SnippetDetail from "./components/SnippetDetail";
+import TrashView from "./components/TrashView";
+import UpdateDialog from "./components/UpdateDialog";
+import WindowControls from "./components/WindowControls";
 import { useFileDrop } from "./hooks/useFileDrop";
 import { useFolders } from "./hooks/useFolders";
-import type { AddNoteFields, AddSnippetFields } from "./hooks/useItems";
+import type { AddItemFields, UpdateItemFields } from "./hooks/useItems";
 import { useItems } from "./hooks/useItems";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
-import { loadVault } from "./lib/storage";
+import { useUpdater } from "./hooks/useUpdater";
+import { folderAbsPath, itemFilePath, loadVault } from "./lib/storage";
 import { getVaultPath, pickVaultPath, setVaultPath } from "./lib/vault";
+import type { Item } from "./types";
 
-type Mode = "new" | "detail" | "edit";
+type Mode = "new" | "detail" | "edit" | "trash";
 
 const appWindow = getCurrentWindow();
 
@@ -42,9 +49,9 @@ function VaultPicker({ onVaultSet }: { onVaultSet: (path: string) => void }) {
     <div className="vault-picker" data-tauri-drag-region>
       <div className="vault-picker__card">
         <div className="vault-picker__icon" aria-hidden="true">
-          ⬡
+          <HexagonIcon size={36} />
         </div>
-        <h1 className="vault-picker__title">graphene</h1>
+        <h1 className="vault-picker__title">Graphene</h1>
         <p className="vault-picker__desc">
           Choose a folder to use as your vault. Notes and snippets will be
           stored as files inside it.
@@ -59,47 +66,7 @@ function VaultPicker({ onVaultSet }: { onVaultSet: (path: string) => void }) {
           {picking ? "Choosing…" : "Choose vault folder"}
         </button>
       </div>
-      <div className="app__win-controls vault-picker__win-controls">
-        <button
-          type="button"
-          className="app__win-btn"
-          onClick={() => appWindow.minimize()}
-          aria-label="Minimize"
-          title="Minimize"
-        >
-          <svg
-            width="10"
-            height="1"
-            viewBox="0 0 10 1"
-            fill="none"
-            aria-hidden="true"
-          >
-            <rect width="10" height="1" rx="0.5" fill="currentColor" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className="app__win-btn app__win-btn--close"
-          onClick={() => appWindow.close()}
-          aria-label="Close"
-          title="Close"
-        >
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 10 10"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M1 1L9 9M9 1L1 9"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
-      </div>
+      <WindowControls className="vault-picker__win-controls" />
     </div>
   );
 }
@@ -108,21 +75,16 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
   const {
     items,
     setItems,
-    addNote,
-    addSnippet,
+    trashed,
+    setTrashed,
+    itemsRef,
+    addItem,
     updateItem,
     deleteItem,
     moveItem,
-    incrementCopyCount,
+    restoreItem,
+    emptyTrash,
   } = useItems(vaultPath);
-
-  const { isDraggingOver } = useFileDrop(addNote, addSnippet);
-
-  // Keep a ref to the latest items so callbacks don't depend on items state
-  const itemsRef = useRef(items);
-  useEffect(() => {
-    itemsRef.current = items;
-  }, [items]);
 
   const handleDeleteCascade = useCallback(
     (folderId: string, newParentId: string | null) => {
@@ -131,53 +93,80 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
           item.folderId === folderId ||
           item.folderId?.startsWith(`${folderId}/`)
         ) {
-          updateItem(item.id, { folderId: newParentId });
+          updateItem(item.id, { folderId: newParentId }, false);
         }
       }
     },
-    [updateItem],
+    [updateItem, itemsRef],
   );
 
   const handleRenameCascade = useCallback(
     (oldId: string, newId: string) => {
       for (const item of itemsRef.current) {
         if (item.folderId === oldId) {
-          updateItem(item.id, { folderId: newId });
+          updateItem(item.id, { folderId: newId }, false);
         } else if (item.folderId?.startsWith(`${oldId}/`)) {
-          updateItem(item.id, {
-            folderId: newId + item.folderId.slice(oldId.length),
-          });
+          updateItem(
+            item.id,
+            { folderId: newId + item.folderId.slice(oldId.length) },
+            false,
+          );
         }
       }
     },
-    [updateItem],
+    [updateItem, itemsRef],
   );
 
   const { folders, setFolders, addFolder, updateFolder, deleteFolder } =
     useFolders(vaultPath, handleDeleteCascade, handleRenameCascade);
 
-  // Load all items + folders from vault on mount
+  // Load all items + folders + trash from vault on mount
   useEffect(() => {
     loadVault(vaultPath)
-      .then(({ items: loadedItems, folders: loadedFolders }) => {
-        setItems(loadedItems);
-        setFolders(loadedFolders);
-      })
+      .then(
+        ({
+          items: loadedItems,
+          folders: loadedFolders,
+          trashed: loadedTrash,
+        }) => {
+          setItems(loadedItems);
+          setFolders(loadedFolders);
+          setTrashed(loadedTrash);
+        },
+      )
       .catch(console.error);
-  }, [vaultPath, setItems, setFolders]);
+  }, [vaultPath, setItems, setFolders, setTrashed]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<"all" | "note" | "snippet">(
-    "all",
-  );
-  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "note" | "code">("all");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
   const [mode, setMode] = useState<Mode>("new");
+
+  // One "+ new" session: remount key, kind, default folder, and the item "done" returns to
+  const [draft, setDraft] = useState<{
+    key: number;
+    kind: "note" | "code";
+    folderId: string | null;
+    returnToId: string | null;
+  }>({ key: 0, kind: "note", folderId: null, returnToId: null });
+  const [isDirtyEdit, setIsDirtyEdit] = useState(false);
+  // Item the open editor writes to; null = unsaved draft. A ref so a flush before re-render still sees it
+  const editingIdRef = useRef<string | null>(null);
+  // Set by NewItemPanel: save now if dirty
+  const flushRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (selectedId && !items.some((i) => i.id === selectedId)) {
       setSelectedId(null);
       setMode("new");
+      setDraft((d) => ({
+        key: d.key + 1,
+        kind: "note",
+        folderId: null,
+        returnToId: null,
+      }));
     }
   }, [items, selectedId]);
 
@@ -186,185 +175,205 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     [items, selectedId],
   );
 
+  /** Save pending edits and detach the editor. Returns the id it was writing to, if any. */
+  const leaveEditor = () => {
+    flushRef.current?.();
+    const id = editingIdRef.current;
+    editingIdRef.current = null;
+    return id;
+  };
+
   const handleSelect = (id: string) => {
+    leaveEditor();
     setSelectedId(id);
     setSelectedFolderId(null);
     setMode("detail");
   };
 
+  // Selecting a folder no longer closes the open item
   const handleSelectFolder = (id: string | null) => {
     setSelectedFolderId(id);
-    setSelectedId(null);
   };
 
-  const [newPanelDefaultType, setNewPanelDefaultType] = useState<
-    "note" | "snippet"
-  >("note");
-
-  const handleNewNote = () => {
-    setNewPanelDefaultType("note");
+  // folderId omitted = wherever the selection is (folder, else the open item's folder); null = no folder
+  const handleNew = (kind: "note" | "code", folderId?: string | null) => {
+    if (mode === "new" && isDirtyEdit) return; // keep a draft that has content
+    leaveEditor();
+    setDraft((d) => ({
+      key: d.key + 1,
+      kind,
+      folderId:
+        folderId !== undefined
+          ? folderId
+          : (selectedFolderId ?? selectedItem?.folderId ?? null),
+      // Starting over from an empty draft keeps the item it would return to
+      returnToId: mode === "new" ? d.returnToId : selectedId,
+    }));
+    setSelectedId(null);
     setMode("new");
+  };
+
+  const handleOpenTrash = () => {
+    leaveEditor();
     setSelectedId(null);
-  };
-
-  const handleSaveNewNote = (fields: AddNoteFields) => {
-    const newId = addNote(fields);
-    setSelectedId(newId);
-    setSelectedFolderId(null);
-    setMode("detail");
-  };
-
-  const handleSaveNewSnippet = (fields: AddSnippetFields) => {
-    const newId = addSnippet(fields);
-    setSelectedId(newId);
-    setSelectedFolderId(null);
-    setMode("detail");
+    setMode("trash");
   };
 
   const handleEdit = () => {
+    editingIdRef.current = selectedId;
     setMode("edit");
   };
 
-  useKeyboardShortcuts(mode, handleNewNote, handleEdit, !!selectedId);
-
-  const [isDirtyEdit, setIsDirtyEdit] = useState(false);
-
-  const handleAutoSaveNote = useCallback(
-    (fields: AddNoteFields) => {
-      if (mode === "new") {
-        const newId = addNote(fields);
-        setSelectedId(newId);
-        setSelectedFolderId(null);
-        setMode("edit");
-      } else if (selectedId) {
-        updateItem(selectedId, fields);
-      }
-    },
-    [mode, selectedId, addNote, updateItem],
-  );
-
-  const handleAutoSaveSnippet = useCallback(
-    (fields: AddSnippetFields) => {
-      if (mode === "new") {
-        const newId = addSnippet(fields);
-        setSelectedId(newId);
-        setSelectedFolderId(null);
-        setMode("edit");
-      } else if (selectedId) {
-        updateItem(selectedId, fields);
-      }
-    },
-    [mode, selectedId, addSnippet, updateItem],
-  );
-
-  const handleSaveEditNote = (fields: AddNoteFields) => {
-    if (!selectedId) return;
-    updateItem(selectedId, fields);
+  const handleDone = () => {
+    const savedId = leaveEditor();
+    const target = savedId ?? draft.returnToId;
+    if (!target || !itemsRef.current.some((i) => i.id === target)) return;
+    setSelectedId(target);
     setMode("detail");
   };
 
-  const handleSaveEditSnippet = (fields: AddSnippetFields) => {
-    if (!selectedId) return;
-    updateItem(selectedId, fields);
-    setMode("detail");
-  };
+  useKeyboardShortcuts({
+    mode,
+    hasSelection: !!selectedId,
+    onNew: handleNew,
+    onEdit: handleEdit,
+    onDone: handleDone,
+    onOpenSearch: () => setSearchOpen(true),
+  });
 
-  const handleCancel = () => {
-    setMode(selectedId ? "detail" : "new");
-  };
+  // First save of a draft creates the item; later saves update it. The mode flips new -> edit
+  // without remounting the editor, so the caret survives.
+  const saveFromEditor = useCallback(
+    (create: () => string, fields: UpdateItemFields) => {
+      if (editingIdRef.current) {
+        updateItem(editingIdRef.current, fields);
+        return;
+      }
+      const id = create();
+      editingIdRef.current = id;
+      setSelectedId(id);
+      setSelectedFolderId(null);
+      setMode("edit");
+    },
+    [updateItem],
+  );
+
+  const handleSave = useCallback(
+    (fields: AddItemFields) => saveFromEditor(() => addItem(fields), fields),
+    [saveFromEditor, addItem],
+  );
+
+  // Save a pending edit before the window goes away (close, or the updater's installer)
+  const flushPendingSave = useCallback(async () => {
+    flushRef.current?.();
+    // ponytail: saves are fire-and-forget inside state updaters, so a fixed delay lets the write land.
+    // Upgrade to awaiting tracked writes if saves ever get slow.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }, []);
+
+  useEffect(() => {
+    const unlisten = appWindow.onCloseRequested(flushPendingSave);
+    return () => {
+      unlisten.then((fn) => fn()).catch(console.error);
+    };
+  }, [flushPendingSave]);
+
+  const updater = useUpdater(flushPendingSave);
+  const [updateOpen, setUpdateOpen] = useState(false);
+  const closeUpdate = useCallback(() => setUpdateOpen(false), []);
+
+  // Dropped files land in the selected folder, and the last one imported opens
+  const { isDraggingOver } = useFileDrop(
+    addItem,
+    () => selectedFolderId,
+    handleSelect,
+  );
 
   const handleDelete = (id: string) => {
     deleteItem(id);
   };
 
-  const handleCopied = (id: string) => {
-    incrementCopyCount(id);
+  const handleRename = (id: string, title: string) => {
+    updateItem(id, { title });
+  };
+
+  // Open an item straight in the editor (sidebar menu). The editor may already be open on
+  // something else, so bump the key to remount it on this item.
+  const handleEditItem = (id: string) => {
+    leaveEditor();
+    setSelectedId(id);
+    setSelectedFolderId(null);
+    editingIdRef.current = id;
+    setDraft((d) => ({ ...d, key: d.key + 1 }));
+    setMode("edit");
+  };
+
+  const handleDuplicate = (id: string) => {
+    const source = itemsRef.current.find((i) => i.id === id);
+    if (!source) return;
+    handleSelect(
+      addItem({
+        title: `${source.title} copy`,
+        body: source.body,
+        folderId: source.folderId,
+      }),
+    );
+  };
+
+  const handleRevealItem = (item: Item) => {
+    revealItemInDir(itemFilePath(vaultPath, item)).catch(console.error);
+  };
+
+  const handleRevealFolder = (folderId: string) => {
+    revealItemInDir(folderAbsPath(vaultPath, folderId)).catch(console.error);
   };
 
   const handleDeleteFolder = useCallback(
     (id: string) => {
       deleteFolder(id, itemsRef.current);
     },
-    [deleteFolder],
+    [deleteFolder, itemsRef],
   );
 
   const renderMain = () => {
-    if (mode === "new") {
+    if (mode === "trash") {
       return (
-        <NewItemPanel
-          key={newPanelDefaultType}
+        <TrashView
+          trashed={trashed}
           folders={folders}
-          defaultType={newPanelDefaultType}
-          onSaveNote={handleSaveNewNote}
-          onSaveSnippet={handleSaveNewSnippet}
-          onAutoSaveNote={handleAutoSaveNote}
-          onAutoSaveSnippet={handleAutoSaveSnippet}
-          onDirtyChange={setIsDirtyEdit}
-          onCancel={handleCancel}
+          onRestore={restoreItem}
+          onEmpty={emptyTrash}
         />
       );
     }
 
-    if (mode === "edit" && selectedItem?.type === "note") {
-      return (
-        <NewItemPanel
-          initialNote={selectedItem}
-          folders={folders}
-          onSaveNote={handleSaveEditNote}
-          onSaveSnippet={handleSaveNewSnippet}
-          onAutoSaveNote={handleAutoSaveNote}
-          onAutoSaveSnippet={handleAutoSaveSnippet}
-          onDirtyChange={setIsDirtyEdit}
-          onCancel={handleCancel}
-        />
-      );
-    }
-
-    if (mode === "edit" && selectedItem?.type === "snippet") {
-      return (
-        <NewItemPanel
-          initialSnippet={selectedItem}
-          folders={folders}
-          onSaveNote={handleSaveEditNote}
-          onSaveSnippet={handleSaveEditSnippet}
-          onAutoSaveNote={handleAutoSaveNote}
-          onAutoSaveSnippet={handleAutoSaveSnippet}
-          onDirtyChange={setIsDirtyEdit}
-          onCancel={handleCancel}
-        />
-      );
-    }
-
-    if (selectedItem?.type === "note") {
+    if (mode === "detail" && selectedItem) {
       return (
         <NoteDetail
           note={selectedItem}
           folders={folders}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onRename={handleRename}
+          onMove={moveItem}
+          deleteKeyEnabled={selectedFolderId === null}
         />
       );
     }
 
-    if (selectedItem?.type === "snippet") {
-      return (
-        <SnippetDetail
-          snippet={selectedItem}
-          folders={folders}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onCopied={handleCopied}
-        />
-      );
-    }
-
+    // One element for new + edit: the first save flips mode new -> edit without a remount
     return (
       <NewItemPanel
+        key={draft.key}
         folders={folders}
-        defaultType="note"
-        onSaveNote={handleSaveNewNote}
-        onSaveSnippet={handleSaveNewSnippet}
-        onCancel={handleCancel}
+        initialItem={selectedItem}
+        newKind={draft.kind}
+        defaultFolderId={draft.folderId}
+        onSave={handleSave}
+        onDirtyChange={setIsDirtyEdit}
+        onDone={handleDone}
+        canLeave={mode === "edit" || draft.returnToId !== null}
+        flushRef={flushRef}
       />
     );
   };
@@ -379,66 +388,66 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
             folders={folders}
             selectedId={selectedId}
             selectedFolderId={selectedFolderId}
-            unsavedItemId={isDirtyEdit && mode === "edit" && selectedId ? selectedId : null}
+            unsavedItemId={
+              isDirtyEdit && mode === "edit" && selectedId ? selectedId : null
+            }
             typeFilter={typeFilter}
-            searchQuery={searchQuery}
+            trashedCount={trashed.length}
+            trashOpen={mode === "trash"}
+            version={updater.version}
+            updateStatus={updater.status}
+            updateAvailable={updater.update !== null}
+            onCheckUpdates={updater.checkNow}
+            onShowUpdate={() => setUpdateOpen(true)}
+            editingItemId={mode === "edit" ? selectedId : null}
             onSelect={handleSelect}
             onSelectFolder={handleSelectFolder}
-            onNew={handleNewNote}
+            onNew={handleNew}
+            onEditItem={handleEditItem}
+            onDuplicateItem={handleDuplicate}
+            onDeleteItem={handleDelete}
+            onRenameItem={handleRename}
+            onRevealItem={handleRevealItem}
+            onRevealFolder={handleRevealFolder}
+            onOpenTrash={handleOpenTrash}
             onAddFolder={addFolder}
             onRenameFolder={updateFolder}
             onDeleteFolder={handleDeleteFolder}
             onMoveItem={moveItem}
-            onSearchChange={setSearchQuery}
+            onOpenSearch={() => setSearchOpen(true)}
             onTypeFilterChange={setTypeFilter}
           />
         </div>
         <main className="app__main">
           <div className="app__drag-strip" data-tauri-drag-region />
-          <div className="app__win-controls">
-            <button
-              type="button"
-              className="app__win-btn"
-              onClick={() => appWindow.minimize()}
-              aria-label="Minimize"
-              title="Minimize"
-            >
-              <svg
-                width="10"
-                height="1"
-                viewBox="0 0 10 1"
-                fill="none"
-                aria-hidden="true"
-              >
-                <rect width="10" height="1" rx="0.5" fill="currentColor" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className="app__win-btn app__win-btn--close"
-              onClick={() => appWindow.close()}
-              aria-label="Close"
-              title="Close"
-            >
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 10 10"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M1 1L9 9M9 1L1 9"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-          </div>
+          <WindowControls />
           {renderMain()}
         </main>
       </div>
+      {updateOpen && updater.update && (
+        <UpdateDialog
+          current={updater.version}
+          update={updater.update}
+          notes={updater.notes}
+          status={updater.status}
+          progress={updater.progress}
+          error={updater.error}
+          canInstall={updater.canInstall}
+          onInstall={updater.install}
+          onClose={closeUpdate}
+        />
+      )}
+      {searchOpen && (
+        <SearchPalette
+          items={items}
+          folders={folders}
+          onOpen={(id) => {
+            setSearchOpen(false);
+            handleSelect(id);
+          }}
+          onClose={closeSearch}
+        />
+      )}
     </div>
   );
 }

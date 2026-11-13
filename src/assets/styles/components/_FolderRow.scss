@@ -2,85 +2,80 @@
 @use '../base/variables' as v;
 
 .folder-row__group {
-  // Transparent drag-target container — no visual styles of its own
+  // Drag-target container; its margin is the space between folders and items (see also .item-row)
+  margin-top: 2px;
 }
 
 .folder-row {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding-right: 6px;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  border-radius: var(--border-radius-sm);
+  height: 28px;
+  padding: 0 4px 0 10px;
+  border-radius: var(--border-radius-row);
   position: relative;
+  transition: background var(--transition-fast);
 
-  &:hover .folder-row__actions {
+  &:hover {
+    background: var(--color-background-hover);
+  }
+
+  &:hover .folder-row__actions,
+  &:focus-within .folder-row__actions {
     opacity: 1;
   }
 
-  &--selected > .folder-row__name {
-    color: var(--color-text-primary);
-    font-weight: 500;
-  }
-
-  &--selected {
-    background: color-mix(in srgb, var(--color-background-primary) 40%, transparent);
+  &--selected,
+  &--selected:hover {
+    background: var(--color-background-active);
   }
 
   &--drag-over {
     background: rgba(var(--rgb-blue), 0.12);
     outline: 1px solid rgba(var(--rgb-blue), 0.3);
     outline-offset: -1px;
-    border-radius: var(--border-radius-sm);
   }
 
-  &__chevron {
-    width: 14px;
-    height: 14px;
+  // The folder name is the whole clickable area: it selects the folder and toggles it
+  &__name {
+    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 5px;
+    height: 100%;
+    padding: 0;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    text-align: left;
+    color: var(--color-text-primary);
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 9px;
-    color: var(--color-text-tertiary);
-    flex-shrink: 0;
-    padding: 0;
-    border-radius: var(--border-radius-sm);
-    line-height: 1;
 
-    &:hover {
+    &:hover .folder-row__chevron {
       color: var(--color-text-secondary);
+    }
+
+    &:focus-visible {
+      outline: 1px solid var(--color-border-primary);
+      outline-offset: 2px;
+      border-radius: var(--border-radius-sm);
     }
   }
 
-  &__icon {
-    font-size: 12px;
-    flex-shrink: 0;
-    line-height: 1;
-    pointer-events: none;
-  }
-
-  &__name {
-    flex: 1;
-    font-size: 12px;
-    color: var(--color-text-secondary);
-    background: none;
-    border: none;
-    cursor: pointer;
-    text-align: left;
-    padding: 1px 2px;
+  &__label {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    border-radius: var(--border-radius-sm);
-    min-width: 0;
+  }
 
-    &:hover {
-      color: var(--color-text-primary);
-    }
+  &__chevron {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
   }
 
   &__rename-input {
@@ -91,7 +86,7 @@
     border: 0.5px solid var(--color-border-primary);
     border-radius: var(--border-radius-sm);
     color: var(--color-text-primary);
-    padding: 1px 5px;
+    padding: 2px 6px;
     outline: none;
     min-width: 0;
 
@@ -100,33 +95,44 @@
     }
   }
 
+  // Contents of a folder: indented under a faint guide line. Nested folder names are a notch lighter.
+  &__children {
+    margin-left: 16px;
+    border-left: 1px solid var(--color-border-secondary);
+
+    .folder-row,
+    .item-row {
+      padding-left: 10px;
+    }
+
+    .folder-row__name {
+      font-weight: 500;
+    }
+  }
+
   &__actions {
     display: flex;
     align-items: center;
-    gap: 1px;
     opacity: 0;
     transition: opacity var(--transition-fast);
     flex-shrink: 0;
   }
 
   &__action-btn {
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 11px;
     color: var(--color-text-tertiary);
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--border-radius-md);
     padding: 0;
-    line-height: 1;
-    letter-spacing: -1px;
 
     &:hover {
-      background: var(--color-border-secondary);
+      background: var(--color-background-active);
       color: var(--color-text-secondary);
     }
 
@@ -136,56 +142,9 @@
     }
   }
 
-  &__menu-wrap {
-    position: relative;
-  }
-
-  &__dropdown {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 2px);
-    z-index: 100;
-    background: var(--color-background-primary);
-    border: 0.5px solid var(--color-border-primary);
-    border-radius: var(--border-radius-md);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-    overflow: hidden;
-    min-width: 108px;
-  }
-
-  &__dropdown-item {
-    display: block;
-    width: 100%;
-    padding: 7px 12px;
-    font-size: 12px;
-    font-family: inherit;
-    text-align: left;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--color-text-secondary);
-    transition: background var(--transition-fast), color var(--transition-fast);
-
-    &:hover {
-      background: var(--color-border-secondary);
-      color: var(--color-text-primary);
-    }
-
-    &--danger {
-      color: var(--color-text-danger);
-
-      &:hover {
-        background: var(--color-background-danger);
-        color: var(--color-text-danger);
-      }
-    }
-  }
-
   &__add-child {
     display: flex;
     align-items: center;
-    padding-right: 6px;
-    padding-top: 2px;
-    padding-bottom: 2px;
+    padding: 2px 4px 2px 10px;
   }
 }

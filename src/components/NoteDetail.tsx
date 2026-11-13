@@ -1,151 +1,95 @@
 // src/components/NoteDetail.tsx
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkBreaks from "remark-breaks";
-import remarkGfm from "remark-gfm";
-import { useDeleteConfirm } from "../hooks/useDeleteConfirm";
-import { formatDate, getFolderPath } from "../lib/utils";
-import type { Folder, NoteItem } from "../types";
-
-const REMARK_PLUGINS = [remarkGfm, remarkBreaks];
+import {
+  MARKDOWN_COMPONENTS,
+  REHYPE_PLUGINS,
+  REMARK_PLUGINS,
+} from "../lib/markdown";
+import type { Folder, Item } from "../types";
+import ItemActions from "./ItemActions";
+import ItemHeader from "./ItemHeader";
 
 interface NoteDetailProps {
-  note: NoteItem;
+  note: Item;
   folders: Folder[];
   onEdit: () => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, title: string) => void;
+  onMove: (id: string, folderId: string | null) => void;
+  // False while a folder is selected, so the Del key goes to the folder instead
+  deleteKeyEnabled: boolean;
 }
 
-function NoteDetail({ note, folders, onEdit, onDelete }: NoteDetailProps) {
-  const { confirming, startConfirm, cancelConfirm } = useDeleteConfirm(note.id);
+function NoteDetail({
+  note,
+  folders,
+  onEdit,
+  onDelete,
+  onRename,
+  onMove,
+  deleteKeyEnabled,
+}: NoteDetailProps) {
+  const markdownRef = useRef<HTMLDivElement>(null);
 
-  const handleDeleteClick = () => {
-    if (confirming) {
-      onDelete(note.id);
-    } else {
-      startConfirm();
-    }
-  };
-
+  // Ctrl+C with nothing selected copies the code when the note has exactly one code block.
+  // Clicking the block's own copy button keeps the "copied" feedback in one place.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+      if (e.key !== "c") return;
       if (
-        e.key === "Delete" &&
-        !(e.target instanceof HTMLInputElement) &&
-        !(e.target instanceof HTMLTextAreaElement)
-      ) {
-        if (confirming) {
-          onDelete(note.id);
-        } else {
-          startConfirm();
-        }
-      }
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
+      if (window.getSelection()?.toString()) return;
+      const buttons =
+        markdownRef.current?.querySelectorAll<HTMLButtonElement>(
+          ".code-block__copy",
+        );
+      if (buttons?.length !== 1) return;
+      e.preventDefault();
+      buttons[0].click();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [confirming, startConfirm, onDelete, note.id]);
-
-  const folderPath = getFolderPath(folders, note.folderId);
+  }, []);
 
   return (
     <div className="note-detail">
-      <div className="note-detail__header" data-tauri-drag-region>
-        <div className="note-detail__header-left">
-          <h2 className="note-detail__title">{note.title}</h2>
-          <div className="note-detail__meta">
-            {folderPath.length > 0 && (
-              <span className="note-detail__folder-path">
-                {folderPath.join(" › ")}
-              </span>
-            )}
-            <span className="note-detail__date">
-              {formatDate(note.updatedAt)}
-            </span>
-          </div>
-        </div>
-      </div>
+      <ItemHeader
+        title={note.title}
+        onTitleChange={(title) => onRename(note.id, title)}
+        folders={folders}
+        folderId={note.folderId}
+        onFolderChange={(folderId) => onMove(note.id, folderId)}
+        updatedAt={note.updatedAt}
+        actions={
+          <ItemActions
+            itemId={note.id}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            deleteKeyEnabled={deleteKeyEnabled}
+          />
+        }
+      />
 
-      <div className="note-detail__body">
-        <div className="note-detail__markdown">
-          <ReactMarkdown remarkPlugins={REMARK_PLUGINS}>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only shortcut, keyboard users have Ctrl+E and the Edit button. Double-click on empty space (not on text, so word-select still works) starts editing */}
+      <div
+        className="note-detail__body"
+        onDoubleClick={(e) => {
+          if (e.target === e.currentTarget) onEdit();
+        }}
+      >
+        <div className="note-detail__markdown" ref={markdownRef}>
+          <ReactMarkdown
+            remarkPlugins={REMARK_PLUGINS}
+            rehypePlugins={REHYPE_PLUGINS}
+            components={MARKDOWN_COMPONENTS}
+          >
             {note.body}
           </ReactMarkdown>
-        </div>
-      </div>
-
-      <div className="note-detail__footer">
-        <div className="note-detail__footer-left">
-          <button
-            type="button"
-            className="note-detail__action-btn note-detail__action-btn--edit"
-            onClick={onEdit}
-            title="Edit note"
-            aria-label="Edit note"
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path
-                d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            edit
-          </button>
-          {confirming ? (
-            <>
-              <button
-                type="button"
-                className="note-detail__action-btn note-detail__action-btn--confirm-delete"
-                onClick={handleDeleteClick}
-                title="Confirm delete"
-                aria-label="Confirm delete note"
-              >
-                confirm?
-              </button>
-              <button
-                type="button"
-                className="note-detail__action-btn note-detail__action-btn--cancel-delete"
-                onClick={cancelConfirm}
-                title="Cancel delete"
-                aria-label="Cancel delete"
-              >
-                cancel
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="note-detail__action-btn note-detail__action-btn--delete"
-              onClick={handleDeleteClick}
-              title="Delete note"
-              aria-label="Delete note"
-            >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M2 3h8M5 3V2h2v1M9.5 3l-.5 7a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5L3 3"
-                  stroke="currentColor"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              delete
-            </button>
-          )}
         </div>
       </div>
     </div>

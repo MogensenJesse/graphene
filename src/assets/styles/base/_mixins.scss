@@ -52,12 +52,14 @@
 
   li { display: list-item; }
 
+  // Links are blue and carry a faint underline, so a link-heavy note does not read as a wall of white
   a {
-    color: var(--color-text-primary);
+    color: var(--color-text-info);
     text-decoration: underline;
-    opacity: 0.8;
+    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+    text-underline-offset: 2px;
 
-    &:hover { opacity: 1; }
+    &:hover { text-decoration-color: currentColor; }
   }
 
   hr {
@@ -75,21 +77,7 @@
     padding: 1px 4px;
   }
 
-  pre {
-    background: var(--color-background-secondary);
-    border: 0.5px solid var(--color-border-secondary);
-    border-radius: var(--border-radius-md);
-    padding: 10px 12px;
-    overflow-x: auto;
-    margin: 0.5em 0;
-
-    code {
-      background: none;
-      border: none;
-      padding: 0;
-      font-size: 12px;
-    }
-  }
+  // Fenced code blocks are rendered by CodeBlock (see _CodeBlock.scss)
 
   blockquote {
     border-left: 2px solid var(--color-border-primary);

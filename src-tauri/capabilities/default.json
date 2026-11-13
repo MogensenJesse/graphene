@@ -8,7 +8,9 @@
     "core:window:default",
     "core:window:allow-minimize",
     "core:window:allow-close",
+    "core:window:allow-destroy",
     "core:window:allow-start-dragging",
+    "core:window:allow-toggle-maximize",
     "fs:default",
     {
       "identifier": "fs:allow-read-text-file",
@@ -39,6 +41,8 @@
       "allow": [{ "path": "$HOME/**" }]
     },
     "dialog:allow-open",
-    "clipboard-manager:allow-write-text"
+    "opener:default",
+    "clipboard-manager:allow-write-text",
+    "updater:default"
   ]
 }

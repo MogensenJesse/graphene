@@ -1,28 +1,54 @@
 // src/hooks/useKeyboardShortcuts.ts
 import { useEffect } from "react";
 
-export function useKeyboardShortcuts(
-  mode: "new" | "detail" | "edit",
-  onNew: () => void,
-  onEdit: () => void,
-  hasSelection: boolean,
-): void {
+interface Shortcuts {
+  mode: "new" | "detail" | "edit" | "trash";
+  hasSelection: boolean;
+  onNew: (kind: "note" | "code") => void;
+  onEdit: () => void;
+  onDone: () => void;
+  onOpenSearch: () => void;
+}
+
+export function useKeyboardShortcuts({
+  mode,
+  hasSelection,
+  onNew,
+  onEdit,
+  onDone,
+  onOpenSearch,
+}: Shortcuts): void {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
+      // A dialog (search, update) owns the keyboard while it is open
+      if (document.querySelector('[aria-modal="true"]')) return;
 
-      if (e.key === "n" && mode !== "new" && mode !== "edit") {
+      // Also while editing: starting a new item saves the open edit first.
+      // Shift is held, so the key arrives upper-case.
+      if (e.key.toLowerCase() === "n") {
         e.preventDefault();
-        onNew();
+        onNew(e.shiftKey ? "code" : "note");
       }
 
-      if (e.key === "e" && mode === "detail" && hasSelection) {
+      if (e.key === "k" || e.key === "f") {
         e.preventDefault();
-        onEdit();
+        onOpenSearch();
+      }
+
+      // Ctrl+E toggles between reading and editing
+      if (e.key === "e") {
+        if (mode === "detail" && hasSelection) {
+          e.preventDefault();
+          onEdit();
+        } else if (mode === "edit") {
+          e.preventDefault();
+          onDone();
+        }
       }
     };
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [mode, hasSelection, onNew, onEdit]);
+  }, [mode, hasSelection, onNew, onEdit, onDone, onOpenSearch]);
 }

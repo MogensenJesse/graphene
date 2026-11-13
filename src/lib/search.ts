@@ -1,31 +1,28 @@
 // src/lib/search.ts
 import type { Item } from "../types";
+import { isCodeItem } from "./utils";
 
 /**
- * Pure filter function — filters items by search query (title + tags + body/code)
- * and type. Folder grouping is handled visually by the folder tree.
+ * Pure filter function — filters items by search query (title + body) and type.
+ * Folder grouping is handled visually by the folder tree.
  */
 export function filterItems(
   items: Item[],
   query: string,
-  typeFilter: "all" | "note" | "snippet" = "all",
+  typeFilter: "all" | "note" | "code" = "all",
 ): Item[] {
   const q = query.trim().toLowerCase();
 
   return items.filter((item) => {
-    if (typeFilter !== "all" && item.type !== typeFilter) return false;
+    if (typeFilter !== "all" && isCodeItem(item) !== (typeFilter === "code")) {
+      return false;
+    }
 
     if (!q) return true;
 
-    const inTitle = item.title.toLowerCase().includes(q);
-
-    if (item.type === "snippet") {
-      const inCode = item.code.toLowerCase().includes(q);
-      const inNote = item.note.toLowerCase().includes(q);
-      return inTitle || inCode || inNote;
-    }
-
-    const inBody = item.body.toLowerCase().includes(q);
-    return inTitle || inBody;
+    return (
+      item.title.toLowerCase().includes(q) ||
+      item.body.toLowerCase().includes(q)
+    );
   });
 }

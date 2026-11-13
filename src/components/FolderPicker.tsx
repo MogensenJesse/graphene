@@ -1,25 +1,9 @@
 // src/components/FolderPicker.tsx
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useClickOutside } from "../hooks/useClickOutside";
+import { flattenFolders, getFolderPath } from "../lib/utils";
 import type { Folder } from "../types";
-
-interface FlatFolder {
-  folder: Folder;
-  depth: number;
-}
-
-function flattenFolders(
-  folders: Folder[],
-  parentId: string | null = null,
-  depth = 0,
-): FlatFolder[] {
-  return folders
-    .filter((f) => f.parentId === parentId)
-    .flatMap((f) => [
-      { folder: f, depth },
-      ...flattenFolders(folders, f.id, depth + 1),
-    ]);
-}
+import { ChevronDownIcon, FolderIcon, NoFolderIcon } from "./Icon";
 
 interface FolderPickerProps {
   folders: Folder[];
@@ -32,12 +16,26 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const flat = useMemo(() => flattenFolders(folders), [folders]);
+  // Full path ("Notes › Prompts") so nested folders are unambiguous
   const selectedName = useMemo(
-    () => folders.find((f) => f.id === value)?.name ?? "no folder",
+    () => getFolderPath(folders, value).join(" › ") || "no folder",
     [folders, value],
   );
 
   useClickOutside(wrapRef, open, () => setOpen(false));
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    };
+    // Capture phase: runs before the editor's Escape handler, which would otherwise close the editor
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [open]);
 
   const handleSelect = (id: string | null) => {
     onChange(id);
@@ -55,7 +53,7 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
       >
         <span className="folder-picker__label">{selectedName}</span>
         <span className="folder-picker__chevron" aria-hidden="true">
-          ▾
+          <ChevronDownIcon />
         </span>
       </button>
 
@@ -68,7 +66,7 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
             onClick={() => handleSelect(null)}
           >
             <span className="folder-picker__option-icon" aria-hidden="true">
-              ◈
+              <NoFolderIcon />
             </span>
             no folder
           </button>
@@ -83,7 +81,7 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
               onClick={() => handleSelect(folder.id)}
             >
               <span className="folder-picker__option-icon" aria-hidden="true">
-                📁
+                <FolderIcon />
               </span>
               {folder.name}
             </button>

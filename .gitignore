@@ -34,9 +34,6 @@ ehthumbs.db
 .idea/
 *.suo
 *.user
-.cursor/
 
 # ─── Other ──────────────────────────────────────────────────────────────────
-_brief/
 .agents/
-AGENTS.md

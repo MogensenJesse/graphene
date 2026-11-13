@@ -1,26 +1,24 @@
 // src/hooks/useFileDrop.ts
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { readTextFile } from "@tauri-apps/plugin-fs";
-import { useEffect, useState } from "react";
-import { langFromExt, parseNoteFile } from "../lib/fileFormat";
-import type { SnippetItem } from "../types";
-import type { AddNoteFields, AddSnippetFields } from "./useItems";
-
-const SUPPORTED_EXTS = new Set([
-  ".md",
-  ".js",
-  ".ts",
-  ".css",
-  ".scss",
-  ".html",
-  ".sh",
-]);
+import { useEffect, useRef, useState } from "react";
+import { CODE_EXTS, fence, parseNoteFile } from "../lib/fileFormat";
+import type { AddItemFields } from "./useItems";
 
 export function useFileDrop(
-  addNote: (fields: AddNoteFields) => string,
-  addSnippet: (fields: AddSnippetFields) => string,
+  addItem: (fields: AddItemFields) => string,
+  // Folder the files are imported into (null = vault root)
+  getFolderId: () => string | null,
+  // Called with the id of an imported item so the app can open it
+  onImported: (id: string) => void,
 ): { isDraggingOver: boolean } {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+  // Latest callbacks without re-subscribing the native drop listener on every render
+  const latest = useRef({ getFolderId, onImported });
+  useEffect(() => {
+    latest.current = { getFolderId, onImported };
+  });
 
   useEffect(() => {
     let aborted = false;
@@ -33,6 +31,8 @@ export function useFileDrop(
           setIsDraggingOver(false);
         } else if (payload.type === "drop") {
           setIsDraggingOver(false);
+          const folderId = latest.current.getFolderId();
+          const importedIds: string[] = [];
           await Promise.allSettled(
             payload.paths.map(async (rawPath) => {
               const filePath = rawPath.replace(/\\/g, "/");
@@ -43,7 +43,7 @@ export function useFileDrop(
               const fileBaseName =
                 dotIdx >= 0 ? fileName.slice(0, dotIdx) : fileName;
 
-              if (!SUPPORTED_EXTS.has(ext)) return;
+              if (ext !== ".md" && !CODE_EXTS.has(ext)) return;
 
               try {
                 const content = await readTextFile(filePath);
@@ -54,16 +54,16 @@ export function useFileDrop(
                     ? parsed.title || fileBaseName
                     : fileBaseName;
                   const body = parsed.id ? parsed.body : content;
-                  addNote({ title, body, folderId: null });
+                  importedIds.push(addItem({ title, body, folderId }));
                 } else {
-                  const lang = langFromExt(ext) as SnippetItem["lang"];
-                  addSnippet({
-                    title: fileBaseName,
-                    code: content,
-                    lang,
-                    note: "",
-                    folderId: null,
-                  });
+                  // Code files become a note holding one fenced block (js, ts, css, scss, html, sh)
+                  importedIds.push(
+                    addItem({
+                      title: fileBaseName,
+                      body: fence(content, ext.slice(1)),
+                      folderId,
+                    }),
+                  );
                 }
               } catch (err) {
                 console.error(
@@ -74,6 +74,8 @@ export function useFileDrop(
               }
             }),
           );
+          const lastId = importedIds[importedIds.length - 1];
+          if (lastId && !aborted) latest.current.onImported(lastId);
         }
       },
     );
@@ -82,7 +84,7 @@ export function useFileDrop(
       aborted = true;
       unlistenPromise.then((unlisten) => unlisten()).catch(console.error);
     };
-  }, [addNote, addSnippet]);
+  }, [addItem]);
 
   return { isDraggingOver };
 }
