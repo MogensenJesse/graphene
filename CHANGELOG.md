@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.1.0
+
 ### New
 - Undo and redo (Ctrl+Z, Ctrl+Shift+Z) keep working after you use the formatting buttons
 - Right-click works everywhere in the app, including the editor
