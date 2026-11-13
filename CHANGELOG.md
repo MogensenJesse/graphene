@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.0.0
+
 ### New
 - Notes and code snippets are now one thing: a note. Start one with a code block and it counts as code
 - Right-click anything in the sidebar to rename, duplicate, move, reveal in Explorer or delete it

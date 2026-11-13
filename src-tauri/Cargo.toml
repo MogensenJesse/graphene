@@ -1,6 +1,6 @@
 [package]
 name = "graphene"
-version = "0.1.0"
+version = "1.0.0"
 description = "Graphene — markdown notes with code blocks"
 authors = ["you"]
 edition = "2021"
