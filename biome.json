@@ -12,7 +12,6 @@
       "!**/dist",
       "!**/src-tauri",
       "!**/node_modules",
-      "!**/_brief",
       "!**/.gitnexus",
       "!**/*.scss",
       "!**/*.html"

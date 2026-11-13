@@ -1,29 +1,42 @@
+
 ## Learned User Preferences
 
 - Never start the dev server; the user always does this manually
 - Add a file path comment at the top of every source file (e.g. `// src/components/Sidebar.tsx`)
-- Use Biome for linting/formatting — not ESLint or Prettier
+- Use Biome for linting/formatting — not ESLint or Prettier. The working tree is CRLF, so format touched files with `npx biome format --write --line-ending=crlf <files>`
 - Prefer CSS variables + SCSS over Tailwind; no Tailwind dependency in this project
 - Use Cascadia Code (not JetBrains Mono) as the monospace font
 - No emojis in responses unless explicitly requested
 - Prefer KISS, YAGNI, SOLID; propose incremental improvements and understand existing code first
 - Always check available MCP servers and use them when relevant
-- Read all files in the resources folder before initiating a conversation
+- Commit only when asked, in logical batches (one commit per feature or section)
+- Keep this file in step with the code: when a change makes a fact here wrong (stack, window, storage, shortcuts, release flow), fix that line in the same change. It is edited by hand
+
+## Releases and changelog
+
+- The changelog is written for the people using the app, not for developers: one short line per change, in plain language about what they see or can now do. No file, function or library names. The same text is shown in the GitHub release and in the app's update dialog
+- Sections, in this order, with empty ones left out: `### New`, `### Changed`, `### Fixes`, `### Other`. Keep a release to a handful of lines; merge small tweaks into one line
+- Add lines under `## Unreleased` at the top of `CHANGELOG.md` in the same change that ships the feature or fix, not at release time. The section heading is just `## vX.Y.Z` (no title, no date) once released
+- Never edit version numbers by hand. Versions follow semver: patch = fixes only, minor = anything new, major = a change that breaks existing vaults
+- To release, and only when the user asks: `npm version patch|minor|major` (or an exact number), then `git push --follow-tags`, then publish the draft release on GitHub. `npm version` (via `scripts/release.mjs`) checks the changelog format, bumps `package.json` and `src-tauri`, turns `## Unreleased` into `## vX.Y.Z`, commits "Release vX.Y.Z" and tags it. Never tag or push unasked
+- `.github/workflows/release.yml` builds the signed Windows installer on a `v*` tag and opens a draft release whose notes are that CHANGELOG section. Installed apps only see published releases
 
 ## Learned Workspace Facts
 
-- Project: Graphene (renamed FlowVault → Graphite → Graphene) — Tauri v2 + React 18 + TypeScript + Vite desktop app for general note-taking with markdown, folders, and code snippet storage; disk root: `D:\graphene`; Tauri identifier: `com.graphene.app`; GitHub: `MogensenJesse/graphene` (remote: `https://github.com/MogensenJesse/graphene.git`, renamed from `flowvault`)
-- Stack: Tauri v2, React 18, TypeScript, Vite, SCSS, nanoid, Biome, gray-matter; plugins: tauri-plugin-fs + tauri-plugin-clipboard-manager + tauri-plugin-dialog
+- Project: Graphene (renamed FlowVault → Graphite → Graphene) — a Tauri v2 desktop app for markdown notes with code blocks, nested folders and a trash; disk root: `D:\graphene`; Tauri identifier: `com.graphene.app`; GitHub: `MogensenJesse/graphene` (remote: `https://github.com/MogensenJesse/graphene.git`)
+- Stack: Tauri v2 (plugins: fs, clipboard-manager, dialog, opener, updater), React 19, TypeScript 7, Vite 8, SCSS + CSS custom properties, nanoid, react-markdown (remark-gfm, remark-breaks, rehype-highlight), Biome 2. Frontmatter is parsed by a small parser in `src/lib/fileFormat.ts` (no gray-matter)
 - Design language and SCSS system borrowed from `D:\image-optimizer` (React + JSX, no TypeScript — reference for styles only)
-- SCSS color palette: `$light` #e0e0e0, `$night` #0E0E0F, `$onyx` #121314, `$green` #62cd20, `$yellow` #d7bb21, `$red` #cd3120; radii: `$radius-sm` 7px, `$radius-lg` 12px
-- CSS custom properties layer introduced on top of SCSS vars for semantic tokens (`--color-background-primary`, `--color-text-tertiary`, etc.)
-- Storage: file-based vault at user-chosen directory (config at `$APPDATA/graphene/config.json`); notes → `.md` with YAML frontmatter (gray-matter); snippets → native extensions (`.js`, `.css`, etc.) with `// @graphene {}` comment metadata; folders → OS directories; filenames: `{slug(title)}-{id}.{ext}`
-- Window: transparent + acrylic effect, no decorations, 960×640 default, min 720×480, dev port 1420
-- Fonts: Switzer (Medium + Bold) for UI; Cascadia Code for monospace code blocks
-- Project-level skills installed: `tauri-v2`, `vercel-react-best-practices`
-- Continual-learning plugin active; agents-memory-updater subagent maintains this file; transcripts stored under `d-graphene` Cursor project slug (graphene project folder)
-- Tags system fully removed (TAG_COLORS, tags field on BaseItem, TagPill component, all related SCSS); NewItemPanel unified create/edit panel for notes and snippets; SnippetForm.tsx and NoteForm.tsx deleted; `getFolderPath()` in `src/lib/utils.ts`; `useClickOutside` hook; sidebar: items visible inside folders with folder icons; drag-and-drop reorder between folders; new item button at bottom; app starts with fresh empty new-item panel (title and folder optional, defaults: "untitled"/root)
-- Custom FolderPicker uses role="menu"/role="menuitem" for a11y (not listbox/option); note/snippet headers: breadcrumb path, date `margin-left: auto`, bottom border; `UpdateItemFields` union type; react-markdown `REMARK_PLUGINS` must NOT use `as const` (causes TS4104); markdown formatting toolbar (edit mode only, inserts syntax); "preview" toggle button renders markdown; `cargo clean` required when project folder is moved or renamed
+- Palette in `src/assets/styles/base/_variables.scss` (pastel, cool): `$light` #c8ccd6, `$night` #0c0d10, `$onyx` #0f1013, `$green` #96dfa8, `$yellow` #e8cf82, `$red` #e8909a, `$blue` #89b8e8; radii `$radius-sm` 3px, `$radius-md` 7px, `$radius-lg` 12px, plus `--border-radius-row` 8px. Components use the semantic tokens (`--color-background-primary`, `--color-text-tertiary`, `--color-background-hover`, …), not the raw SCSS colors
+- Icons are Lucide (ISC) copied as inline SVG into `src/components/Icon.tsx`, each marked `// lucide: name`; no icon package is bundled
+- Data model (`src/types.ts`): one `Item` type, a markdown note. A "code item" is a note whose body starts with a fenced block (`isCodeItem` in `src/lib/utils.ts`); the sidebar's Code filter and icon follow that
+- Storage: file-based vault at a user-chosen folder (config at `AppData/graphene/config.json` through Tauri `BaseDirectory.AppData`). Every item is a `.md` file with YAML frontmatter named `{slug(title)}-{id}.md`; folders are real directories and a folder id is its path relative to the vault; deleted items move to the hidden `<vault>/.trash` (dot folders are ignored by the scan); old snippet files are converted to notes on first launch
+- Window: transparent + acrylic, no decorations (custom `WindowControls`), 1366×768 default, min 800×540, dev port 1420. The item header is one 52px bar with the window controls laid over its right end; draggable areas use `data-tauri-drag-region`, interactive items inside them need `no-drag` and a z-index above the drag strip
+- Fonts: Switzer (Medium + Bold, in `public/fonts`) for UI; Cascadia Code for code
+- Shared UI: `Modal` (search palette on Ctrl+K, update dialog), `ContextMenu` (sidebar right-click menus, built in `Sidebar` and `FolderRow`), `FolderPicker`. Modals set `aria-modal`, and the global shortcuts in `useKeyboardShortcuts` stand down while one is open. Escape handlers for popups run in the capture phase and stop propagation so an open editor does not also close
+- Updater: `tauri-plugin-updater` + `src/hooks/useUpdater.ts` (checks about 5s after launch, never in dev builds; the user installs from `UpdateDialog`). Windows only (NSIS, passive install). Endpoint is `latest.json` on the GitHub releases. The private signing key lives outside the repo in `%USERPROFILE%\.tauri\`; CI uses the secrets `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`; the public key is in `tauri.conf.json`
+- Version: `package.json` is the single source (`tauri.conf.json` reads it); `src-tauri/Cargo.toml` and `Cargo.lock` are synced by `scripts/release.mjs`
+- Gotchas: react-markdown `REMARK_PLUGINS` must NOT use `as const` (TS4104); TypeScript 7 needs `"types": ["vite/client"]`; `cargo clean` is required when the project folder is moved or renamed; a local `tauri build` needs `TAURI_SIGNING_PRIVATE_KEY` set because updater files are signed
+- Project-level skills live in `.agents/skills` (not tracked by git; `skills-lock.json` lists them): `tauri-v2`, `vercel-react-best-practices`, `react-performance-optimization`, `code-review-and-quality`; the `gitnexus-*` skills are in `.claude/skills`
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
