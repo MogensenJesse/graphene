@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.2.0
+
 ### Changed
 - The formatting buttons are now clear icons, with a tooltip that shows the shortcut and the markdown each one writes
 - Buttons light up for the format at your cursor (bold, lists, headings and so on)
