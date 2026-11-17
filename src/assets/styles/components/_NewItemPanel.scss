@@ -65,6 +65,7 @@
 
 .markdown-toolbar {
   display: flex;
+  flex-wrap: wrap; // never clip at the narrowest window; the language chip drops to a second row
   align-items: center;
   gap: 2px;
   padding: 4px 0 6px;
@@ -73,23 +74,32 @@
   margin-bottom: 0;
 
   &__btn {
-    font-size: 11px;
-    font-family: var(--font-mono);
-    padding: 2px 6px;
-    min-width: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
     border: 0.5px solid transparent;
     border-radius: var(--border-radius-sm);
     background: none;
-    color: var(--color-text-tertiary);
+    color: var(--color-text-secondary);
     cursor: pointer;
-    line-height: 1.6;
     transition: border-color var(--transition-fast), color var(--transition-fast),
       background var(--transition-fast);
 
     &:hover {
       color: var(--color-text-primary);
       border-color: var(--color-border-secondary);
-      background: var(--color-background-secondary);
+      background: var(--color-background-hover);
+    }
+
+    // The format is on where the caret is; pressing the button takes it off
+    &--active,
+    &--active:hover {
+      color: var(--color-text-primary);
+      border-color: var(--color-border-primary);
+      background: var(--color-background-active);
     }
 
     &:focus-visible {

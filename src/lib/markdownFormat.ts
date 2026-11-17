@@ -47,54 +47,118 @@ const LINE_FORMAT: Partial<
   h3: { has: /^### /, prefix: () => "### ", strip: HEADING },
 };
 
-// ponytail: "***x***" (bold and italic together) counts as bold, so italic wraps it once more
+// One span per match on a line, markers included. Opening marker followed by a non-space and the
+// closing one preceded by one, as toggleInline writes them. A single "*" never matches half of "**".
+// ponytail: "***x***" (bold and italic together) reads as bold only, so italic wraps it once more
+const INLINE_SPAN: Record<string, RegExp> = {
+  "**": /\*\*(?=\S)(.+?)(?<=\S)\*\*/g,
+  "*": /(?<!\*)\*(?=[^\s*])(.+?)(?<=[^\s*])\*(?!\*)/g,
+  "~~": /~~(?=\S)(.+?)(?<=\S)~~/g,
+  "`": /`[^`\n]+`/g,
+};
+
+/** The selection without the spaces at its ends ("** x **" is not bold, so spaces stay outside). */
+function trimSelection(
+  value: string,
+  ss: number,
+  se: number,
+): [number, number] {
+  const picked = value.slice(ss, se);
+  if (!picked.trim()) return [ss, se];
+  return [
+    ss + picked.length - picked.trimStart().length,
+    se - (picked.length - picked.trimEnd().length),
+  ];
+}
+
+/**
+ * The `marker` span on the selection's line that the selection sits in: in its text or on the
+ * whole span, markers included (so a caret outside the markers does not count). [start, end) with
+ * the markers, or null.
+ */
+function enclosingSpan(
+  value: string,
+  ss: number,
+  se: number,
+  marker: string,
+): [number, number] | null {
+  const n = marker.length;
+  // An empty pair with the caret between it ("**|**"), which the regexes need text to match
+  if (
+    ss === se &&
+    ss >= n &&
+    value.slice(ss - n, ss) === marker &&
+    value.slice(se, se + n) === marker &&
+    !(marker === "*" && (value[ss - n - 1] === "*" || value[se + n] === "*"))
+  )
+    return [ss - n, se + n];
+
+  const lineStart = ss === 0 ? 0 : value.lastIndexOf("\n", ss - 1) + 1;
+  const eol = value.indexOf("\n", lineStart);
+  const lineEnd = eol === -1 ? value.length : eol;
+  if (se > lineEnd) return null;
+  for (const m of value
+    .slice(lineStart, lineEnd)
+    .matchAll(INLINE_SPAN[marker])) {
+    const start = lineStart + m.index;
+    const end = start + m[0].length;
+    const inText = ss >= start + n && se <= end - n;
+    if (inText || (ss <= start && se >= end)) return [start, end];
+  }
+  return null;
+}
+
 function toggleInline(
   value: string,
   ss: number,
   se: number,
   marker: string,
 ): TextEdit {
-  // Spaces inside the markers break them ("** x **" is not bold), so keep them outside
-  const picked = value.slice(ss, se);
-  if (picked.trim()) {
-    ss += picked.length - picked.trimStart().length;
-    se -= picked.length - picked.trimEnd().length;
-  }
+  [ss, se] = trimSelection(value, ss, se);
   const n = marker.length;
-  const inner = value.slice(ss, se);
-  const half = marker === "*"; // one "*" must not match half of a "**"
 
-  // Markers just outside the selection: take them off, keep the text selected
-  if (
-    value.slice(ss - n, ss) === marker &&
-    value.slice(se, se + n) === marker &&
-    !(half && (value[ss - n - 1] === "*" || value[se + n] === "*"))
-  ) {
+  // Already in a span: take its markers off and keep the text selected
+  const span = enclosingSpan(value, ss, se, marker);
+  if (span) {
+    const [start, end] = span;
+    // Where a position lands once the markers are gone
+    const shift = (p: number) =>
+      p <= start
+        ? p
+        : p < start + n
+          ? start
+          : p <= end - n
+            ? p - n
+            : p < end
+              ? end - 2 * n
+              : p - 2 * n;
     return {
-      value: value.slice(0, ss - n) + inner + value.slice(se + n),
-      ss: ss - n,
-      se: se - n,
-    };
-  }
-  // Markers inside the selection
-  if (
-    inner.length >= 2 * n &&
-    inner.startsWith(marker) &&
-    inner.endsWith(marker) &&
-    !(half && inner.startsWith("**"))
-  ) {
-    const bare = inner.slice(n, -n);
-    return {
-      value: value.slice(0, ss) + bare + value.slice(se),
-      ss,
-      se: ss + bare.length,
+      value:
+        value.slice(0, start) +
+        value.slice(start + n, end - n) +
+        value.slice(end),
+      ss: shift(ss),
+      se: shift(se),
     };
   }
   return {
-    value: `${value.slice(0, ss)}${marker}${inner}${marker}${value.slice(se)}`,
+    value: `${value.slice(0, ss)}${marker}${value.slice(ss, se)}${marker}${value.slice(se)}`,
     ss: ss + n,
     se: se + n,
   };
+}
+
+/** The lines a line format works on. Blank ones are left alone, unless every line is blank (an empty line is where a list starts). */
+function lineRegion(value: string, ss: number, se: number) {
+  const lineStart = ss === 0 ? 0 : value.lastIndexOf("\n", ss - 1) + 1;
+  // A newline right at the end of the selection (triple-click) belongs to the last line, not the next
+  const end = se > ss && value[se - 1] === "\n" ? se - 1 : se;
+  const eol = value.indexOf("\n", end);
+  const lineEnd = eol === -1 ? value.length : eol;
+  const lines = value.slice(lineStart, lineEnd).split("\n");
+  const skipBlank = lines.some((line) => line.trim());
+  const targeted = (line: string) => !skipBlank || line.trim() !== "";
+  return { lineStart, lineEnd, lines, targeted };
 }
 
 function toggleLines(
@@ -103,16 +167,7 @@ function toggleLines(
   se: number,
   format: NonNullable<(typeof LINE_FORMAT)[FormatType]>,
 ): TextEdit {
-  const lineStart = ss === 0 ? 0 : value.lastIndexOf("\n", ss - 1) + 1;
-  // A newline right at the end of the selection (triple-click) belongs to the last line, not the next
-  const end = se > ss && value[se - 1] === "\n" ? se - 1 : se;
-  const eol = value.indexOf("\n", end);
-  const lineEnd = eol === -1 ? value.length : eol;
-
-  const lines = value.slice(lineStart, lineEnd).split("\n");
-  // Blank lines stay blank, unless every line is blank (an empty line is where a list starts)
-  const skipBlank = lines.some((line) => line.trim());
-  const targeted = (line: string) => !skipBlank || line.trim() !== "";
+  const { lineStart, lineEnd, lines, targeted } = lineRegion(value, ss, se);
   const off = lines.filter(targeted).every((line) => format.has.test(line));
 
   let i = 0;
@@ -147,6 +202,31 @@ function wrapInFence(value: string, ss: number, se: number): TextEdit {
     ss: caret,
     se: caret,
   };
+}
+
+/**
+ * The toggle formats that are on at the selection ss..se, i.e. the ones a press of their button
+ * would take off: inline ones when the selection sits in their span, line ones when every line
+ * of the selection has the prefix. Same rules as formatText, so the two always agree.
+ */
+export function activeFormats(
+  value: string,
+  ss: number,
+  se: number,
+): Set<FormatType> {
+  const on = new Set<FormatType>();
+  [ss, se] = trimSelection(value, ss, se);
+  for (const type of Object.keys(INLINE_MARKER) as FormatType[]) {
+    const marker = INLINE_MARKER[type];
+    if (marker && enclosingSpan(value, ss, se, marker)) on.add(type);
+  }
+  const { lines, targeted } = lineRegion(value, ss, se);
+  for (const type of Object.keys(LINE_FORMAT) as FormatType[]) {
+    const format = LINE_FORMAT[type];
+    if (format && lines.filter(targeted).every((line) => format.has.test(line)))
+      on.add(type);
+  }
+  return on;
 }
 
 /**

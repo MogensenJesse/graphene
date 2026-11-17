@@ -8,7 +8,7 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 
 ### Notes
 - One kind of item: a markdown note. Write in plain text; **Ctrl+E** flips between editing and the rendered view
-- Markdown formatting toolbar (bold, italic, inline code, links, etc.) with tooltips, plus **Ctrl+B** / **Ctrl+I** and Tab to indent. It works on highlighted text: code block wraps the selection, lists prefix every line, and pressing a format again takes it off
+- Markdown formatting toolbar (headings, bold, italic, strikethrough, lists, quote, inline code, code block, link, divider) drawn as icons. Hover one for its shortcut and the markdown it writes; the buttons for the formats at your cursor light up. Also **Ctrl+B** / **Ctrl+I** and Tab to indent. It works on highlighted text: code block wraps the selection, lists prefix every line, and pressing a lit format again takes it off
 - **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or **Ctrl+Y**) redoes, formatting included
 - Copy a whole note with the copy icon in the item header (the markdown, without the title)
 - Organize notes in nested folders

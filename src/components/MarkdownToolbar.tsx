@@ -1,39 +1,100 @@
 // src/components/MarkdownToolbar.tsx
-import { Fragment, type ReactNode } from "react";
+import { type ComponentType, Fragment, type ReactNode } from "react";
 import type { FormatType } from "../lib/markdownFormat";
 import type { MenuEntry } from "./ContextMenu";
+import {
+  BoldIcon,
+  CodeBlockIcon,
+  DividerIcon,
+  Heading1Icon,
+  Heading2Icon,
+  Heading3Icon,
+  InlineCodeIcon,
+  ItalicIcon,
+  LinkIcon,
+  ListIcon,
+  ListOrderedIcon,
+  QuoteIcon,
+  StrikethroughIcon,
+} from "./Icon";
+import Tooltip from "./Tooltip";
 
 interface MarkdownToolbarProps {
   onFormat: (type: FormatType) => void;
+  // The formats that are on where the caret is; their buttons light up
+  active?: ReadonlySet<FormatType>;
   // Shown at the right end of the toolbar (the code block language chip)
   children?: ReactNode;
 }
 
-const GROUPS: { type: FormatType; label: string; title: string }[][] = [
+interface FormatButton {
+  type: FormatType;
+  label: string;
+  Icon: ComponentType<{ size?: number }>;
+  keys?: string; // shortcut, for the tooltip
+  hint: string; // what it writes, for the tooltip
+}
+
+const GROUPS: FormatButton[][] = [
   [
-    { type: "h1", label: "H1", title: "Heading 1" },
-    { type: "h2", label: "H2", title: "Heading 2" },
-    { type: "h3", label: "H3", title: "Heading 3" },
+    { type: "h1", label: "Heading 1", Icon: Heading1Icon, hint: "# Heading" },
+    { type: "h2", label: "Heading 2", Icon: Heading2Icon, hint: "## Heading" },
+    { type: "h3", label: "Heading 3", Icon: Heading3Icon, hint: "### Heading" },
   ],
   [
-    { type: "bold", label: "B", title: "Bold (Ctrl+B)" },
-    { type: "italic", label: "I", title: "Italic (Ctrl+I)" },
-    { type: "strikethrough", label: "S", title: "Strikethrough" },
+    {
+      type: "bold",
+      label: "Bold",
+      Icon: BoldIcon,
+      keys: "Ctrl+B",
+      hint: "**bold**",
+    },
+    {
+      type: "italic",
+      label: "Italic",
+      Icon: ItalicIcon,
+      keys: "Ctrl+I",
+      hint: "*italic*",
+    },
+    {
+      type: "strikethrough",
+      label: "Strikethrough",
+      Icon: StrikethroughIcon,
+      hint: "~~text~~",
+    },
   ],
   [
-    { type: "ul", label: "\u2022", title: "Bulleted list" },
-    { type: "ol", label: "1.", title: "Numbered list" },
-    { type: "blockquote", label: "\u201C", title: "Quote" },
+    { type: "ul", label: "Bulleted list", Icon: ListIcon, hint: "- item" },
+    {
+      type: "ol",
+      label: "Numbered list",
+      Icon: ListOrderedIcon,
+      hint: "1. item",
+    },
+    { type: "blockquote", label: "Quote", Icon: QuoteIcon, hint: "> quote" },
   ],
   [
-    { type: "code", label: "`", title: "Inline code" },
-    { type: "codeblock", label: "\u2039\u203A", title: "Code block" },
+    {
+      type: "code",
+      label: "Inline code",
+      Icon: InlineCodeIcon,
+      hint: "`code`",
+    },
+    {
+      type: "codeblock",
+      label: "Code block",
+      Icon: CodeBlockIcon,
+      hint: "```js",
+    },
   ],
   [
-    { type: "link", label: "link", title: "Link" },
-    { type: "hr", label: "\u2014", title: "Divider" },
+    { type: "link", label: "Link", Icon: LinkIcon, hint: "[text](url)" },
+    { type: "hr", label: "Divider", Icon: DividerIcon, hint: "---" },
   ],
 ];
+
+// Add something instead of switching on and off, so they have no pressed state
+const ONE_SHOT = new Set<FormatType>(["codeblock", "hr", "link"]);
 
 /** The toolbar's formats as one "Format" submenu, for the editor's right-click menu. */
 export const formatMenuEntry = (
@@ -42,14 +103,15 @@ export const formatMenuEntry = (
   label: "Format",
   submenu: GROUPS.flatMap((group, i) => [
     ...(i > 0 ? ["separator" as const] : []),
-    ...group.map(({ type, title }) => ({
-      label: title,
+    ...group.map(({ type, label, Icon }) => ({
+      label,
+      icon: <Icon size={14} />,
       onSelect: () => onFormat(type),
     })),
   ]),
 });
 
-function MarkdownToolbar({ onFormat, children }: MarkdownToolbarProps) {
+function MarkdownToolbar({ onFormat, active, children }: MarkdownToolbarProps) {
   return (
     <div className="markdown-toolbar">
       {GROUPS.map((group, gi) => (
@@ -57,20 +119,24 @@ function MarkdownToolbar({ onFormat, children }: MarkdownToolbarProps) {
           {gi > 0 && (
             <span className="markdown-toolbar__sep" aria-hidden="true" />
           )}
-          {group.map(({ type, label, title }) => (
-            <button
-              key={type}
-              type="button"
-              className="markdown-toolbar__btn"
-              // Keep focus and the highlighted text in the editor while clicking
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => onFormat(type)}
-              aria-label={title}
-              title={title}
-            >
-              {label}
-            </button>
-          ))}
+          {group.map(({ type, label, Icon, keys, hint }) => {
+            const on = active?.has(type) ?? false;
+            return (
+              <Tooltip key={type} label={label} keys={keys} hint={hint}>
+                <button
+                  type="button"
+                  className={`markdown-toolbar__btn${on ? " markdown-toolbar__btn--active" : ""}`}
+                  // Keep focus and the highlighted text in the editor while clicking
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => onFormat(type)}
+                  aria-label={label}
+                  aria-pressed={ONE_SHOT.has(type) ? undefined : on}
+                >
+                  <Icon size={15} />
+                </button>
+              </Tooltip>
+            );
+          })}
         </Fragment>
       ))}
       {children && <div className="markdown-toolbar__trailing">{children}</div>}

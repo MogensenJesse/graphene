@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Changed
+- The formatting buttons are now clear icons, with a tooltip that shows the shortcut and the markdown each one writes
+- Buttons light up for the format at your cursor (bold, lists, headings and so on)
+
+### Fixes
+- Pressing Bold with the cursor inside bold text now removes it instead of adding empty markers
+
 ## v1.1.0
 
 ### New

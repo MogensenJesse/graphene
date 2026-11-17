@@ -4,6 +4,7 @@ import { useClipboard } from "../hooks/useClipboard";
 import type { AddItemFields } from "../hooks/useItems";
 import { replaceText, useMarkdownFormat } from "../hooks/useMarkdownFormat";
 import { findFenceAt, setFenceLang } from "../lib/codeBlocks";
+import { activeFormats } from "../lib/markdownFormat";
 import type { Folder, Item } from "../types";
 import CodeLanguagePicker from "./CodeLanguagePicker";
 import type { MenuEntry } from "./ContextMenu";
@@ -67,6 +68,7 @@ function NewItemPanel({
   });
 
   const [caret, setCaret] = useState(0);
+  const [selEnd, setSelEnd] = useState(0); // where the selection ends (= caret when nothing is selected)
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const panelRef = useRef<HTMLDivElement>(null);
@@ -81,6 +83,17 @@ function NewItemPanel({
     [body, caret],
   );
 
+  // The toolbar buttons that are on at the caret or selection light up
+  const active = useMemo(
+    () => activeFormats(body.replace(/\r\n/g, "\n"), caret, selEnd),
+    [body, caret, selEnd],
+  );
+
+  const trackSelection = (el: HTMLTextAreaElement) => {
+    setCaret(el.selectionStart);
+    setSelEnd(el.selectionEnd);
+  };
+
   // Start typing straight away: focus the body on mount
   // biome-ignore lint/correctness/useExhaustiveDependencies: mount only; a new draft remounts the panel through its key
   useEffect(() => {
@@ -90,7 +103,7 @@ function NewItemPanel({
       !initialItem && newKind === "code" ? CODE_SEED_CARET : el.value.length;
     el.focus();
     el.setSelectionRange(start, start);
-    setCaret(start);
+    trackSelection(el);
   }, []);
 
   // Empty title saves as "untitled", so compare the resolved value or an untitled item is dirty forever
@@ -261,7 +274,7 @@ function NewItemPanel({
 
       <div className="new-item-panel__body">
         <div className="new-item-panel__editor-wrap">
-          <MarkdownToolbar onFormat={applyFormat}>
+          <MarkdownToolbar onFormat={applyFormat} active={active}>
             {block && (
               <CodeLanguagePicker
                 lang={block.lang}
@@ -278,9 +291,9 @@ function NewItemPanel({
             value={body}
             onChange={(e) => {
               setBody(e.target.value);
-              setCaret(e.target.selectionStart);
+              trackSelection(e.target);
             }}
-            onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+            onSelect={(e) => trackSelection(e.currentTarget)}
             onKeyDown={handleBodyKeyDown}
             onContextMenu={(e) =>
               openText(e, ["separator", formatMenuEntry(applyFormat)])
