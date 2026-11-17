@@ -1,7 +1,7 @@
 // src/components/FolderRow.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { compareNames, readCollapsed, setFolderCollapsed } from "../lib/utils";
-import type { Folder, Item } from "../types";
+import type { Folder, Item, ItemKind } from "../types";
 import type { MenuEntry } from "./ContextMenu";
 import {
   ChevronDownIcon,
@@ -10,6 +10,7 @@ import {
   EllipsisIcon,
   ExternalLinkIcon,
   FolderPlusIcon,
+  ListTodoIcon,
   PlusIcon,
   TextCursorInputIcon,
   TrashIcon,
@@ -38,7 +39,7 @@ interface FolderRowProps {
   onAddSubfolder: (parentId: string, name: string) => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
-  onNew: (kind: "note" | "code", folderId: string) => void;
+  onNew: (kind: ItemKind, folderId: string) => void;
   onReveal: (folderId: string) => void;
   onOpenMenu: (x: number, y: number, entries: MenuEntry[]) => void;
   onItemContextMenu: (e: React.MouseEvent, item: Item) => void;
@@ -130,6 +131,11 @@ function FolderRow({
         label: "New note here",
         icon: <PlusIcon size={14} />,
         onSelect: () => onNew("note", folder.id),
+      },
+      {
+        label: "New to-do here",
+        icon: <ListTodoIcon size={14} />,
+        onSelect: () => onNew("todo", folder.id),
       },
       {
         label: "New code here",

@@ -4,9 +4,9 @@ import { useClipboard } from "../hooks/useClipboard";
 import { TRASH_DROP_ID, useDragToFolder } from "../hooks/useDragToFolder";
 import type { UpdateStatus } from "../hooks/useUpdater";
 import { firstCodeBlock } from "../lib/codeBlocks";
-import { filterItems } from "../lib/search";
-import { compareNames, flattenFolders, isCodeItem } from "../lib/utils";
-import type { Folder, Item } from "../types";
+import { filterByType } from "../lib/search";
+import { compareNames, flattenFolders, itemKind } from "../lib/utils";
+import type { Folder, Item, ItemKind, TypeFilter } from "../types";
 import type { MenuEntry } from "./ContextMenu";
 import { useContextMenu } from "./ContextMenuProvider";
 import FolderRow from "./FolderRow";
@@ -21,8 +21,9 @@ import {
   FolderInputIcon,
   FolderPlusIcon,
   HexagonIcon,
+  KindIcon,
+  ListTodoIcon,
   NoFolderIcon,
-  NoteIcon,
   PlusIcon,
   SearchIcon,
   SortIcon,
@@ -30,6 +31,7 @@ import {
   TrashIcon,
 } from "./Icon";
 import ItemRow from "./ItemRow";
+import ThemeButton from "./ThemeButton";
 
 type SortBy = "name" | "edited";
 
@@ -39,6 +41,13 @@ const SORT_LABEL: Record<SortBy, string> = {
   edited: "Recent",
 };
 const SORT_KEY = "graphene.sort";
+
+const FILTERS: { value: TypeFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "note", label: "Notes" },
+  { value: "todo", label: "To-dos" },
+  { value: "code", label: "Code" },
+];
 
 // What the version button says while an update check is in flight or has just finished
 const VERSION_LABEL: Partial<Record<UpdateStatus, string>> = {
@@ -67,7 +76,7 @@ interface SidebarProps {
   selectedId: string | null;
   selectedFolderId: string | null;
   unsavedItemId: string | null;
-  typeFilter: "all" | "note" | "code";
+  typeFilter: TypeFilter;
   trashedCount: number;
   trashOpen: boolean;
   version: string;
@@ -78,7 +87,7 @@ interface SidebarProps {
   onSelect: (id: string) => void;
   onSelectFolder: (id: string | null) => void;
   // folderId omitted = wherever the selection is; null = no folder
-  onNew: (kind: "note" | "code", folderId?: string | null) => void;
+  onNew: (kind: ItemKind, folderId?: string | null) => void;
   onEditItem: (id: string) => void;
   onDuplicateItem: (id: string) => void;
   onDeleteItem: (id: string) => void;
@@ -93,7 +102,7 @@ interface SidebarProps {
   onDeleteFolder: (id: string) => void;
   onMoveItem: (itemId: string, targetFolderId: string | null) => void;
   onOpenSearch: () => void;
-  onTypeFilterChange: (filter: "all" | "note" | "code") => void;
+  onTypeFilterChange: (filter: TypeFilter) => void;
 }
 
 function Sidebar({
@@ -188,9 +197,9 @@ function Sidebar({
   );
 
   // No folder filter — the tree handles folder grouping visually.
-  // filterItems returns a fresh array, so sorting it in place is safe.
+  // filterByType returns a fresh array, so sorting it in place is safe.
   const filtered = useMemo(
-    () => filterItems(items, "", typeFilter).sort(COMPARE[sortBy]),
+    () => filterByType(items, typeFilter).sort(COMPARE[sortBy]),
     [items, typeFilter, sortBy],
   );
 
@@ -301,6 +310,11 @@ function Sidebar({
       onSelect: () => onNew("note", null),
     },
     {
+      label: "New to-do",
+      icon: <ListTodoIcon size={14} />,
+      onSelect: () => onNew("todo", null),
+    },
+    {
       label: "New code",
       icon: <CodeIcon size={14} />,
       onSelect: () => onNew("code", null),
@@ -336,11 +350,11 @@ function Sidebar({
   };
 
   const itemEntries = (item: Item): MenuEntry[] => {
-    const code = isCodeItem(item);
+    const kind = itemKind(item);
     return [
       {
         label: "Open",
-        icon: code ? <CodeIcon size={14} /> : <NoteIcon size={14} />,
+        icon: <KindIcon kind={kind} size={14} />,
         onSelect: () => selectItem(item.id),
       },
       {
@@ -364,7 +378,7 @@ function Sidebar({
         icon: <ClipboardIcon size={14} />,
         onSelect: () => copy(item.body),
       },
-      ...(code
+      ...(kind === "code"
         ? [
             {
               label: "Copy code",
@@ -447,15 +461,15 @@ function Sidebar({
 
       {/* Type filter */}
       <div className="sidebar__segments">
-        {(["all", "note", "code"] as const).map((f) => (
+        {FILTERS.map(({ value, label }) => (
           <button
-            key={f}
+            key={value}
             type="button"
-            className={`sidebar__segment${typeFilter === f ? " sidebar__segment--active" : ""}`}
-            aria-pressed={typeFilter === f}
-            onClick={() => onTypeFilterChange(f)}
+            className={`sidebar__segment${typeFilter === value ? " sidebar__segment--active" : ""}`}
+            aria-pressed={typeFilter === value}
+            onClick={() => onTypeFilterChange(value)}
           >
-            {f === "all" ? "All" : f === "note" ? "Notes" : "Code"}
+            {label}
           </button>
         ))}
       </div>
@@ -470,6 +484,15 @@ function Sidebar({
         >
           <PlusIcon size={16} />
           <span>New note</span>
+        </button>
+        <button
+          type="button"
+          className="sidebar__nav-item"
+          onClick={() => onNew("todo")}
+          title="New to-do (Ctrl+Alt+N)"
+        >
+          <ListTodoIcon size={16} />
+          <span>New to-do</span>
         </button>
         <button
           type="button"
@@ -649,6 +672,7 @@ function Sidebar({
             <span className="sidebar__nav-count">{trashedCount}</span>
           )}
         </button>
+        <ThemeButton />
       </div>
 
       {/* Drag ghost — follows cursor while dragging */}

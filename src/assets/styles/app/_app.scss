@@ -23,7 +23,7 @@ body {
   flex-direction: column;
   height: 100vh;
   width: 100vw;
-  background: rgba(v.$night, 0.66);
+  background: var(--surface-app);
   overflow: hidden;
   padding: 10px;
   box-sizing: border-box;
@@ -51,7 +51,7 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: rgba(v.$onyx, 0.58);
+  background: var(--surface-main);
   border-radius: v.$radius-lg;
   position: relative;
   --win-controls-width: 90px; // three 26px buttons and two 6px gaps; the header bar clears it
@@ -95,8 +95,8 @@ body {
   }
 
   &--close:hover {
-    background: rgba(v.$red, 0.18);
-    color: v.$red;
+    background: rgba(var(--rgb-danger), 0.18);
+    color: var(--color-text-danger);
   }
 
   &:focus-visible {
@@ -113,7 +113,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(v.$night, 0.72);
+  background: var(--surface-backdrop);
 }
 
 .vault-picker__win-controls {
@@ -128,7 +128,7 @@ body {
   align-items: center;
   gap: 14px;
   padding: 40px 48px;
-  background: rgba(v.$onyx, 0.72);
+  background: var(--surface-card);
   border: 1px solid var(--color-border-primary);
   border-radius: v.$radius-lg;
   max-width: 380px;
@@ -175,7 +175,7 @@ body {
   transition: background var(--transition-fast), border-color var(--transition-fast);
 
   &:hover:not(:disabled) {
-    background: rgba(200, 204, 214, 0.14);
+    background: var(--color-background-hover-strong);
     border-color: var(--color-border-primary);
   }
 
@@ -198,8 +198,8 @@ body {
   z-index: 200;
   pointer-events: none;
   border-radius: v.$radius-lg;
-  background: rgba(v.$night, 0.55);
-  border: 2px dashed v.$blue;
+  background: var(--surface-scrim);
+  border: 2px dashed var(--color-text-info);
   display: flex;
   align-items: center;
   justify-content: center;

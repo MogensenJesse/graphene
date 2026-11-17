@@ -1,0 +1,122 @@
+// src/assets/styles/components/_TaskList.scss
+// Task lists ("- [ ] item") in the read view: drawn checkboxes, due chips, hide-done, reordering.
+
+// A ticked task, whether its checkbox sits straight in the item (tight list) or inside a paragraph (loose list)
+$done: 'li.task-list-item:has(> input:checked, > p > input:checked)';
+
+.note-detail__markdown {
+  .contains-task-list {
+    list-style: none;
+    padding-left: 0;
+
+    .contains-task-list {
+      padding-left: 1.4em; // nested tasks step in
+    }
+  }
+
+  li.task-list-item {
+    position: relative;
+  }
+
+  input[type='checkbox'] {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    margin: 0 8px 0 0;
+    vertical-align: -2px;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+
+    &:hover {
+      border-color: var(--color-text-secondary);
+    }
+
+    &:focus-visible {
+      outline: 1px solid var(--color-text-info);
+      outline-offset: 2px;
+    }
+
+    &:checked {
+      background: var(--color-text-info);
+      border-color: var(--color-text-info);
+
+      // The check mark: two sides of a box, turned
+      &::after {
+        content: '';
+        display: block;
+        width: 4px;
+        height: 8px;
+        margin: 0 auto;
+        border: solid var(--color-background-secondary);
+        border-width: 0 1.5px 1.5px 0;
+        transform: translateY(0.5px) rotate(45deg);
+      }
+    }
+  }
+
+  #{$done} {
+    color: var(--color-text-tertiary);
+  }
+
+  // ── Due date chip ───────────────────────────────────────────────────────
+
+  .due-chip {
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 99px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: var(--color-background-hover);
+    color: var(--color-text-tertiary);
+
+    &--overdue {
+      background: var(--color-background-danger);
+      color: var(--color-text-danger);
+    }
+
+    &--today {
+      background: var(--color-background-info);
+      color: var(--color-text-info);
+    }
+  }
+
+  // A finished task has nothing left to warn about
+  #{$done} > .due-chip,
+  #{$done} > p > .due-chip {
+    background: var(--color-background-hover);
+    color: var(--color-text-tertiary);
+  }
+
+  // ── Reordering (to-do notes) ────────────────────────────────────────────
+
+  .task-grip {
+    position: absolute;
+    left: -20px;
+    top: 0.45em;
+    display: inline-flex;
+    color: var(--color-text-tertiary);
+    cursor: grab;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+  }
+
+  // Only the innermost hovered task shows its handle
+  li.task-list-item:hover:not(:has(li:hover)) > .task-grip {
+    opacity: 1;
+  }
+
+  li[data-drop='before'] {
+    box-shadow: 0 -2px 0 0 var(--color-text-info);
+  }
+
+  li[data-drop='after'] {
+    box-shadow: 0 2px 0 0 var(--color-text-info);
+  }
+}
+
+// "Hide done tasks" in the header
+.note-detail--hide-done .note-detail__markdown #{$done} {
+  display: none;
+}

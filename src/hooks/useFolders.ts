@@ -1,5 +1,6 @@
 // src/hooks/useFolders.ts
 import { useCallback, useState } from "react";
+import { isReservedFolderName } from "../lib/attachments";
 import {
   createFolderDir,
   deleteFolderDir,
@@ -22,6 +23,8 @@ export function useFolders(
   const addFolder = useCallback(
     (name: string, parentId: string | null = null): string => {
       const id = parentId !== null ? `${parentId}/${name.trim()}` : name.trim();
+      // ponytail: refused without a message; the name is the images folder
+      if (isReservedFolderName(name, parentId)) return id;
       const folder: Folder = {
         id,
         name: name.trim(),
@@ -41,6 +44,13 @@ export function useFolders(
       const slashIdx = id.lastIndexOf("/");
       const newId =
         slashIdx > 0 ? `${id.slice(0, slashIdx)}/${newName}` : newName;
+      if (
+        isReservedFolderName(
+          newName,
+          slashIdx > 0 ? id.slice(0, slashIdx) : null,
+        )
+      )
+        return;
 
       setFolders((prev) => {
         const target = prev.find((f) => f.id === id);

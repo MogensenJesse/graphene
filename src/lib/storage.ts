@@ -9,6 +9,7 @@ import {
   writeTextFile,
 } from "@tauri-apps/plugin-fs";
 import type { Folder, Item } from "../types";
+import { ATTACH_DIR, unusedImages } from "./attachments";
 import {
   CODE_EXTS,
   isLegacySnippetMd,
@@ -23,6 +24,30 @@ import { getVaultPath, setVaultPath } from "./vault";
 export { getVaultPath as loadVaultPath, setVaultPath as saveVaultPath };
 
 const TRASH_DIR = ".trash";
+
+// ---------------------------------------------------------------------------
+// Write tracking: a rescan of the vault (see loadVault) is only trusted when no write
+// of ours started, ended or ran during it, or it could see a file mid-rename and drop the note.
+// ---------------------------------------------------------------------------
+
+let writeSeq = 0;
+let writesPending = 0;
+
+async function tracked<T>(op: () => Promise<T>): Promise<T> {
+  writeSeq++;
+  writesPending++;
+  try {
+    return await op();
+  } finally {
+    writesPending--;
+    writeSeq++;
+  }
+}
+
+/** A snapshot to compare before and after a scan: equal and `pending` 0 on both sides means no write touched it. */
+export function writeState(): { seq: number; pending: number } {
+  return { seq: writeSeq, pending: writesPending };
+}
 
 // ---------------------------------------------------------------------------
 // Path helpers
@@ -133,6 +158,13 @@ export async function scanVaultRecursive(
     if (!entry.name) continue;
     // Dot entries (.trash, .git, .obsidian) are not part of the vault's content
     if (entry.name.startsWith(".")) continue;
+    // The images folder at the vault root is no note folder (see lib/attachments)
+    if (
+      entry.isDirectory &&
+      currentAbsPath === vaultPath &&
+      entry.name.toLowerCase() === ATTACH_DIR
+    )
+      continue;
     const absPath = joinPath(currentAbsPath, entry.name);
 
     if (entry.isDirectory) {
@@ -231,11 +263,13 @@ async function itemsFromFiles(
   return items;
 }
 
-export async function saveItem(vaultPath: string, item: Item): Promise<void> {
-  const dir =
-    item.folderId !== null ? joinPath(vaultPath, item.folderId) : vaultPath;
-  await mkdir(dir, { recursive: true });
-  await writeTextFile(itemFilePath(vaultPath, item), serializeItem(item));
+export function saveItem(vaultPath: string, item: Item): Promise<void> {
+  return tracked(async () => {
+    const dir =
+      item.folderId !== null ? joinPath(vaultPath, item.folderId) : vaultPath;
+    await mkdir(dir, { recursive: true });
+    await writeTextFile(itemFilePath(vaultPath, item), serializeItem(item));
+  });
 }
 
 /** Save `updated`; if its file path differs from `old` (title or folder changed), remove the old file first. */
@@ -251,56 +285,62 @@ export async function replaceItemFile(
 }
 
 /** Hard remove, for the stale file left behind by a rename. A user delete goes through trashItemFile. */
-export async function deleteItemFile(
-  vaultPath: string,
-  item: Item,
-): Promise<void> {
-  const filePath = itemFilePath(vaultPath, item);
-  try {
-    const fileExists = await exists(filePath);
-    if (fileExists) await remove(filePath);
-  } catch (err) {
-    console.warn("[storage] deleteItemFile failed:", filePath, err);
-  }
+export function deleteItemFile(vaultPath: string, item: Item): Promise<void> {
+  return tracked(async () => {
+    const filePath = itemFilePath(vaultPath, item);
+    try {
+      const fileExists = await exists(filePath);
+      if (fileExists) await remove(filePath);
+    } catch (err) {
+      console.warn("[storage] deleteItemFile failed:", filePath, err);
+    }
+  });
 }
 
-export async function moveItemFile(
+export function moveItemFile(
   vaultPath: string,
   item: Item,
   newFolderId: string | null,
 ): Promise<void> {
-  const oldPath = itemFilePath(vaultPath, item);
-  const newDir =
-    newFolderId !== null ? joinPath(vaultPath, newFolderId) : vaultPath;
+  return tracked(async () => {
+    const oldPath = itemFilePath(vaultPath, item);
+    const newDir =
+      newFolderId !== null ? joinPath(vaultPath, newFolderId) : vaultPath;
 
-  await mkdir(newDir, { recursive: true });
+    await mkdir(newDir, { recursive: true });
 
-  const newPath = joinPath(newDir, itemFileName(item));
+    const newPath = joinPath(newDir, itemFileName(item));
 
-  try {
-    const fileExists = await exists(oldPath);
-    if (fileExists && oldPath !== newPath) {
-      await rename(oldPath, newPath);
+    try {
+      const fileExists = await exists(oldPath);
+      if (fileExists && oldPath !== newPath) {
+        await rename(oldPath, newPath);
+      }
+    } catch (err) {
+      console.warn(
+        "[storage] moveItemFile failed:",
+        oldPath,
+        "→",
+        newPath,
+        err,
+      );
     }
-  } catch (err) {
-    console.warn("[storage] moveItemFile failed:", oldPath, "→", newPath, err);
-  }
+  });
 }
 
 // ---------------------------------------------------------------------------
 // Trash
 // ---------------------------------------------------------------------------
 
-export async function trashItemFile(
-  vaultPath: string,
-  item: Item,
-): Promise<void> {
-  const filePath = itemFilePath(vaultPath, item);
-  try {
-    if (await exists(filePath)) await moveToTrash(vaultPath, filePath);
-  } catch (err) {
-    console.warn("[storage] trashItemFile failed:", filePath, err);
-  }
+export function trashItemFile(vaultPath: string, item: Item): Promise<void> {
+  return tracked(async () => {
+    const filePath = itemFilePath(vaultPath, item);
+    try {
+      if (await exists(filePath)) await moveToTrash(vaultPath, filePath);
+    } catch (err) {
+      console.warn("[storage] trashItemFile failed:", filePath, err);
+    }
+  });
 }
 
 /** Items in <vault>/.trash. Not recursive: converted snippet originals and loose files stay out of sight. */
@@ -330,33 +370,86 @@ export async function loadTrash(vaultPath: string): Promise<Item[]> {
 }
 
 /** Put a trashed item back. Returns the item as restored: its folder may be gone, then it lands in the vault root. */
-export async function restoreItemFile(
-  vaultPath: string,
-  item: Item,
-): Promise<Item> {
-  const folderExists =
-    item.folderId === null ||
-    (await exists(folderAbsPath(vaultPath, item.folderId)));
-  const restored = folderExists ? item : { ...item, folderId: null };
-  await saveItem(vaultPath, restored); // write first, so a crash never loses it
-  await remove(trashFilePath(vaultPath, item));
-  return restored;
+export function restoreItemFile(vaultPath: string, item: Item): Promise<Item> {
+  return tracked(async () => {
+    const folderExists =
+      item.folderId === null ||
+      (await exists(folderAbsPath(vaultPath, item.folderId)));
+    const restored = folderExists ? item : { ...item, folderId: null };
+    await saveItem(vaultPath, restored); // write first, so a crash never loses it
+    await remove(trashFilePath(vaultPath, item));
+    return restored;
+  });
 }
 
 /**
  * Delete the listed items from the trash for good. Converted snippet originals and folder leftovers
  * are never listed, so they stay. ponytail: delete the .trash folder by hand once the migration looks right.
  */
-export async function emptyTrashFiles(
+export function emptyTrashFiles(
   vaultPath: string,
   items: Item[],
 ): Promise<void> {
-  await Promise.allSettled(
-    items.map(async (item) => {
-      const path = trashFilePath(vaultPath, item);
-      if (await exists(path)) await remove(path);
-    }),
-  );
+  return tracked(async () => {
+    await Promise.allSettled(
+      items.map(async (item) => {
+        const path = trashFilePath(vaultPath, item);
+        if (await exists(path)) await remove(path);
+      }),
+    );
+  });
+}
+
+/**
+ * The text of every .md in the vault and in .trash, to see which images are still linked. Other dot
+ * folders are not part of the vault. Unlike the scan, this throws on anything it cannot read: not
+ * knowing what is linked must end in deleting nothing. ponytail: links from non-.md files are not seen.
+ */
+async function readAllNotesText(
+  vaultPath: string,
+  dir: string,
+): Promise<string> {
+  const parts: string[] = [];
+  for (const entry of await readDir(dir)) {
+    if (!entry.name) continue;
+    const absPath = joinPath(dir, entry.name);
+    if (entry.isDirectory) {
+      const skip = entry.name.startsWith(".")
+        ? entry.name !== TRASH_DIR
+        : dir === vaultPath && entry.name.toLowerCase() === ATTACH_DIR;
+      if (!skip) parts.push(await readAllNotesText(vaultPath, absPath));
+    } else if (entry.isFile && entry.name.toLowerCase().endsWith(".md")) {
+      parts.push(await readTextFile(absPath));
+    }
+  }
+  return parts.join("\n");
+}
+
+/**
+ * Deletes the images in <vault>/attachments that no note links to any more. Meant to run right after
+ * the trash is emptied, when the notes that used them are gone. A failure or a save of ours during the
+ * scan means nothing is deleted; the next empty trash tries again.
+ */
+export async function sweepUnusedImages(vaultPath: string): Promise<void> {
+  const dir = joinPath(vaultPath, ATTACH_DIR);
+  try {
+    if (!(await exists(dir))) return;
+    const files = (await readDir(dir))
+      .filter((e) => e.isFile && e.name)
+      .map((e) => e.name);
+    if (files.length === 0) return;
+    const before = writeState();
+    if (before.pending) return;
+    const unused = unusedImages(
+      files,
+      await readAllNotesText(vaultPath, vaultPath),
+    );
+    const after = writeState();
+    if (after.pending || after.seq !== before.seq) return;
+    await Promise.allSettled(unused.map((name) => remove(joinPath(dir, name))));
+  } catch (err) {
+    console.warn("[storage] sweepUnusedImages failed:", err);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -395,36 +488,41 @@ export async function loadVault(
   };
 }
 
-export async function createFolderDir(
+export function createFolderDir(
   vaultPath: string,
   folder: Folder,
 ): Promise<void> {
-  const absPath = folderAbsPath(vaultPath, folder.id);
-  await mkdir(absPath, { recursive: true });
+  return tracked(() =>
+    mkdir(folderAbsPath(vaultPath, folder.id), { recursive: true }),
+  );
 }
 
-export async function renameFolderDir(
+export function renameFolderDir(
   vaultPath: string,
   oldId: string,
   newName: string,
 ): Promise<void> {
-  const oldAbs = folderAbsPath(vaultPath, oldId);
-  const slashIdx = oldId.lastIndexOf("/");
-  const newId =
-    slashIdx > 0 ? `${oldId.slice(0, slashIdx)}/${newName}` : newName;
-  const newAbs = folderAbsPath(vaultPath, newId);
-  await rename(oldAbs, newAbs);
+  return tracked(async () => {
+    const oldAbs = folderAbsPath(vaultPath, oldId);
+    const slashIdx = oldId.lastIndexOf("/");
+    const newId =
+      slashIdx > 0 ? `${oldId.slice(0, slashIdx)}/${newName}` : newName;
+    const newAbs = folderAbsPath(vaultPath, newId);
+    await rename(oldAbs, newAbs);
+  });
 }
 
 /** Items are moved out first, so what is left is non-Graphene files: keep them in .trash instead of erasing them. */
-export async function deleteFolderDir(
+export function deleteFolderDir(
   vaultPath: string,
   folderId: string,
 ): Promise<void> {
-  const absPath = folderAbsPath(vaultPath, folderId);
-  try {
-    if (await exists(absPath)) await moveToTrash(vaultPath, absPath);
-  } catch (err) {
-    console.warn("[storage] deleteFolderDir failed:", absPath, err);
-  }
+  return tracked(async () => {
+    const absPath = folderAbsPath(vaultPath, folderId);
+    try {
+      if (await exists(absPath)) await moveToTrash(vaultPath, absPath);
+    } catch (err) {
+      console.warn("[storage] deleteFolderDir failed:", absPath, err);
+    }
+  });
 }

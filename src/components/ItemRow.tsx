@@ -1,8 +1,9 @@
 // src/components/ItemRow.tsx
-import { useEffect, useRef, useState } from "react";
-import { isCodeItem } from "../lib/utils";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { taskProgress } from "../lib/tasks";
+import { itemKind } from "../lib/utils";
 import type { Item } from "../types";
-import { CodeIcon, NoteIcon } from "./Icon";
+import { KindIcon } from "./Icon";
 
 interface ItemRowProps {
   item: Item;
@@ -32,6 +33,11 @@ function ItemRow({
   const inputRef = useRef<HTMLInputElement>(null);
   // Enter commits and then the unmounting input may blur: report the rename only once
   const ended = useRef(false);
+  const kind = itemKind(item);
+  const progress = useMemo(
+    () => (kind === "todo" ? taskProgress(item.body) : null),
+    [kind, item.body],
+  );
 
   useEffect(() => {
     if (!isRenaming) return;
@@ -66,7 +72,7 @@ function ItemRow({
       aria-selected={isSelected}
     >
       <span className="item-row__type-icon" aria-hidden="true">
-        {isCodeItem(item) ? <CodeIcon size={13} /> : <NoteIcon size={13} />}
+        <KindIcon kind={kind} size={13} />
       </span>
       {isRenaming ? (
         <input
@@ -85,6 +91,11 @@ function ItemRow({
         />
       ) : (
         <span className="item-row__title">{item.title}</span>
+      )}
+      {progress && progress.total > 0 && (
+        <span className="item-row__progress">
+          {progress.done}/{progress.total}
+        </span>
       )}
       {isUnsaved && (
         <span

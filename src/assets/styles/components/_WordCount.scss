@@ -1,0 +1,9 @@
+// src/assets/styles/components/_WordCount.scss
+
+.word-count {
+  flex-shrink: 0;
+  padding: 6px 0 0;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  text-align: right;
+}

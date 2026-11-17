@@ -11,7 +11,17 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 - Markdown formatting toolbar (headings, bold, italic, strikethrough, lists, quote, inline code, code block, link, divider) drawn as icons. Hover one for its shortcut and the markdown it writes; the buttons for the formats at your cursor light up. Also **Ctrl+B** / **Ctrl+I** and Tab to indent. It works on highlighted text: code block wraps the selection, lists prefix every line, and pressing a lit format again takes it off
 - **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or **Ctrl+Y**) redoes, formatting included
 - Copy a whole note with the copy icon in the item header (the markdown, without the title)
+- **Images**: paste a picture (a screenshot, an image copied from a page) into the editor, or drop image files (png, jpg, gif, webp, svg) onto the open editor. Each is copied into an `attachments` folder in your vault and linked in the note as `![](../attachments/xyz.png)`, a path other markdown editors understand too. They show in the reading view. Moving a note to a folder of another depth rewrites its image links. The name `attachments` is kept for that folder, so a vault-root folder can't use it, and it does not show in the sidebar. Emptying the trash deletes the pictures that no note mentions any more (see Trash)
+- A word count sits under every note
 - Organize notes in nested folders
+
+### Task lists and to-dos
+- Write tasks as `- [ ] item`, or use the task button in the toolbar. In the reading view, click a checkbox to tick it; the note is saved
+- **Enter** on a task line in the editor starts the next task; Enter on an empty task clears it
+- A note whose first line (after blank lines and headings) is a task is a **to-do**: it has its own icon and sidebar filter, shows how many tasks are done (`2/5`), and you can hide the finished ones with the eye button in its header
+- **+ to-do** (or **Ctrl+Alt+N**) starts a to-do with the first task ready
+- Reorder the tasks of a to-do by dragging the handle that shows at the left of a task when you hover it; tasks indented under another move with it
+- Add a due date by writing `due:2026-12-01` in a task. It shows as a chip: red when overdue, blue on the day
 
 ### Code
 - **+ code** (or **Ctrl+Shift+N**) starts a note with an empty fenced block and the cursor inside it; the word after the opening fence is the language
@@ -23,17 +33,19 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 ### Organization
 - Hierarchical folders — nest as deep as needed
 - Drag-and-drop items between folders, or onto Trash to delete them
-- Search palette (**Ctrl+K**): your recent items while the box is empty, live matches while you type, **Enter** opens the highlighted one
+- Search palette (**Ctrl+K**): your recent items while the box is empty, live matches while you type, **Enter** opens the highlighted one. Title letters that match are highlighted (a title also matches when your letters appear in order, so `gitch` finds "Git cheatsheet"), and text matches show the sentence they were found in
+- Search narrows with `in:folder`, `type:todo` (or `note`, `code`), `title:word`, `"an exact phrase"` and `-word` to leave notes out (`-type:code` works too). Several words must all match
+- **Ctrl+F** finds in the open note, in the reading view and in the editor: **Enter** and **Shift+Enter** step through the matches, Escape closes the box
 - Right-click works everywhere in the app. In the sidebar, items: open, edit, rename, duplicate, copy note or code, move to a folder, reveal in Explorer, move to trash; folders: new note or code here, new subfolder, rename, reveal, delete; empty space: new note, code or folder. **Shift+F10** (or the menu key) opens the menu of the selected item
 - Text fields (the editor, titles, search) get undo, redo, cut, copy, paste and select all, and the editor adds a Format submenu. The read view offers copy, links and code blocks, and the header, trash and empty space have menus too
-- Filter by type (all / notes / code)
+- Filter by type (all / notes / to-dos / code)
 - Sort by name or recent; sort order and collapsed folders are remembered
 - Rename (click the title or **F2**) and move (folder chip) straight from the item header
 - Drop an item on empty sidebar space to move it out of its folder
 
 ### Trash
 - Deleting an item moves it to the trash instead of erasing it; open the trash from the button at the bottom of the sidebar
-- Restore an item to its folder (or the vault root if that folder is gone), or empty the trash after a confirmation
+- Restore an item to its folder (or the vault root if that folder is gone), or empty the trash after a confirmation. Emptying also deletes, for good, the pictures in `attachments` that no note (live or in the trash) mentions any more. Only pictures Graphene saved itself are touched (named with 10 random characters); images you put there by hand stay, and if a folder can't be read nothing is deleted
 - A deleted folder's loose files (anything that is not a note) go to the trash folder on disk too
 
 ### File import
@@ -51,7 +63,10 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 |---|---|
 | Ctrl+N | New note |
 | Ctrl+Shift+N | New code (a note that starts with a code block) |
-| Ctrl+K / Ctrl+F | Open the search palette |
+| Ctrl+Alt+N | New to-do (a note that starts with a task) |
+| Enter | In the editor, on a task line: start the next task |
+| Ctrl+K | Open the search palette |
+| Ctrl+F | Find in the open note (Enter next, Shift+Enter previous). With no note open it opens the search palette |
 | Up / Down | Move through the sidebar list; in the search palette, through the results |
 | Enter | In the search palette: open the highlighted result |
 | Shift+F10 | Open the context menu of the selected item |
@@ -65,6 +80,10 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 | Escape | Close editor and return to the item |
 | Del | Move the item to the trash, or delete the selected folder (both ask first) |
 
+### Window and theme
+- **Light and dark theme**: the button next to Trash at the bottom of the sidebar cycles System (follows Windows), Light and Dark; the choice is remembered
+- Graphene remembers the size, position and maximized state of its window. Opening it a second time brings the open window forward instead of starting another
+
 ### Updates
 - Graphene looks for a new version a few seconds after launch (Windows only). An **Update** pill appears next to the version at the top of the sidebar; it opens the changes of every version you have not installed yet, newest first, with an **Install and restart** button
 - Click the version number to check again
@@ -73,6 +92,7 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 - File-based vault at a user-chosen directory
 - Every item is a `.md` file with YAML frontmatter
 - Folders are real OS directories
+- Edit a note in another editor (or let Dropbox, Syncthing or git change it) and Graphene picks the change up when you switch back to its window. A note you are typing in keeps your text; notes saved with Windows line endings load fine
 - Deleted items live in a hidden `.trash` folder inside the vault (dot folders are ignored by the app)
 - Snippet files from earlier versions (`.js`, `.css`, etc. with a metadata comment) are converted to notes on first launch: the code goes into a fenced block, and the original file moves to `.trash`. Copy counts are not kept
 - Vault location stored at `%APPDATA%\graphene\config.json`

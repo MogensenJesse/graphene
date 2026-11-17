@@ -29,10 +29,12 @@ function parseYamlFrontmatter(block: string): Record<string, string> {
 
 export function parseNoteFile(raw: string): Item {
   const withoutBom = raw.startsWith("﻿") ? raw.slice(1) : raw;
-  const fenceEnd = withoutBom.indexOf("\n---", 4);
-  if (withoutBom.startsWith("---\n") && fenceEnd !== -1) {
-    const frontmatterBlock = withoutBom.slice(4, fenceEnd);
-    const body = withoutBom.slice(fenceEnd + 4).replace(/^\n/, "");
+  // A CRLF file (an external Windows editor, git autocrlf) must parse like an LF one, or it has no id and vanishes
+  const text = withoutBom.replace(/\r\n/g, "\n");
+  const fenceEnd = text.indexOf("\n---", 4);
+  if (text.startsWith("---\n") && fenceEnd !== -1) {
+    const frontmatterBlock = text.slice(4, fenceEnd);
+    const body = text.slice(fenceEnd + 4).replace(/^\n/, "");
     const meta = parseYamlFrontmatter(frontmatterBlock);
     return {
       id: meta.id ?? "",
@@ -51,7 +53,7 @@ export function parseNoteFile(raw: string): Item {
     folderId: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    body: withoutBom,
+    body: text,
   };
 }
 

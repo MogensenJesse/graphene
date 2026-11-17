@@ -1,25 +1,42 @@
 // src/components/NoteDetail.tsx
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useClipboard } from "../hooks/useClipboard";
-import {
-  MARKDOWN_COMPONENTS,
-  openLink,
-  REHYPE_PLUGINS,
-  REMARK_PLUGINS,
-} from "../lib/markdown";
+import { useDomFind, useFindState } from "../hooks/useFind";
+import { openLink, REHYPE_PLUGINS, REMARK_PLUGINS } from "../lib/markdown";
+import { isTodoItem } from "../lib/utils";
 import type { Folder, Item } from "../types";
 import type { MenuEntry } from "./ContextMenu";
 import { useContextMenu } from "./ContextMenuProvider";
+import FindBar from "./FindBar";
 import {
   ClipboardCopyIcon,
   ClipboardIcon,
   EditIcon,
   ExternalLinkIcon,
+  EyeIcon,
+  EyeOffIcon,
   TrashIcon,
 } from "./Icon";
 import ItemActions from "./ItemActions";
 import ItemHeader from "./ItemHeader";
+import {
+  NOTE_COMPONENTS,
+  type TaskActions,
+  TaskActionsContext,
+} from "./TaskList";
+import TodoBadge from "./TodoBadge";
+import WordCount from "./WordCount";
+
+const HIDE_DONE_KEY = "graphene.hideDone";
+
+function readHideDone(): boolean {
+  try {
+    return localStorage.getItem(HIDE_DONE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 interface NoteDetailProps {
   note: Item;
@@ -28,6 +45,12 @@ interface NoteDetailProps {
   onDelete: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onMove: (id: string, folderId: string | null) => void;
+  // Tick or untick the task whose marker starts at `offset` in the note's text
+  onToggleTask: (id: string, offset: number) => void;
+  // Move a task before or after another (to-do notes only)
+  onMoveTask: (id: string, from: number, to: number, after: boolean) => void;
+  // Goes up on each Ctrl+F; the find bar opens when it changes
+  findSignal: number;
   // False while a folder is selected, so the Del key goes to the folder instead
   deleteKeyEnabled: boolean;
 }
@@ -39,11 +62,41 @@ function NoteDetail({
   onDelete,
   onRename,
   onMove,
+  onToggleTask,
+  onMoveTask,
+  findSignal,
   deleteKeyEnabled,
 }: NoteDetailProps) {
   const markdownRef = useRef<HTMLDivElement>(null);
+  // The rendered note text only (not the word count under it), for find
+  const textRef = useRef<HTMLDivElement>(null);
+  const find = useFindState(findSignal);
+  const finder = useDomFind(textRef, find.open ? find.query : "", note.body);
   const { open } = useContextMenu();
   const { copy } = useClipboard();
+  const todo = isTodoItem(note);
+  const [hideDone, setHideDone] = useState(readHideDone);
+
+  const noteId = note.id;
+  const taskActions = useMemo<TaskActions>(
+    () => ({
+      toggle: (offset) => onToggleTask(noteId, offset),
+      move: todo
+        ? (from, to, after) => onMoveTask(noteId, from, to, after)
+        : undefined,
+    }),
+    [noteId, todo, onToggleTask, onMoveTask],
+  );
+
+  const toggleHideDone = () => {
+    const next = !hideDone;
+    setHideDone(next);
+    try {
+      localStorage.setItem(HIDE_DONE_KEY, next ? "1" : "0");
+    } catch {
+      // Preference only; it still applies for this session
+    }
+  };
 
   // What a right-click offers wherever it lands in the note
   const noteEntries: MenuEntry[] = [
@@ -127,7 +180,10 @@ function NoteDetail({
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: right-click is a mouse shortcut; every entry has a button or shortcut elsewhere
-    <div className="note-detail" onContextMenu={(e) => open(e, noteEntries)}>
+    <div
+      className={`note-detail${todo && hideDone ? " note-detail--hide-done" : ""}`}
+      onContextMenu={(e) => open(e, noteEntries)}
+    >
       <ItemHeader
         menuEntries={noteEntries}
         title={note.title}
@@ -135,6 +191,23 @@ function NoteDetail({
         folders={folders}
         folderId={note.folderId}
         onFolderChange={(folderId) => onMove(note.id, folderId)}
+        badge={
+          todo && (
+            <>
+              <TodoBadge body={note.body} />
+              <button
+                type="button"
+                className="item-header__btn item-header__btn--icon"
+                onClick={toggleHideDone}
+                aria-pressed={hideDone}
+                aria-label="Hide done tasks"
+                title={hideDone ? "Show done tasks" : "Hide done tasks"}
+              >
+                {hideDone ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            </>
+          )
+        }
         updatedAt={note.updatedAt}
         actions={
           <ItemActions
@@ -147,6 +220,16 @@ function NoteDetail({
         }
       />
 
+      {find.open && (
+        <FindBar
+          query={find.query}
+          onQueryChange={find.setQuery}
+          finder={finder}
+          onClose={() => find.setOpen(false)}
+          focusKey={findSignal}
+        />
+      )}
+
       {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only shortcut, keyboard users have Ctrl+E and the Edit button. Double-click on empty space (not on text, so word-select still works) starts editing */}
       <div
         className="note-detail__body"
@@ -156,13 +239,18 @@ function NoteDetail({
         }}
       >
         <div className="note-detail__markdown" ref={markdownRef}>
-          <ReactMarkdown
-            remarkPlugins={REMARK_PLUGINS}
-            rehypePlugins={REHYPE_PLUGINS}
-            components={MARKDOWN_COMPONENTS}
-          >
-            {note.body}
-          </ReactMarkdown>
+          <div ref={textRef}>
+            <TaskActionsContext.Provider value={taskActions}>
+              <ReactMarkdown
+                remarkPlugins={REMARK_PLUGINS}
+                rehypePlugins={REHYPE_PLUGINS}
+                components={NOTE_COMPONENTS}
+              >
+                {note.body}
+              </ReactMarkdown>
+            </TaskActionsContext.Provider>
+          </div>
+          <WordCount body={note.body} />
         </div>
       </div>
     </div>

@@ -11,13 +11,13 @@
   align-items: flex-start;
   justify-content: center;
   padding-top: 14vh;
-  background: rgba(v.$night, 0.55);
+  background: var(--surface-scrim);
 
   &__panel {
     background: var(--color-background-primary);
     border: 0.5px solid var(--color-border-primary);
     border-radius: v.$radius-lg;
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-modal);
     overflow: hidden;
   }
 }

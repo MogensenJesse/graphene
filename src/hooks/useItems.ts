@@ -1,12 +1,14 @@
 // src/hooks/useItems.ts
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { relinkAttachments } from "../lib/attachments";
 import {
   emptyTrashFiles,
   moveItemFile,
   replaceItemFile,
   restoreItemFile,
   saveItem,
+  sweepUnusedImages,
   trashItemFile,
 } from "../lib/storage";
 import type { Item } from "../types";
@@ -47,15 +49,23 @@ export function useItems(vaultPath: string) {
     (id: string, fields: UpdateItemFields, touch = true) => {
       setItems((prev) => {
         const old = prev.find((i) => i.id === id);
-        const next = prev.map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                ...fields,
-                updatedAt: touch ? new Date().toISOString() : item.updatedAt,
-              }
-            : item,
-        );
+        const next = prev.map((item) => {
+          if (item.id !== id) return item;
+          const merged = {
+            ...item,
+            ...fields,
+            updatedAt: touch ? new Date().toISOString() : item.updatedAt,
+          };
+          // Moving to a folder of another depth changes how its image links reach the vault root
+          return {
+            ...merged,
+            body: relinkAttachments(
+              merged.body,
+              item.folderId,
+              merged.folderId,
+            ),
+          };
+        });
         const updated = next.find((i) => i.id === id);
         if (updated) {
           // Title or folder changes move the file — replaceItemFile drops the stale one
@@ -100,19 +110,29 @@ export function useItems(vaultPath: string) {
   const emptyTrash = useCallback(() => {
     const gone = trashedRef.current;
     setTrashed([]);
-    emptyTrashFiles(vaultPath, gone).catch(console.error);
+    // The notes that used pictures are gone now, so look for pictures nothing links to
+    emptyTrashFiles(vaultPath, gone)
+      .then(() => sweepUnusedImages(vaultPath))
+      .catch(console.error);
   }, [vaultPath]);
 
   const moveItem = useCallback(
     (id: string, newFolderId: string | null) => {
       setItems((prev) => {
         const target = prev.find((i) => i.id === id);
-        if (target) {
-          moveItemFile(vaultPath, target, newFolderId).catch(console.error);
-        }
-        return prev.map((item) =>
-          item.id === id ? { ...item, folderId: newFolderId } : item,
+        if (!target) return prev;
+        const body = relinkAttachments(
+          target.body,
+          target.folderId,
+          newFolderId,
         );
+        const moved = { ...target, folderId: newFolderId, body };
+        // A plain rename of the file; only a note whose image links change is rewritten
+        (body === target.body
+          ? moveItemFile(vaultPath, target, newFolderId)
+          : replaceItemFile(vaultPath, target, moved)
+        ).catch(console.error);
+        return prev.map((item) => (item.id === id ? moved : item));
       });
     },
     [vaultPath],

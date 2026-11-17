@@ -1,18 +1,31 @@
 // src/components/NewItemPanel.tsx
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useClipboard } from "../hooks/useClipboard";
+import { useFindState, useTextareaFind } from "../hooks/useFind";
 import type { AddItemFields } from "../hooks/useItems";
 import { replaceText, useMarkdownFormat } from "../hooks/useMarkdownFormat";
+import { saveImage, VaultPathContext } from "../lib/attachmentStore";
+import { attachmentLink, extForMime } from "../lib/attachments";
 import { findFenceAt, setFenceLang } from "../lib/codeBlocks";
-import { activeFormats } from "../lib/markdownFormat";
-import type { Folder, Item } from "../types";
+import { activeFormats, continueTask } from "../lib/markdownFormat";
+import type { Folder, Item, ItemKind } from "../types";
 import CodeLanguagePicker from "./CodeLanguagePicker";
 import type { MenuEntry } from "./ContextMenu";
 import { useContextMenu } from "./ContextMenuProvider";
 import CopyNoteButton from "./CopyNoteButton";
+import FindBar from "./FindBar";
 import { CheckIcon, ClipboardIcon } from "./Icon";
 import ItemHeader from "./ItemHeader";
 import MarkdownToolbar, { formatMenuEntry } from "./MarkdownToolbar";
+import TodoBadge from "./TodoBadge";
+import WordCount from "./WordCount";
 
 const AUTOSAVE_DELAY_MS = 800;
 
@@ -20,6 +33,9 @@ const AUTOSAVE_DELAY_MS = 800;
 // inserts) with the caret inside it. The word after the opening fence is the language.
 const CODE_SEED = "```\n\n```";
 const CODE_SEED_CARET = 4;
+
+// A new to-do draft starts with its first task, the caret after it
+const TODO_SEED = "- [ ] ";
 
 // Tab inserts spaces instead of leaving the field. execCommand is deprecated but is the only way
 // to insert text without wiping the textarea's undo history.
@@ -35,7 +51,7 @@ interface NewItemPanelProps {
   folders: Folder[];
   initialItem?: Item;
   // Only used for a brand-new draft
-  newKind?: "note" | "code";
+  newKind?: ItemKind;
   // Only used for a brand-new draft; existing items always keep their own folder
   defaultFolderId?: string | null;
   // Create-or-update and keep the editor open (the parent decides which)
@@ -45,6 +61,10 @@ interface NewItemPanelProps {
   canLeave: boolean;
   // Parent calls flushRef.current() before navigating away so pending edits are saved
   flushRef: React.RefObject<(() => void) | null>;
+  // Goes up on each Ctrl+F; the find bar opens when it changes
+  findSignal: number;
+  // The parent calls insertImagesRef.current(files) to put image links (files already in attachments/) at the cursor
+  insertImagesRef: React.RefObject<((files: string[]) => void) | null>;
 }
 
 function NewItemPanel({
@@ -57,8 +77,11 @@ function NewItemPanel({
   onDone,
   canLeave,
   flushRef,
+  findSignal,
+  insertImagesRef,
 }: NewItemPanelProps) {
-  const seedBody = newKind === "code" ? CODE_SEED : "";
+  const seedBody =
+    newKind === "code" ? CODE_SEED : newKind === "todo" ? TODO_SEED : "";
   const [title, setTitle] = useState(initialItem?.title ?? "");
   const [body, setBody] = useState(initialItem?.body ?? seedBody);
   // An existing root-level item has folderId null, so `??` chaining would wrongly pick the default
@@ -76,6 +99,18 @@ function NewItemPanel({
   const applyFormat = useMarkdownFormat(textareaRef);
   const { open, openText } = useContextMenu();
   const { copy } = useClipboard();
+  const vaultPath = useContext(VaultPathContext);
+  const find = useFindState(findSignal);
+  const finder = useTextareaFind(
+    textareaRef,
+    find.open ? find.query : "",
+    body,
+  );
+
+  const closeFind = () => {
+    find.setOpen(false);
+    textareaRef.current?.focus({ preventScroll: true });
+  };
 
   // The code block the caret is in, if any. A textarea value always uses "\n", so match that.
   const block = useMemo(
@@ -164,6 +199,56 @@ function NewItemPanel({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [isDirty, save, onDone]);
 
+  // Image links at the cursor, each on a line of its own. They are relative to the folder the note is
+  // saved in (the open item's, else the one picked for the draft).
+  const linkFolder = initialItem ? initialItem.folderId : folderId;
+  const insertImages = useCallback(
+    (files: string[]) => {
+      const el = textareaRef.current;
+      if (!el) return;
+      const text = files
+        .map((file) => `![](${attachmentLink(linkFolder, file)})`)
+        .join("\n");
+      const { value, selectionStart: ss, selectionEnd: se } = el;
+      const before = ss > 0 && value[ss - 1] !== "\n" ? "\n" : "";
+      const after = se < value.length && value[se] !== "\n" ? "\n" : "";
+      const insert = before + text + after;
+      const caret = ss + insert.length;
+      replaceText(el, {
+        value: value.slice(0, ss) + insert + value.slice(se),
+        ss: caret,
+        se: caret,
+      });
+    },
+    [linkFolder],
+  );
+
+  useEffect(() => {
+    insertImagesRef.current = insertImages;
+    return () => {
+      insertImagesRef.current = null;
+    };
+  }, [insertImagesRef, insertImages]);
+
+  // A pasted picture (a screenshot, an image copied from a page) is saved in attachments/ and linked.
+  // Text on the clipboard wins: a spreadsheet copy carries a picture of its cells too.
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!vaultPath || e.clipboardData.getData("text/plain")) return;
+    const pics = Array.from(e.clipboardData.files).flatMap((file) => {
+      const ext = extForMime(file.type);
+      return ext ? [{ file, ext }] : [];
+    });
+    if (pics.length === 0) return;
+    e.preventDefault();
+    Promise.all(
+      pics.map(async ({ file, ext }) =>
+        saveImage(vaultPath, new Uint8Array(await file.arrayBuffer()), ext),
+      ),
+    )
+      .then(insertImages)
+      .catch(console.error);
+  };
+
   const changePickerOpen = (open: boolean) => {
     setPickerOpen(open);
     if (!open) textareaRef.current?.focus({ preventScroll: true });
@@ -235,6 +320,21 @@ function NewItemPanel({
         return;
       }
     }
+    // Enter on a task line starts the next task (not while composing text, with a modifier, or inside a code block)
+    if (
+      e.key === "Enter" &&
+      !(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) &&
+      !e.nativeEvent.isComposing &&
+      !block
+    ) {
+      const el = e.currentTarget;
+      const edit = continueTask(el.value, el.selectionStart, el.selectionEnd);
+      if (edit) {
+        e.preventDefault();
+        replaceText(el, edit);
+        return;
+      }
+    }
     insertTabOnTab(e);
   };
 
@@ -253,6 +353,7 @@ function NewItemPanel({
         folders={folders}
         folderId={folderId}
         onFolderChange={setFolderId}
+        badge={<TodoBadge body={body} />}
         updatedAt={initialItem?.updatedAt}
         isDirty={isDirty}
         actions={
@@ -271,6 +372,16 @@ function NewItemPanel({
           </div>
         }
       />
+
+      {find.open && (
+        <FindBar
+          query={find.query}
+          onQueryChange={find.setQuery}
+          finder={finder}
+          onClose={closeFind}
+          focusKey={findSignal}
+        />
+      )}
 
       <div className="new-item-panel__body">
         <div className="new-item-panel__editor-wrap">
@@ -295,10 +406,12 @@ function NewItemPanel({
             }}
             onSelect={(e) => trackSelection(e.currentTarget)}
             onKeyDown={handleBodyKeyDown}
+            onPaste={handlePaste}
             onContextMenu={(e) =>
               openText(e, ["separator", formatMenuEntry(applyFormat)])
             }
           />
+          <WordCount body={body} />
         </div>
       </div>
     </div>

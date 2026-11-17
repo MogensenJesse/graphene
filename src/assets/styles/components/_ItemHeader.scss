@@ -119,6 +119,8 @@
     padding: 2px 8px;
     border-radius: 99px;
     font-family: var(--font-mono);
+    color: var(--color-text-secondary);
+    background: var(--color-background-hover);
     display: inline-flex;
     align-items: center;
   }
@@ -279,7 +281,7 @@
     background: var(--color-background-primary);
     border: 0.5px solid var(--color-border-primary);
     border-radius: var(--border-radius-md);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--shadow-popover);
     overflow: hidden;
     max-height: 240px;
     overflow-y: auto;

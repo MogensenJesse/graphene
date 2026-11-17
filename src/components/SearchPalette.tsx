@@ -1,13 +1,19 @@
 // src/components/SearchPalette.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
-import { filterItems } from "../lib/search";
-import { formatDate, getFolderPath, isCodeItem } from "../lib/utils";
+import {
+  type ReactNode,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { type Hit, searchItems } from "../lib/search";
+import { formatDate, getFolderPath, itemKind } from "../lib/utils";
 import type { Folder, Item } from "../types";
-import { CodeIcon, NoteIcon, SearchIcon, XIcon } from "./Icon";
+import { KindIcon, SearchIcon, XIcon } from "./Icon";
 import Modal from "./Modal";
 
 const RECENT_COUNT = 12;
-const MAX_RESULTS = 50;
 
 interface SearchPaletteProps {
   items: Item[];
@@ -18,7 +24,23 @@ interface SearchPaletteProps {
 
 const byRecent = (a: Item, b: Item) => b.updatedAt.localeCompare(a.updatedAt);
 
-// Ctrl+K palette: recent items while empty, live results while typing
+/** `text` with the letters at `marks` highlighted. */
+function Marked({ text, marks }: { text: string; marks: number[] }) {
+  if (marks.length === 0) return <>{text}</>;
+  const on = new Set(marks);
+  const parts: ReactNode[] = [];
+  for (let i = 0; i < text.length; ) {
+    let j = i;
+    while (j < text.length && on.has(j) === on.has(i)) j++;
+    const chunk = text.slice(i, j);
+    parts.push(on.has(i) ? <mark key={i}>{chunk}</mark> : chunk);
+    i = j;
+  }
+  return <>{parts}</>;
+}
+
+// Ctrl+K palette: recent items while empty, live results while typing.
+// Words and "phrases" must all match; in:folder, type:todo and -exclude narrow it (see lib/search).
 function SearchPalette({
   items,
   folders,
@@ -29,16 +51,19 @@ function SearchPalette({
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  // Typing stays responsive in a big vault: the list catches up when it can
+  const deferred = useDeferredValue(query);
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [...items].sort(byRecent).slice(0, RECENT_COUNT);
-    // Title matches first, then body-only matches; each group newest first
-    const inTitle = (i: Item) => i.title.toLowerCase().includes(q);
-    return filterItems(items, q)
-      .sort((a, b) => Number(inTitle(b)) - Number(inTitle(a)) || byRecent(a, b))
-      .slice(0, MAX_RESULTS);
-  }, [items, query]);
+  const hits = useMemo<Hit[]>(
+    () =>
+      deferred.trim()
+        ? searchItems(items, deferred)
+        : [...items]
+            .sort(byRecent)
+            .slice(0, RECENT_COUNT)
+            .map((item) => ({ item, score: 0, titleMarks: [], snippet: null })),
+    [items, deferred],
+  );
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -50,7 +75,7 @@ function SearchPalette({
 
   const move = (delta: number) =>
     setActive((i) =>
-      results.length === 0 ? 0 : (i + delta + results.length) % results.length,
+      hits.length === 0 ? 0 : (i + delta + hits.length) % hits.length,
     );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -62,12 +87,12 @@ function SearchPalette({
       move(-1);
     } else if (e.key === "Enter") {
       e.preventDefault();
-      const hit = results[active];
-      if (hit) onOpen(hit.id);
+      const hit = hits[active];
+      if (hit) onOpen(hit.item.id);
     }
   };
 
-  const activeItem = results[active];
+  const activeHit = hits[active];
 
   return (
     <Modal label="Search" onClose={onClose} className="search-palette">
@@ -81,10 +106,10 @@ function SearchPalette({
           aria-expanded="true"
           aria-controls="search-palette-results"
           aria-activedescendant={
-            activeItem ? `search-palette-${activeItem.id}` : undefined
+            activeHit ? `search-palette-${activeHit.item.id}` : undefined
           }
           aria-label="Search notes and code"
-          placeholder="Search notes and code"
+          placeholder="Search. Try in:folder  type:todo  -word  “a phrase”"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -103,7 +128,7 @@ function SearchPalette({
         </button>
       </div>
 
-      {results.length === 0 ? (
+      {hits.length === 0 ? (
         <p className="search-palette__empty">
           {items.length === 0 ? "Nothing here yet" : "No results"}
         </p>
@@ -115,7 +140,7 @@ function SearchPalette({
           role="listbox"
           aria-label="Results"
         >
-          {results.map((item, i) => (
+          {hits.map(({ item, titleMarks, snippet }, i) => (
             <div
               key={item.id}
               id={`search-palette-${item.id}`}
@@ -130,21 +155,32 @@ function SearchPalette({
               }}
             >
               <span className="search-palette__icon" aria-hidden="true">
-                {isCodeItem(item) ? (
-                  <CodeIcon size={16} />
-                ) : (
-                  <NoteIcon size={16} />
+                <KindIcon kind={itemKind(item)} size={16} />
+              </span>
+              <div className="search-palette__text">
+                <div className="search-palette__line">
+                  <span className="search-palette__title">
+                    {item.title ? (
+                      <Marked text={item.title} marks={titleMarks} />
+                    ) : (
+                      "untitled"
+                    )}
+                  </span>
+                  <span className="search-palette__path">
+                    {getFolderPath(folders, item.folderId).join(" / ")}
+                  </span>
+                  <span className="search-palette__date">
+                    {formatDate(item.updatedAt)}
+                  </span>
+                </div>
+                {snippet && (
+                  <div className="search-palette__snippet">
+                    {snippet.before}
+                    <mark>{snippet.match}</mark>
+                    {snippet.after}
+                  </div>
                 )}
-              </span>
-              <span className="search-palette__title">
-                {item.title || "untitled"}
-              </span>
-              <span className="search-palette__path">
-                {getFolderPath(folders, item.folderId).join(" / ")}
-              </span>
-              <span className="search-palette__date">
-                {formatDate(item.updatedAt)}
-              </span>
+              </div>
             </div>
           ))}
         </div>

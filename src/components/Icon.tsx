@@ -1,5 +1,6 @@
 // src/components/Icon.tsx
 import type { ReactNode } from "react";
+import type { ItemKind } from "../types";
 
 // Icons are Lucide (https://lucide.dev, ISC license), copied as inline SVG so no icon package is bundled.
 // Each one is drawn on Lucide's 24x24 grid with a 2px stroke and follows the surrounding text colour.
@@ -416,6 +417,121 @@ export function ClipboardCopyIcon(props: IconProps) {
       <path d="M16 4h2a2 2 0 0 1 2 2v4" />
       <path d="M21 14H11" />
       <path d="m15 10-4 4 4 4" />
+    </Svg>
+  );
+}
+
+/** The icon of a note kind: note, code or to-do. */
+export function KindIcon({ kind, size }: IconProps & { kind: ItemKind }) {
+  if (kind === "code") return <CodeIcon size={size} />;
+  if (kind === "todo") return <ListTodoIcon size={size} />;
+  return <NoteIcon size={size} />;
+}
+
+// lucide: list-checks
+export function ListChecksIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m3 17 2 2 4-4" />
+      <path d="m3 7 2 2 4-4" />
+      <path d="M13 6h8" />
+      <path d="M13 12h8" />
+      <path d="M13 18h8" />
+    </Svg>
+  );
+}
+
+// lucide: list-todo
+export function ListTodoIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="5" width="6" height="6" rx="1" />
+      <path d="m3 17 2 2 4-4" />
+      <path d="M13 6h8" />
+      <path d="M13 12h8" />
+      <path d="M13 18h8" />
+    </Svg>
+  );
+}
+
+// lucide: eye
+export function EyeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+      <circle cx="12" cy="12" r="3" />
+    </Svg>
+  );
+}
+
+// lucide: eye-off
+export function EyeOffIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" />
+      <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
+      <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" />
+      <path d="m2 2 20 20" />
+    </Svg>
+  );
+}
+
+// lucide: grip-vertical
+export function GripVerticalIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="9" cy="12" r="1" />
+      <circle cx="9" cy="5" r="1" />
+      <circle cx="9" cy="19" r="1" />
+      <circle cx="15" cy="12" r="1" />
+      <circle cx="15" cy="5" r="1" />
+      <circle cx="15" cy="19" r="1" />
+    </Svg>
+  );
+}
+
+// lucide: chevron-up
+export function ChevronUpIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m18 15-6-6-6 6" />
+    </Svg>
+  );
+}
+
+// lucide: sun
+export function SunIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2" />
+      <path d="M12 20v2" />
+      <path d="m4.93 4.93 1.41 1.41" />
+      <path d="m17.66 17.66 1.41 1.41" />
+      <path d="M2 12h2" />
+      <path d="M20 12h2" />
+      <path d="m6.34 17.66-1.41 1.41" />
+      <path d="m19.07 4.93-1.41 1.41" />
+    </Svg>
+  );
+}
+
+// lucide: moon
+export function MoonIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" />
+    </Svg>
+  );
+}
+
+// lucide: monitor
+export function MonitorIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect width="20" height="14" x="2" y="3" rx="2" />
+      <line x1="8" x2="16" y1="21" y2="21" />
+      <line x1="12" x2="12" y1="17" y2="21" />
     </Svg>
   );
 }

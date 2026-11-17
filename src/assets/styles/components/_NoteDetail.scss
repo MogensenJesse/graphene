@@ -3,6 +3,7 @@
 @use '../base/mixins' as mixins;
 
 .note-detail {
+  position: relative; // anchors the find bar
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -40,5 +41,11 @@
     }
 
     th { color: var(--color-text-primary); font-weight: 500; }
+
+    // An image that has not loaded yet, or whose file is missing
+    .note-image-missing {
+      color: var(--color-text-tertiary);
+      font-style: italic;
+    }
   }
 }

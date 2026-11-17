@@ -2,6 +2,7 @@
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { readTextFile } from "@tauri-apps/plugin-fs";
 import { useEffect, useRef, useState } from "react";
+import { isImagePath } from "../lib/attachments";
 import { CODE_EXTS, fence, parseNoteFile } from "../lib/fileFormat";
 import type { AddItemFields } from "./useItems";
 
@@ -11,13 +12,15 @@ export function useFileDrop(
   getFolderId: () => string | null,
   // Called with the id of an imported item so the app can open it
   onImported: (id: string) => void,
+  // Called with the image files of a drop; returns false when nothing can take them (no editor open)
+  onImages: (paths: string[]) => Promise<boolean>,
 ): { isDraggingOver: boolean } {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   // Latest callbacks without re-subscribing the native drop listener on every render
-  const latest = useRef({ getFolderId, onImported });
+  const latest = useRef({ getFolderId, onImported, onImages });
   useEffect(() => {
-    latest.current = { getFolderId, onImported };
+    latest.current = { getFolderId, onImported, onImages };
   });
 
   useEffect(() => {
@@ -33,6 +36,11 @@ export function useFileDrop(
           setIsDraggingOver(false);
           const folderId = latest.current.getFolderId();
           const importedIds: string[] = [];
+          // Pictures go into the note being edited; with no editor open they are ignored, as other files are
+          const images = payload.paths.filter(isImagePath);
+          if (images.length > 0) {
+            await latest.current.onImages(images).catch(console.error);
+          }
           await Promise.allSettled(
             payload.paths.map(async (rawPath) => {
               const filePath = rawPath.replace(/\\/g, "/");

@@ -16,10 +16,13 @@
 @use 'components/NewItemPanel';
 @use 'components/FolderRow';
 @use 'components/NoteDetail';
+@use 'components/TaskList';
 @use 'components/Sidebar';
 @use 'components/TrashView';
 @use 'components/Modal';
 @use 'components/SearchPalette';
+@use 'components/FindBar';
 @use 'components/ContextMenu';
 @use 'components/Tooltip';
+@use 'components/WordCount';
 @use 'components/UpdateDialog';

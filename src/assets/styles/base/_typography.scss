@@ -42,7 +42,7 @@ select {
 option {
   font-size: 13px;
   font-weight: 400;
-  color: v.$light;
-  background: v.$onyx;
+  color: var(--color-text-primary);
+  background: var(--color-background-primary);
   text-transform: none;
 }

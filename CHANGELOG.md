@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### New
+- Task lists: tick a task in the reading view and it is saved. A toolbar button writes the list, and Enter on a task starts the next one
+- To-do notes: a note that starts with a task gets its own icon and sidebar filter, a done count, and a button to hide finished tasks. Start one with Ctrl+Alt+N, reorder tasks by dragging, and add a due date by writing due:2026-12-01
+- Ctrl+F finds text in the open note, in the reading view and in the editor
+- Search shows where the words were found, matches titles by letters in order, and understands in:folder, type:todo, "exact phrase" and -word
+- A light theme. The button next to Trash switches between System (follows Windows), Light and Dark
+- Images: paste a picture into the editor, or drop image files onto it. They are saved in an attachments folder in your vault and show in the reading view
+- Emptying the trash also deletes pasted images that no note uses any more
+- Notes changed outside Graphene (another editor, Dropbox, git) show up when you switch back to the window
+- A word count under every note
+- Graphene remembers its window size and position, and opening it a second time brings the first window forward
+
+### Changed
+- Ctrl+F no longer opens the search palette while a note is open; Ctrl+K still does
+
+### Fixes
+- Notes saved with Windows line endings (CRLF) by another editor no longer vanish from the app
+
 ## v1.2.0
 
 ### Changed

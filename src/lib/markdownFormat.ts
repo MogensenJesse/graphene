@@ -10,6 +10,7 @@ export type FormatType =
   | "code"
   | "ul"
   | "ol"
+  | "task"
   | "blockquote"
   | "codeblock"
   | "hr"
@@ -39,8 +40,18 @@ const LINE_FORMAT: Partial<
     { has: RegExp; prefix: (i: number) => string; strip?: RegExp }
   >
 > = {
-  ul: { has: /^- /, prefix: () => "- " },
+  // A task line is not a plain bullet, so its button stays off and a press turns it into one
+  ul: {
+    has: /^- (?!\[[ xX]\] )/,
+    prefix: () => "- ",
+    strip: /^- (\[[ xX]\] )?/,
+  },
   ol: { has: /^\d+\. /, prefix: (i) => `${i + 1}. ` },
+  task: {
+    has: /^- \[[ xX]\] /,
+    prefix: () => "- [ ] ",
+    strip: /^- (\[[ xX]\] )?/,
+  },
   blockquote: { has: /^> /, prefix: () => "> " },
   h1: { has: /^# /, prefix: () => "# ", strip: HEADING },
   h2: { has: /^## /, prefix: () => "## ", strip: HEADING },
@@ -199,6 +210,42 @@ function wrapInFence(value: string, ss: number, se: number): TextEdit {
   const caret = picked ? afterOpening : afterOpening + 1;
   return {
     value: `${value.slice(0, ss)}${before}\`\`\`\n${picked}\n\`\`\`${after}${value.slice(se)}`,
+    ss: caret,
+    se: caret,
+  };
+}
+
+/**
+ * What Enter does on a task line: a new unticked task below it, at the same indent (the text after
+ * the caret moves down with it); on an empty task, it clears the line instead. Null when the caret
+ * is not at the text of a task line, so Enter keeps its normal meaning.
+ */
+export function continueTask(
+  value: string,
+  ss: number,
+  se: number,
+): TextEdit | null {
+  if (ss !== se) return null;
+  const lineStart = ss === 0 ? 0 : value.lastIndexOf("\n", ss - 1) + 1;
+  const eol = value.indexOf("\n", ss);
+  const lineEnd = eol === -1 ? value.length : eol;
+  const line = value.slice(lineStart, lineEnd);
+  const m = /^([ \t]*)([*+-]|\d{1,9}[.)])[ \t]+\[[ xX]\][ \t]*/.exec(line);
+  if (!m || ss - lineStart < m[0].length) return null;
+
+  if (!line.slice(m[0].length).trim()) {
+    return {
+      value: value.slice(0, lineStart) + value.slice(lineEnd),
+      ss: lineStart,
+      se: lineStart,
+    };
+  }
+  const n = /^\d+/.exec(m[2]);
+  const marker = n ? `${Number(n[0]) + 1}${m[2].slice(n[0].length)}` : m[2];
+  const insert = `\n${m[1]}${marker} [ ] `;
+  const caret = ss + insert.length;
+  return {
+    value: value.slice(0, ss) + insert + value.slice(ss),
     ss: caret,
     se: caret,
   };

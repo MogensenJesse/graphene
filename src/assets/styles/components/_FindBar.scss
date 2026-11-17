@@ -1,0 +1,76 @@
+// src/assets/styles/components/_FindBar.scss
+
+.find-bar {
+  position: absolute;
+  top: 58px; // just under the item header
+  right: 20px;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 4px 4px 10px;
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-primary);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-popover);
+
+  &__input {
+    width: 150px;
+    background: none;
+    border: none;
+    outline: none;
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--color-text-primary);
+
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  &__count {
+    min-width: 34px;
+    text-align: right;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+
+  &__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: var(--color-background-hover);
+      color: var(--color-text-primary);
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    &:focus-visible {
+      outline: 1px solid var(--color-border-primary);
+    }
+  }
+}
+
+// Matches in the read view (painted by the CSS Custom Highlight API, see hooks/useFind)
+::highlight(find) {
+  background-color: rgba(var(--rgb-blue), 0.3);
+}
+
+::highlight(find-current) {
+  background-color: rgba(var(--rgb-blue), 0.75);
+  color: var(--color-background-secondary);
+}

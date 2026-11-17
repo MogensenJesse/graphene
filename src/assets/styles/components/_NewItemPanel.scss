@@ -3,6 +3,7 @@
 @use '../base/mixins' as mixins;
 
 .new-item-panel {
+  position: relative; // anchors the find bar
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -168,7 +169,7 @@
     background: var(--color-background-primary);
     border: 0.5px solid var(--color-border-primary);
     border-radius: var(--border-radius-md);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--shadow-popover);
     overflow: hidden;
   }
 

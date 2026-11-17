@@ -66,9 +66,9 @@ function TrashView({ trashed, folders, onRestore, onEmpty }: TrashViewProps) {
                     onEmpty();
                     setConfirming(false);
                   }}
-                  title="Permanently delete everything in the trash"
+                  title="Permanently delete everything in the trash, and the pictures no note links to"
                 >
-                  delete {count} forever?
+                  delete {count} and unused images forever?
                 </button>
                 <button
                   type="button"

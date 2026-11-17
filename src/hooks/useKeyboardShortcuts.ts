@@ -1,13 +1,16 @@
 // src/hooks/useKeyboardShortcuts.ts
 import { useEffect } from "react";
+import type { ItemKind } from "../types";
 
 interface Shortcuts {
   mode: "new" | "detail" | "edit" | "trash";
   hasSelection: boolean;
-  onNew: (kind: "note" | "code") => void;
+  onNew: (kind: ItemKind) => void;
   onEdit: () => void;
   onDone: () => void;
   onOpenSearch: () => void;
+  // Ctrl+F: find in the open note (the parent falls back to the search palette when none is open)
+  onFind: () => void;
 }
 
 export function useKeyboardShortcuts({
@@ -17,6 +20,7 @@ export function useKeyboardShortcuts({
   onEdit,
   onDone,
   onOpenSearch,
+  onFind,
 }: Shortcuts): void {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -25,15 +29,20 @@ export function useKeyboardShortcuts({
       if (document.querySelector('[aria-modal="true"]')) return;
 
       // Also while editing: starting a new item saves the open edit first.
-      // Shift is held, so the key arrives upper-case.
+      // Shift is held, so the key arrives upper-case. Ctrl+N note, Ctrl+Shift+N code, Ctrl+Alt+N to-do.
       if (e.key.toLowerCase() === "n") {
         e.preventDefault();
-        onNew(e.shiftKey ? "code" : "note");
+        onNew(e.altKey ? "todo" : e.shiftKey ? "code" : "note");
       }
 
-      if (e.key === "k" || e.key === "f") {
+      if (e.key === "k") {
         e.preventDefault();
         onOpenSearch();
+      }
+
+      if (e.key === "f") {
+        e.preventDefault();
+        onFind();
       }
 
       // Ctrl+E toggles between reading and editing
@@ -50,5 +59,5 @@ export function useKeyboardShortcuts({
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [mode, hasSelection, onNew, onEdit, onDone, onOpenSearch]);
+  }, [mode, hasSelection, onNew, onEdit, onDone, onOpenSearch, onFind]);
 }
