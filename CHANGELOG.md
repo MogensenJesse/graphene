@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.4.0
+
 ### New
 - Ctrl+Enter in the editor saves the note and goes back to the reading view
 - A button in the top-left corner hides and shows the sidebar, and Graphene remembers your choice. In a window narrower than 800px the sidebar starts hidden and opens over the note; it closes when you pick a note, press Esc or click outside it

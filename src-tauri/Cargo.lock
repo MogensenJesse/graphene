@@ -1481,7 +1481,7 @@ dependencies = [
 
 [[package]]
 name = "graphene"
-version = "1.3.0"
+version = "1.4.0"
 dependencies = [
  "serde_json",
  "tauri",
