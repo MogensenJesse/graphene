@@ -1,12 +1,14 @@
 // src/components/sidebar/SidebarHeader.tsx
 import type { UpdateStatus } from "../../hooks/useUpdater";
 import { HexagonIcon } from "../ui/Icon";
+import Tooltip from "../ui/Tooltip";
+import ThemeButton from "./ThemeButton";
 
 // What the version button says while an update check is in flight or has just finished
 const VERSION_LABEL: Partial<Record<UpdateStatus, string>> = {
-  checking: "checking…",
-  "up-to-date": "up to date",
-  error: "check failed",
+  checking: "Checking…",
+  "up-to-date": "Up to date",
+  error: "Check failed",
 };
 
 interface SidebarHeaderProps {
@@ -17,7 +19,7 @@ interface SidebarHeaderProps {
   onShowUpdate: () => void;
 }
 
-// Brand, "Update" pill and version button; the strip also drags the window
+// Brand, "Update" pill, version button and theme button (everything about the app itself); the strip also drags the window
 function SidebarHeader({
   version,
   updateStatus,
@@ -33,28 +35,31 @@ function SidebarHeader({
       </div>
       <div className="sidebar__version-wrap">
         {updateAvailable && (
-          <button
-            type="button"
-            className="sidebar__update-pill"
-            onClick={onShowUpdate}
-            title="A new version is available"
-          >
-            Update
-          </button>
+          <Tooltip label="A new version is available">
+            <button
+              type="button"
+              className="sidebar__update-pill"
+              onClick={onShowUpdate}
+            >
+              Update
+            </button>
+          </Tooltip>
         )}
         {version && (
-          <button
-            type="button"
-            className="sidebar__version"
-            onClick={onCheckUpdates}
-            disabled={
-              updateStatus === "checking" || updateStatus === "installing"
-            }
-            title="Check for updates"
-          >
-            {VERSION_LABEL[updateStatus] ?? `v${version}`}
-          </button>
+          <Tooltip label="Check for updates">
+            <button
+              type="button"
+              className="sidebar__version"
+              onClick={onCheckUpdates}
+              disabled={
+                updateStatus === "checking" || updateStatus === "installing"
+              }
+            >
+              {VERSION_LABEL[updateStatus] ?? `v${version}`}
+            </button>
+          </Tooltip>
         )}
+        <ThemeButton />
       </div>
     </div>
   );

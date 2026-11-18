@@ -14,24 +14,39 @@ import type { MenuEntry } from "./components/ui/ContextMenu";
 import ContextMenuProvider, {
   useContextMenu,
 } from "./components/ui/ContextMenuProvider";
-import { SearchIcon } from "./components/ui/Icon";
+import {
+  CopyIcon,
+  ExternalLinkIcon,
+  SearchIcon,
+  TrashIcon,
+} from "./components/ui/Icon";
 import { newItemEntries } from "./components/ui/newKinds";
+import SidebarToggle from "./components/ui/SidebarToggle";
+import UndoToast from "./components/ui/UndoToast";
 import WindowControls from "./components/ui/WindowControls";
+import { useEscape } from "./hooks/useEscape";
 import { useFileDrop } from "./hooks/useFileDrop";
 import { useFolders } from "./hooks/useFolders";
 import type { AddItemFields, UpdateItemFields } from "./hooks/useItems";
 import { useItems } from "./hooks/useItems";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useMediaQuery } from "./hooks/useMediaQuery";
 import { useUpdater } from "./hooks/useUpdater";
 import { useVaultRefresh } from "./hooks/useVaultRefresh";
 import { saveImage, VaultPathContext } from "./lib/attachmentStore";
 import { extOf } from "./lib/paths";
+import { readPref, writePref } from "./lib/prefs";
 import { folderAbsPath, itemFilePath, loadVault } from "./lib/storage";
 import { moveTask, toggleTaskAt } from "./lib/tasks";
+import { isTextField } from "./lib/textMenu";
 import { getVaultPath } from "./lib/vault";
 import type { Item, ItemKind, TypeFilter } from "./types";
 
 type Mode = "new" | "detail" | "edit" | "trash";
+
+// Below this window width the sidebar starts out hidden, and opens over the note instead of beside it
+const COMPACT_QUERY = "(max-width: 799px)";
+const SIDEBAR_HIDDEN_KEY = "graphene.sidebarHidden";
 
 const appWindow = getCurrentWindow();
 
@@ -131,6 +146,40 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
   // Goes up on each Ctrl+F; the open note or editor shows its find bar when it changes
   const [findSignal, setFindSignal] = useState(0);
   const [mode, setMode] = useState<Mode>("new");
+
+  // A wide window keeps the sidebar the way the user left it; a small one hides it, and the toggle opens it
+  // for as long as the window stays small
+  const compact = useMediaQuery(COMPACT_QUERY);
+  const [wideHidden, setWideHidden] = useState(
+    () => readPref(SIDEBAR_HIDDEN_KEY) === "1",
+  );
+  const [compactOpen, setCompactOpen] = useState(false);
+  // The open sidebar covers the note, so it closes when a note or view is picked, on Escape (unless a field
+  // is being typed in) and on a click outside it (the scrim)
+  const floating = compact && compactOpen;
+  const closeFloating = () => setCompactOpen(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: picking another note or view is the trigger
+  useEffect(() => {
+    if (compact) setCompactOpen(false);
+  }, [compact, selectedId, mode]);
+  useEscape(closeFloating, {
+    active: floating,
+    when: () => !isTextField(document.activeElement),
+  });
+  const sidebarHidden = compact ? !compactOpen : wideHidden;
+  const toggleSidebar = () => {
+    if (compact) {
+      setCompactOpen((open) => !open);
+      return;
+    }
+    setWideHidden(!wideHidden);
+    writePref(SIDEBAR_HIDDEN_KEY, wideHidden ? "0" : "1");
+  };
+  // A folder picked in the sidebar owns the Del key and asks its question in the sidebar: no folder stays picked
+  // while that is out of sight
+  useEffect(() => {
+    if (sidebarHidden) setSelectedFolderId(null);
+  }, [sidebarHidden]);
 
   // One "+ new" session: remount key, kind, default folder, and the item "done" returns to
   const [draft, setDraft] = useState<{
@@ -309,11 +358,37 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     onImages: handleDropImages,
   });
 
+  // The note last moved to the trash, for the Undo toast
+  const [trashToast, setTrashToast] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+  const closeTrashToast = useCallback(() => setTrashToast(null), []);
+
+  // Every way to delete a note (header menu, Del, sidebar, drag to Trash) lands here: no question asked,
+  // the toast offers the way back
   const handleDelete = (id: string) => {
+    const item = itemsRef.current.find((i) => i.id === id);
+    if (!item) return;
     // The editor goes with the item. Left set, the next new draft's first save would update a
     // missing item instead of creating one. Edits typed in the last moment go with the note.
     if (editingIdRef.current === id) editingIdRef.current = null;
     deleteItem(id);
+    setTrashToast({ id, title: item.title });
+  };
+
+  const handleUndoDelete = async () => {
+    const id = trashToast?.id;
+    setTrashToast(null);
+    if (!id) return;
+    await restoreItem(id);
+    if (itemsRef.current.some((i) => i.id === id)) handleSelect(id);
+  };
+
+  // The toast's Undo would find nothing once the trash is empty
+  const handleEmptyTrash = () => {
+    setTrashToast(null);
+    emptyTrash();
   };
 
   const handleRename = (id: string, title: string) => {
@@ -369,6 +444,34 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     revealItemInDir(folderAbsPath(vaultPath, folderId)).catch(console.error);
   };
 
+  // The "…" button of the open item, and the end of its right-click menu. A draft that is not saved yet has no item to act on.
+  const moreEntries: MenuEntry[] = [
+    {
+      label: "Duplicate",
+      icon: <CopyIcon size={14} />,
+      disabled: !selectedItem,
+      onSelect: () => {
+        if (!selectedId) return;
+        flushRef.current?.(); // the copy includes what was typed a moment ago
+        handleDuplicate(selectedId);
+      },
+    },
+    {
+      label: "Reveal in Explorer",
+      icon: <ExternalLinkIcon size={14} />,
+      disabled: !selectedItem,
+      onSelect: () => selectedItem && handleRevealItem(selectedItem),
+    },
+    "separator",
+    {
+      label: "Move to trash",
+      icon: <TrashIcon size={14} />,
+      danger: true,
+      disabled: !selectedItem,
+      onSelect: () => selectedId && handleDelete(selectedId),
+    },
+  ];
+
   const handleDeleteFolder = useCallback(
     (id: string) => {
       deleteFolder(id, itemsRef.current);
@@ -383,7 +486,7 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
           trashed={trashed}
           folders={folders}
           onRestore={restoreItem}
-          onEmpty={emptyTrash}
+          onEmpty={handleEmptyTrash}
         />
       );
     }
@@ -401,6 +504,7 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
           onMoveTask={handleMoveTask}
           findSignal={findSignal}
           deleteKeyEnabled={selectedFolderId === null}
+          moreEntries={moreEntries}
         />
       );
     }
@@ -420,6 +524,7 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
         flushRef={flushRef}
         findSignal={findSignal}
         insertImagesRef={insertImagesRef}
+        moreEntries={moreEntries}
       />
     );
   };
@@ -444,7 +549,9 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     >
       {isDraggingOver && <div className="drop-overlay" aria-hidden="true" />}
       <div className="app__body">
-        <div className="app__sidebar">
+        <div
+          className={`app__sidebar${compact ? " app__sidebar--float" : ""}${sidebarHidden ? " app__sidebar--hidden" : ""}`}
+        >
           <Sidebar
             items={items}
             folders={folders}
@@ -462,7 +569,10 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
             onCheckUpdates={updater.checkNow}
             onShowUpdate={() => setUpdateOpen(true)}
             editingItemId={mode === "edit" ? selectedId : null}
-            onSelect={handleSelect}
+            onSelect={(id) => {
+              handleSelect(id);
+              closeFloating();
+            }}
             onSelectFolder={handleSelectFolder}
             onNew={handleNew}
             onEditItem={handleEditItem}
@@ -484,8 +594,25 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
         </div>
         <main className="app__main">
           <div className="app__drag-strip" data-tauri-drag-region />
+          {compact && (
+            // biome-ignore lint/a11y/noStaticElementInteractions: clicking the backdrop is a mouse shortcut for Escape, which useEscape above already covers
+            <div
+              className={`app__scrim${floating ? " app__scrim--on" : ""}`}
+              role="presentation"
+              onClick={closeFloating}
+            />
+          )}
+          <SidebarToggle hidden={sidebarHidden} onToggle={toggleSidebar} />
           <WindowControls />
           {renderMain()}
+          {trashToast && (
+            <UndoToast
+              key={trashToast.id}
+              title={trashToast.title}
+              onUndo={handleUndoDelete}
+              onClose={closeTrashToast}
+            />
+          )}
         </main>
       </div>
       {updateOpen && updater.update && (

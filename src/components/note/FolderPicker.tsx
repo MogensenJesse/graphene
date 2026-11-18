@@ -23,7 +23,7 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
   );
   // Full path ("Notes › Prompts") so nested folders are unambiguous
   const selectedName = useMemo(
-    () => getFolderPath(folders, value).join(" › ") || "no folder",
+    () => getFolderPath(folders, value).join(" › ") || "No folder",
     [folders, value],
   );
 
@@ -62,7 +62,7 @@ function FolderPicker({ folders, value, onChange }: FolderPickerProps) {
             <span className="folder-picker__option-icon" aria-hidden="true">
               <NoFolderIcon />
             </span>
-            no folder
+            No folder
           </button>
 
           {flat.map(({ folder, depth }) => (

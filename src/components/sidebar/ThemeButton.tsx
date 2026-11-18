@@ -1,6 +1,7 @@
 // src/components/sidebar/ThemeButton.tsx
 import { useTheme } from "../../hooks/useTheme";
 import { MonitorIcon, MoonIcon, SunIcon } from "../ui/Icon";
+import Tooltip from "../ui/Tooltip";
 
 const LABEL = { system: "System", light: "Light", dark: "Dark" } as const;
 
@@ -10,15 +11,16 @@ function ThemeButton() {
   const Icon =
     pref === "light" ? SunIcon : pref === "dark" ? MoonIcon : MonitorIcon;
   return (
-    <button
-      type="button"
-      className="sidebar__theme-btn"
-      onClick={cycle}
-      title={`Theme: ${LABEL[pref]} (click to change)`}
-      aria-label={`Theme: ${LABEL[pref]}. Click to change`}
-    >
-      <Icon size={16} />
-    </button>
+    <Tooltip label={`Theme: ${LABEL[pref]} · click to change`}>
+      <button
+        type="button"
+        className="sidebar__theme-btn"
+        onClick={cycle}
+        aria-label={`Theme: ${LABEL[pref]}. Click to change`}
+      >
+        <Icon size={16} />
+      </button>
+    </Tooltip>
   );
 }
 

@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### New
+- Ctrl+Enter in the editor saves the note and goes back to the reading view
+- A button in the top-left corner hides and shows the sidebar, and Graphene remembers your choice. In a window narrower than 800px the sidebar starts hidden and opens over the note; it closes when you pick a note, press Esc or click outside it
+- Moving a note to Trash takes one click and shows an Undo button for a few seconds. The "…" menu in the title bar has Duplicate, Reveal in Explorer and Move to trash
+- Every button shows Graphene's own tooltip with its shortcut, instead of the Windows one
+- Under each note: when it was last edited and its word count, or its line count for code
+
+### Changed
+- The window can be as narrow as 675px (it was 800px)
+- The title bar lines up with the note: the title starts where the text does, the folder picker sits at the left on wide windows and next to Copy on narrow ones, and Edit/Done always stays in the same place
+- The progress chip ("3/5 done") is now the button that hides finished tasks, and finished tasks are struck through
+- The theme button moved to the top of the sidebar, the All/Notes/To-dos/Code filter sits above the folders, and deleting a folder asks right under that folder
+- The Trash list lines up with the note column
+- Keyboard focus is easier to see
+- Button and menu labels use sentence case, and "No folder" is called that everywhere
+- Dates count calendar days, so a note edited late last night no longer says "today" the next morning
+
+### Fixes
+- The word count no longer counts Markdown symbols, task boxes or code fences as words
+- The formatting toolbar, Ctrl+B and Ctrl+I do nothing inside a code block instead of adding Markdown to the code
+
+### Other
+- Starting a development build while the installed Graphene is open no longer just brings the installed window forward
+
 ## v1.3.0
 
 ### New

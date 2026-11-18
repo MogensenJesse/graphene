@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import type { Finder } from "../../hooks/useFind";
 import { ChevronDownIcon, ChevronUpIcon, XIcon } from "../ui/Icon";
+import Tooltip from "../ui/Tooltip";
 
 interface FindBarProps {
   query: string;
@@ -53,35 +54,38 @@ function FindBar({
       <span className="find-bar__count" aria-live="polite">
         {query ? `${finder.count ? finder.index + 1 : 0}/${finder.count}` : ""}
       </span>
-      <button
-        type="button"
-        className="find-bar__btn"
-        onClick={finder.prev}
-        disabled={finder.count === 0}
-        aria-label="Previous match"
-        title="Previous (Shift+Enter)"
-      >
-        <ChevronUpIcon size={14} />
-      </button>
-      <button
-        type="button"
-        className="find-bar__btn"
-        onClick={finder.next}
-        disabled={finder.count === 0}
-        aria-label="Next match"
-        title="Next (Enter)"
-      >
-        <ChevronDownIcon size={14} />
-      </button>
-      <button
-        type="button"
-        className="find-bar__btn"
-        onClick={onClose}
-        aria-label="Close find"
-        title="Close (Esc)"
-      >
-        <XIcon size={14} />
-      </button>
+      <Tooltip label="Previous match" keys="Shift+Enter">
+        <button
+          type="button"
+          className="find-bar__btn"
+          onClick={finder.prev}
+          disabled={finder.count === 0}
+          aria-label="Previous match"
+        >
+          <ChevronUpIcon size={14} />
+        </button>
+      </Tooltip>
+      <Tooltip label="Next match" keys="Enter">
+        <button
+          type="button"
+          className="find-bar__btn"
+          onClick={finder.next}
+          disabled={finder.count === 0}
+          aria-label="Next match"
+        >
+          <ChevronDownIcon size={14} />
+        </button>
+      </Tooltip>
+      <Tooltip label="Close" keys="Esc">
+        <button
+          type="button"
+          className="find-bar__btn"
+          onClick={onClose}
+          aria-label="Close find"
+        >
+          <XIcon size={14} />
+        </button>
+      </Tooltip>
     </search>
   );
 }

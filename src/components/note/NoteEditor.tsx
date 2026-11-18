@@ -11,6 +11,8 @@ import type { Folder, Item, ItemKind } from "../../types";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
 import { CheckIcon, ClipboardIcon } from "../ui/Icon";
+import MoreButton from "../ui/MoreButton";
+import Tooltip from "../ui/Tooltip";
 import CodeLanguagePicker from "./CodeLanguagePicker";
 import CopyNoteButton from "./CopyNoteButton";
 import FindBar from "./FindBar";
@@ -57,6 +59,8 @@ interface NoteEditorProps {
   findSignal: number;
   // The parent calls insertImagesRef.current(files) to put image links (files already in attachments/) at the cursor
   insertImagesRef: React.RefObject<((files: string[]) => void) | null>;
+  // Duplicate, reveal and move to trash for the open item (off for a draft that is not saved yet)
+  moreEntries: MenuEntry[];
 }
 
 function NoteEditor({
@@ -71,6 +75,7 @@ function NoteEditor({
   flushRef,
   findSignal,
   insertImagesRef,
+  moreEntries,
 }: NoteEditorProps) {
   const seedBody =
     newKind === "code" ? CODE_SEED : newKind === "todo" ? TODO_SEED : "";
@@ -132,8 +137,8 @@ function NoteEditor({
     trackSelection(el);
   }, []);
 
-  // Empty title saves as "untitled", so compare the resolved value or an untitled item is dirty forever
-  const resolvedTitle = title.trim() || "untitled";
+  // Empty title saves as "Untitled", so compare the resolved value or an untitled item is dirty forever
+  const resolvedTitle = title.trim() || "Untitled";
 
   const isDirty = useMemo(() => {
     if (initialItem) {
@@ -178,12 +183,20 @@ function NoteEditor({
         e.preventDefault();
         if (isDirty) save();
       }
-      if (e.key === "Escape") {
-        // Only when focus is in the editor or nowhere; sidebar inputs handle their own Escape
-        const target = e.target as Node;
-        if (target === document.body || panelRef.current?.contains(target)) {
-          onDone();
-        }
+      // Only when focus is in the editor or nowhere; sidebar inputs handle their own Escape
+      const target = e.target as Node;
+      const inEditor =
+        target === document.body || panelRef.current?.contains(target);
+      if (e.key === "Escape" && inEditor) onDone();
+      // Ctrl+Enter: save and go back to the read view, the same as Done
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key === "Enter" &&
+        !e.isComposing &&
+        inEditor
+      ) {
+        e.preventDefault();
+        onDone();
       }
     };
     document.addEventListener("keydown", onKeyDown);
@@ -237,6 +250,8 @@ function NoteEditor({
       disabled: !body,
       onSelect: () => copy(body),
     },
+    "separator",
+    ...moreEntries,
   ];
 
   const handleBodyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -257,12 +272,13 @@ function NoteEditor({
         setPickerOpen(true);
         return;
       }
-      if (e.key === "b") {
+      // Inside a code block the toolbar is off, and so are its shortcuts
+      if (e.key === "b" && !block) {
         e.preventDefault();
         applyFormat("bold");
         return;
       }
-      if (e.key === "i") {
+      if (e.key === "i" && !block) {
         e.preventDefault();
         applyFormat("italic");
         return;
@@ -302,20 +318,21 @@ function NoteEditor({
         folderId={folderId}
         onFolderChange={setFolderId}
         badge={<TodoBadge body={body} />}
-        updatedAt={initialItem?.updatedAt}
         isDirty={isDirty}
         actions={
           <div className="item-header__actions">
             <CopyNoteButton text={body} />
+            <MoreButton entries={moreEntries} />
             {canLeave && (
-              <button
-                type="button"
-                className="item-header__btn item-header__btn--primary"
-                onClick={onDone}
-                title="Done (Esc)"
-              >
-                done
-              </button>
+              <Tooltip label="Done" keys="Esc">
+                <button
+                  type="button"
+                  className="item-header__btn item-header__btn--primary"
+                  onClick={onDone}
+                >
+                  Done
+                </button>
+              </Tooltip>
             )}
           </div>
         }
@@ -333,7 +350,11 @@ function NoteEditor({
 
       <div className="note-editor__body">
         <div className="note-editor__editor-wrap">
-          <MarkdownToolbar onFormat={applyFormat} active={active}>
+          <MarkdownToolbar
+            onFormat={applyFormat}
+            active={active}
+            disabled={!!block}
+          >
             {block && (
               <CodeLanguagePicker
                 lang={block.lang}
@@ -346,7 +367,7 @@ function NoteEditor({
           <textarea
             ref={textareaRef}
             className="note-editor__textarea"
-            placeholder="start writing…"
+            placeholder="Start writing…"
             value={body}
             onChange={(e) => {
               setBody(e.target.value);
@@ -356,10 +377,13 @@ function NoteEditor({
             onKeyDown={handleBodyKeyDown}
             onPaste={handlePaste}
             onContextMenu={(e) =>
-              openText(e, ["separator", formatMenuEntry(applyFormat)])
+              openText(
+                e,
+                block ? [] : ["separator", formatMenuEntry(applyFormat)],
+              )
             }
           />
-          <WordCount body={body} />
+          <WordCount body={body} updatedAt={initialItem?.updatedAt} />
         </div>
       </div>
     </div>

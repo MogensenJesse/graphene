@@ -15,6 +15,7 @@ import {
 } from "../ui/Icon";
 import InlineInput from "../ui/InlineInput";
 import { newItemEntries } from "../ui/newKinds";
+import Tooltip from "../ui/Tooltip";
 import ItemRow from "./ItemRow";
 
 interface FolderRowProps {
@@ -42,6 +43,10 @@ interface FolderRowProps {
   onAddSubfolder: (parentId: string, name: string) => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
+  // The folder whose delete is waiting for a yes; its row shows the question right below itself
+  deleteConfirmId: string | null;
+  onConfirmDelete: () => void;
+  onCancelDelete: () => void;
   onNew: (kind: ItemKind, folderId: string) => void;
   onReveal: (folderId: string) => void;
   onOpenMenu: (x: number, y: number, entries: MenuEntry[]) => void;
@@ -67,6 +72,9 @@ function FolderRow({
   onAddSubfolder,
   onRename,
   onDelete,
+  deleteConfirmId,
+  onConfirmDelete,
+  onCancelDelete,
   onNew,
   onReveal,
   onOpenMenu,
@@ -203,29 +211,57 @@ function FolderRow({
         )}
 
         <div className="folder-row__actions">
-          <button
-            type="button"
-            className="folder-row__action-btn"
-            onClick={() => setShowAddChild((v) => !v)}
-            aria-label={`Add subfolder to ${folder.name}`}
-            title="Add subfolder"
-          >
-            <PlusIcon size={13} />
-          </button>
-          <button
-            type="button"
-            className="folder-row__action-btn"
-            onClick={(e) => {
-              const r = e.currentTarget.getBoundingClientRect();
-              openMenu(r.left, r.bottom + 2);
-            }}
-            aria-label="Folder options"
-            aria-haspopup="menu"
-          >
-            <EllipsisIcon size={13} />
-          </button>
+          <Tooltip label="Add subfolder">
+            <button
+              type="button"
+              className="folder-row__action-btn"
+              onClick={() => setShowAddChild((v) => !v)}
+              aria-label={`Add subfolder to ${folder.name}`}
+            >
+              <PlusIcon size={13} />
+            </button>
+          </Tooltip>
+          <Tooltip label="Folder options">
+            <button
+              type="button"
+              className="folder-row__action-btn"
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                openMenu(r.left, r.bottom + 2);
+              }}
+              aria-label="Folder options"
+              aria-haspopup="menu"
+            >
+              <EllipsisIcon size={13} />
+            </button>
+          </Tooltip>
         </div>
       </div>
+
+      {deleteConfirmId === folder.id && (
+        <div className="sidebar__folder-confirm-delete">
+          <span>
+            Delete &ldquo;{folder.name}&rdquo; and its subfolders? Items inside
+            move up one level.
+          </span>
+          <div className="sidebar__folder-confirm-actions">
+            <button
+              type="button"
+              className="sidebar__folder-confirm-btn sidebar__folder-confirm-btn--danger"
+              onClick={onConfirmDelete}
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              className="sidebar__folder-confirm-btn"
+              onClick={onCancelDelete}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {((expanded && hasContents) || showAddChild) && (
         <div className="folder-row__children">
@@ -260,6 +296,9 @@ function FolderRow({
                 onAddSubfolder={onAddSubfolder}
                 onRename={onRename}
                 onDelete={onDelete}
+                deleteConfirmId={deleteConfirmId}
+                onConfirmDelete={onConfirmDelete}
+                onCancelDelete={onCancelDelete}
                 onNew={onNew}
                 onReveal={onReveal}
                 onOpenMenu={onOpenMenu}

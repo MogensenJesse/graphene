@@ -1,11 +1,11 @@
 // src/components/ui/newKinds.tsx
 import type { ItemKind } from "../../types";
 import type { MenuEntry } from "./ContextMenu";
-import { CodeIcon, ListTodoIcon, PlusIcon } from "./Icon";
+import { CodeIcon, ListTodoIcon, NoteIcon } from "./Icon";
 
 /** The three things "new" can start: what each is called, drawn with and started by. */
 export const NEW_KINDS = [
-  { kind: "note", label: "note", Icon: PlusIcon, shortcut: "Ctrl+N" },
+  { kind: "note", label: "note", Icon: NoteIcon, shortcut: "Ctrl+N" },
   { kind: "todo", label: "to-do", Icon: ListTodoIcon, shortcut: "Ctrl+Alt+N" },
   { kind: "code", label: "code", Icon: CodeIcon, shortcut: "Ctrl+Shift+N" },
 ] as const;

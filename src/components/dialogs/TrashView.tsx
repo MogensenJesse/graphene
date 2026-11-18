@@ -5,6 +5,7 @@ import type { Folder, Item } from "../../types";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
 import { TrashIcon, UndoIcon } from "../ui/Icon";
+import Tooltip from "../ui/Tooltip";
 
 interface TrashViewProps {
   trashed: Item[];
@@ -54,16 +55,15 @@ function TrashView({ trashed, folders, onRestore, onEmpty }: TrashViewProps) {
                   type="button"
                   className="item-header__btn item-header__btn--danger"
                   onClick={requestDelete}
-                  title="Permanently delete everything in the trash, and the pictures no note links to"
                 >
-                  delete {count} and unused images forever?
+                  Delete {count} and unused images forever?
                 </button>
                 <button
                   type="button"
                   className="item-header__btn item-header__btn--quiet"
                   onClick={cancelConfirm}
                 >
-                  cancel
+                  Cancel
                 </button>
               </>
             ) : (
@@ -74,7 +74,7 @@ function TrashView({ trashed, folders, onRestore, onEmpty }: TrashViewProps) {
                 aria-label="Empty trash"
               >
                 <TrashIcon />
-                <span className="item-header__btn-label">empty trash</span>
+                <span className="item-header__btn-label">Empty trash</span>
               </button>
             )}
           </div>
@@ -83,7 +83,7 @@ function TrashView({ trashed, folders, onRestore, onEmpty }: TrashViewProps) {
 
       <div className="trash-view__body">
         {trashed.length === 0 ? (
-          <p className="trash-view__empty">trash is empty</p>
+          <p className="trash-view__empty">Trash is empty</p>
         ) : (
           <ul className="trash-view__list">
             {trashed.map((item) => (
@@ -104,22 +104,23 @@ function TrashView({ trashed, folders, onRestore, onEmpty }: TrashViewProps) {
               >
                 <div className="trash-view__info">
                   <span className="trash-view__row-title">
-                    {item.title || "untitled"}
+                    {item.title || "Untitled"}
                   </span>
                   <span className="trash-view__row-meta">
                     {getFolderPath(folders, item.folderId).join(" / ") ||
-                      "unfiled"}
+                      "No folder"}
                     {" · "}edited {formatDate(item.updatedAt)}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  className="item-header__btn"
-                  onClick={() => onRestore(item.id)}
-                  title="Put it back where it was"
-                >
-                  restore
-                </button>
+                <Tooltip label="Put it back where it was">
+                  <button
+                    type="button"
+                    className="item-header__btn"
+                    onClick={() => onRestore(item.id)}
+                  >
+                    Restore
+                  </button>
+                </Tooltip>
               </li>
             ))}
           </ul>

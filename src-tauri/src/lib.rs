@@ -1,6 +1,6 @@
 // src-tauri/src/lib.rs
 
-#[cfg(desktop)]
+#[cfg(all(desktop, not(debug_assertions)))]
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -12,22 +12,25 @@ pub fn run() {
         use tauri_plugin_window_state::StateFlags;
 
         // Single-instance has to be the first plugin: a second launch brings the running window forward.
-        // Window state is a builder plugin (not added in setup) so it restores the window as it is created.
-        builder = builder
-            .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        // Not in debug builds: `tauri dev` has the same app identifier as the installed app, so with that open
+        // the dev build would hand over to the installed window and exit instead of starting.
+        #[cfg(not(debug_assertions))]
+        {
+            builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.unminimize();
                     let _ = window.show();
                     let _ = window.set_focus();
                 }
-            }))
-            .plugin(
-                tauri_plugin_window_state::Builder::default()
-                    .with_state_flags(
-                        StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED,
-                    )
-                    .build(),
-            );
+            }));
+        }
+
+        // Window state is a builder plugin (not added in setup) so it restores the window as it is created.
+        builder = builder.plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED)
+                .build(),
+        );
     }
 
     builder

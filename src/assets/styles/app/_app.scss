@@ -30,20 +30,84 @@ body {
 }
 
 .app__body {
+  position: relative; // anchors a floating sidebar
   display: flex;
   flex: 1;
   overflow: hidden;
+  border-radius: v.$radius-lg; // the clip follows the panels' corners, so a floating sidebar's shadow is not left showing square
   gap: 10px;
 }
 
+// Opening and closing the sidebar (prefers-reduced-motion turns every transition off, see base/_reset)
+$sidebar-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
+
 .app__sidebar {
-  width: 252px;
+  --sidebar-width: 252px;
+  width: var(--sidebar-width);
   flex-shrink: 0;
   background: rgba(v.$night, 0);
   border-radius: v.$radius-lg;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition:
+    width $sidebar-anim,
+    margin-right $sidebar-anim,
+    transform $sidebar-anim,
+    opacity $sidebar-anim,
+    visibility $sidebar-anim; // stays visible until the others have finished, and is gone from the tab order after
+
+  // The content keeps its width while the panel narrows, and is clipped instead of reflowing
+  > * {
+    min-width: var(--sidebar-width);
+  }
+}
+
+// Hidden by the toggle, or by a small window (see App): it narrows to nothing, and the margin takes the
+// gap to the note with it
+.app__sidebar--hidden {
+  width: 0;
+  margin-right: -10px; // the gap of .app__body
+  opacity: 0;
+  visibility: hidden;
+}
+
+// A small window: the open sidebar floats over the note (out of the flow, so the note keeps its width)
+.app__sidebar--float {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30; // above the note and its scrim, below dialogs (300) and menus (400)
+  background: var(--color-background-primary); // opaque: the app surfaces are translucent
+  border: 0.5px solid var(--color-border-primary);
+  box-shadow: var(--shadow-popover);
+
+  // Closed, it slides out to the left at its full width instead
+  &.app__sidebar--hidden {
+    width: var(--sidebar-width);
+    margin-right: 0;
+    transform: translateX(-100%);
+  }
+}
+
+// Dims the note behind a floating sidebar and catches the click that closes it. It stays below the window
+// buttons (10), so they keep working.
+.app__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  background: rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity $sidebar-anim,
+    visibility $sidebar-anim;
+
+  &--on {
+    opacity: 1;
+    visibility: visible;
+  }
 }
 
 .app__main {
@@ -54,7 +118,20 @@ body {
   background: var(--surface-main);
   border-radius: v.$radius-lg;
   position: relative;
-  --win-controls-width: 90px; // three 26px buttons and two 6px gaps; the header bar clears it
+  // The header lines its title up with the text column from this panel's width (see .item-header)
+  container: main / inline-size;
+  --win-controls-width: 84px; // three 24px buttons and two 6px gaps; the header bar clears it
+  // The note's left gutter: wide enough to clear the sidebar toggle in the top left corner
+  --pane-pad: 44px;
+}
+
+// The same 24px button as the window controls, in the header's left corner so it keeps its place whether the
+// sidebar is showing or not
+.app__sidebar-toggle {
+  position: absolute;
+  top: 14px;
+  left: 10px;
+  z-index: 10;
 }
 
 .app__drag-strip {
@@ -69,7 +146,7 @@ body {
 
 .app__win-controls {
   position: absolute;
-  top: 13px; // centred in the 52px header bar
+  top: 14px; // centred in the 52px header bar
   right: 14px;
   z-index: 10;
   display: flex;
@@ -77,12 +154,12 @@ body {
 }
 
 .app__win-btn {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: v.$radius-sm;
+  border-radius: var(--border-radius-md);
   border: none;
   background: none;
   cursor: pointer;
@@ -100,7 +177,7 @@ body {
   }
 
   &:focus-visible {
-    outline: 1px solid var(--color-border-primary);
+    outline: 2px solid var(--color-text-info);
     outline-offset: 1px;
   }
 }
@@ -185,7 +262,7 @@ body {
   }
 
   &:focus-visible {
-    outline: 1px solid var(--color-border-primary);
+    outline: 2px solid var(--color-text-info);
     outline-offset: 2px;
   }
 }

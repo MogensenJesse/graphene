@@ -16,7 +16,7 @@
         "title": "Graphene",
         "width": 1366,
         "height": 768,
-        "minWidth": 800,
+        "minWidth": 575,
         "minHeight": 540,
         "resizable": true,
         "transparent": true,

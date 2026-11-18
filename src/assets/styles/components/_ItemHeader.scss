@@ -1,15 +1,25 @@
 // src/assets/styles/components/_ItemHeader.scss
 @use '../base/mixins' as mixins;
 
-// Shared header for the read view and the editor: title, folder, date, actions
+// Shared header for the read view and the editor: title, folder, badge, actions
+
+// Where the text column starts. Registered so it stays a length: the folder chip, a descendant, sizes itself with it.
+@property --text-left {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 44px;
+}
 
 .item-header {
   display: flex;
   align-items: center;
   gap: 10px;
   height: 52px;
-  // the right padding clears the window controls, which sit over this bar
-  padding: 0 calc(var(--win-controls-width) + 24px) 0 28px;
+  // The panel's width less the 720px column, halved; the panel's gutter at least. 100cqw is the width of .app__main.
+  --text-left: max(var(--pane-pad), calc((100cqw - 720px) / 2));
+  // The right padding clears the window controls, which sit over this bar. The left one puts the title right
+  // above the text it names.
+  padding: 0 calc(var(--win-controls-width) + 24px) 0 var(--text-left);
   border-bottom: 0.5px solid var(--color-border-tertiary);
   flex-shrink: 0;
   container-type: inline-size;
@@ -70,7 +80,7 @@
     }
 
     &:focus-visible {
-      outline: 1px solid var(--color-border-primary);
+      outline: 2px solid var(--color-text-info);
       outline-offset: 2px;
     }
   }
@@ -108,24 +118,45 @@
     display: inline-block;
   }
 
-  &__date {
-    font-size: 11px;
-    color: var(--color-text-tertiary);
-    white-space: nowrap;
-  }
-
+  // Chips: the folder picker and the "2/5 done" progress. Same height, corners and look as the buttons.
   &__badge {
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 99px;
-    font-family: var(--font-mono);
-    color: var(--color-text-secondary);
-    background: var(--color-background-hover);
     display: inline-flex;
     align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    height: 24px;
+    padding: 0 9px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    white-space: nowrap;
+    color: var(--color-text-secondary);
+    background: var(--color-background-secondary);
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md);
+
+    // The read view's chip is also the switch for hiding the done tasks
+    &--toggle {
+      position: relative;
+      z-index: 6;
+      cursor: pointer;
+      -webkit-app-region: no-drag;
+      transition: border-color var(--transition-fast), color var(--transition-fast);
+
+      &:hover,
+      &[aria-pressed='true'] {
+        border-color: var(--color-border-primary);
+        color: var(--color-text-primary);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--color-text-info);
+        outline-offset: 1px;
+      }
+    }
   }
 
   &__actions {
+    order: 2; // after the folder chip, when that sits in the bar (see .folder-picker)
     display: flex;
     align-items: center;
     gap: 6px;
@@ -139,7 +170,8 @@
     gap: 5px;
     font-size: 11px;
     font-family: inherit;
-    padding: 3px 9px;
+    height: 24px;
+    padding: 0 9px;
     border-radius: var(--border-radius-md);
     border: 0.5px solid var(--color-border-secondary);
     background: none;
@@ -155,7 +187,7 @@
     }
 
     &:focus-visible {
-      outline: 1px solid var(--color-border-primary);
+      outline: 2px solid var(--color-text-info);
       outline-offset: 1px;
     }
 
@@ -213,7 +245,6 @@
 
 // Narrow panel: drop the date and the button words (the icons and tooltips remain)
 @container (max-width: 470px) {
-  .item-header__date,
   .item-header__btn-label {
     display: none;
   }
@@ -226,6 +257,7 @@
 // ── Folder picker (the folder chip in the header) ─────────────────────────────
 
 .folder-picker {
+  order: 1; // right of the spacer, beside the buttons; a wide panel moves it to the left edge (bottom of this file)
   position: relative;
   z-index: 6;
   flex: 0 1 auto;
@@ -239,8 +271,9 @@
     gap: 5px;
     font-size: 11px;
     font-family: inherit;
-    padding: 2px 8px;
-    border-radius: var(--border-radius-sm);
+    height: 24px;
+    padding: 0 8px;
+    border-radius: var(--border-radius-md);
     border: 0.5px solid var(--color-border-secondary);
     background: var(--color-background-secondary);
     color: var(--color-text-secondary);
@@ -255,7 +288,8 @@
     }
 
     &:focus-visible {
-      border-color: var(--color-border-primary);
+      outline: 2px solid var(--color-text-info);
+      outline-offset: 1px;
     }
   }
 
@@ -322,5 +356,16 @@
     font-size: 11px;
     flex-shrink: 0;
     color: var(--color-text-tertiary);
+  }
+}
+
+// A wide panel has a free gutter left of the title (the title starts where the text column does), so the
+// folder chip moves there, at the pane's left edge. Smaller, and it stays beside the buttons.
+@container main (min-width: 1010px) {
+  .item-header .folder-picker {
+    position: absolute;
+    left: var(--pane-pad);
+    top: 14px; // centred in the 52px bar
+    max-width: min(220px, calc(var(--text-left) - var(--pane-pad) - 12px)); // 12px before the title
   }
 }

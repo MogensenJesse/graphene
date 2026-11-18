@@ -5,6 +5,7 @@ import { itemKind } from "../../lib/utils";
 import type { Item } from "../../types";
 import { KindIcon } from "../ui/Icon";
 import InlineInput from "../ui/InlineInput";
+import Tooltip from "../ui/Tooltip";
 
 interface ItemRowProps {
   item: Item;
@@ -75,12 +76,13 @@ function ItemRow({
         </span>
       )}
       {isUnsaved && (
-        <span
-          className="item-row__unsaved-dot"
-          role="img"
-          aria-label="unsaved changes"
-          title="unsaved changes"
-        />
+        <Tooltip label="Unsaved changes">
+          <span
+            className="item-row__unsaved-dot"
+            role="img"
+            aria-label="Unsaved changes"
+          />
+        </Tooltip>
       )}
     </div>
   );

@@ -14,9 +14,6 @@ import {
   ClipboardIcon,
   EditIcon,
   ExternalLinkIcon,
-  EyeIcon,
-  EyeOffIcon,
-  TrashIcon,
 } from "../ui/Icon";
 import FindBar from "./FindBar";
 import ItemActions from "./ItemActions";
@@ -46,6 +43,8 @@ interface NoteDetailProps {
   findSignal: number;
   // False while a folder is selected, so the Del key goes to the folder instead
   deleteKeyEnabled: boolean;
+  // Duplicate, reveal and move to trash: the "…" button and the end of the right-click menu
+  moreEntries: MenuEntry[];
 }
 
 function NoteDetail({
@@ -59,6 +58,7 @@ function NoteDetail({
   onMoveTask,
   findSignal,
   deleteKeyEnabled,
+  moreEntries,
 }: NoteDetailProps) {
   const markdownRef = useRef<HTMLDivElement>(null);
   // The rendered note text only (not the word count under it), for find
@@ -102,12 +102,7 @@ function NoteDetail({
       onSelect: onEdit,
     },
     "separator",
-    {
-      label: "Move to trash",
-      icon: <TrashIcon size={14} />,
-      danger: true,
-      onSelect: () => onDelete(note.id),
-    },
+    ...moreEntries,
   ];
 
   // Over the text: the selection, a link or a code block under the cursor come first
@@ -184,22 +179,13 @@ function NoteDetail({
         onFolderChange={(folderId) => onMove(note.id, folderId)}
         badge={
           todo && (
-            <>
-              <TodoBadge body={note.body} />
-              <button
-                type="button"
-                className="item-header__btn item-header__btn--icon"
-                onClick={toggleHideDone}
-                aria-pressed={hideDone}
-                aria-label="Hide done tasks"
-                title={hideDone ? "Show done tasks" : "Hide done tasks"}
-              >
-                {hideDone ? <EyeOffIcon /> : <EyeIcon />}
-              </button>
-            </>
+            <TodoBadge
+              body={note.body}
+              hideDone={hideDone}
+              onToggleHideDone={toggleHideDone}
+            />
           )
         }
-        updatedAt={note.updatedAt}
         actions={
           <ItemActions
             itemId={note.id}
@@ -207,6 +193,7 @@ function NoteDetail({
             onEdit={onEdit}
             onDelete={onDelete}
             deleteKeyEnabled={deleteKeyEnabled}
+            moreEntries={moreEntries}
           />
         }
       />
@@ -241,8 +228,11 @@ function NoteDetail({
               </ReactMarkdown>
             </TaskActionsContext.Provider>
           </div>
-          <WordCount body={note.body} />
         </div>
+      </div>
+
+      <div className="note-detail__footer">
+        <WordCount body={note.body} updatedAt={note.updatedAt} />
       </div>
     </div>
   );

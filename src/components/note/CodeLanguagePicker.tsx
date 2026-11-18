@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useClickOutside } from "../../hooks/useClickOutside";
 import { useEscape } from "../../hooks/useEscape";
 import { ChevronDownIcon } from "../ui/Icon";
+import Tooltip from "../ui/Tooltip";
 
 // Quick picks. Any other tag can be typed; highlighting knows most mainstream languages.
 const LANGUAGES = [
@@ -102,19 +103,20 @@ function CodeLanguagePicker({
 
   return (
     <div className="code-language" ref={wrapRef}>
-      <button
-        type="button"
-        className={`code-language__chip${open ? " code-language__chip--open" : ""}`}
-        onClick={() => onOpenChange(!open)}
-        title="Code block language (Ctrl+L)"
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        {lang || "plain"}
-        <span className="code-language__chevron" aria-hidden="true">
-          <ChevronDownIcon />
-        </span>
-      </button>
+      <Tooltip label="Code block language" keys="Ctrl+L">
+        <button
+          type="button"
+          className={`code-language__chip${open ? " code-language__chip--open" : ""}`}
+          onClick={() => onOpenChange(!open)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+        >
+          {lang || "plain"}
+          <span className="code-language__chevron" aria-hidden="true">
+            <ChevronDownIcon />
+          </span>
+        </button>
+      </Tooltip>
 
       {open && (
         <div className="code-language__dropdown">
@@ -122,7 +124,7 @@ function CodeLanguagePicker({
             ref={inputRef}
             className="code-language__input"
             type="text"
-            placeholder="language…"
+            placeholder="Language…"
             aria-label="Code block language"
             value={query}
             onChange={(e) => {

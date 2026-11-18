@@ -1,11 +1,11 @@
 // src/components/note/ItemHeader.tsx
 import { type ReactNode, useEffect, useState } from "react";
-import { formatDate } from "../../lib/utils";
 import type { Folder } from "../../types";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
 import { TextCursorInputIcon } from "../ui/Icon";
 import InlineInput from "../ui/InlineInput";
+import Tooltip from "../ui/Tooltip";
 import FolderPicker from "./FolderPicker";
 
 interface ItemHeaderProps {
@@ -17,7 +17,6 @@ interface ItemHeaderProps {
   folderId: string | null;
   onFolderChange: (id: string | null) => void;
   badge?: ReactNode;
-  updatedAt?: string;
   isDirty?: boolean;
   actions?: ReactNode;
   // Right-click menu of the bar, below its own "Rename"
@@ -32,7 +31,6 @@ function ItemHeader({
   folderId,
   onFolderChange,
   badge,
-  updatedAt,
   isDirty = false,
   actions,
   menuEntries = [],
@@ -76,7 +74,7 @@ function ItemHeader({
           <InlineInput
             initial={title}
             className="item-header__title-input"
-            placeholder="untitled"
+            placeholder="Untitled"
             ariaLabel="Title"
             onInput={liveTitle ? onTitleChange : undefined}
             onCommit={(text) => {
@@ -86,23 +84,25 @@ function ItemHeader({
             onCancel={() => setEditing(false)}
           />
         ) : (
-          <button
-            type="button"
-            className={`item-header__title${title ? "" : " item-header__title--placeholder"}`}
-            onClick={startEditing}
-            title="Rename (F2)"
-          >
-            {title || "untitled"}
-          </button>
+          <Tooltip label="Rename" keys="F2">
+            <button
+              type="button"
+              className={`item-header__title${title ? "" : " item-header__title--placeholder"}`}
+              onClick={startEditing}
+            >
+              {title || "Untitled"}
+            </button>
+          </Tooltip>
         )}
       </h2>
       {isDirty && (
-        <span
-          className="item-header__dirty-dot"
-          role="img"
-          aria-label="unsaved changes"
-          title="unsaved changes"
-        />
+        <Tooltip label="Unsaved changes">
+          <span
+            className="item-header__dirty-dot"
+            role="img"
+            aria-label="Unsaved changes"
+          />
+        </Tooltip>
       )}
 
       <FolderPicker
@@ -112,14 +112,6 @@ function ItemHeader({
       />
       {badge}
       <div className="item-header__spacer" data-tauri-drag-region />
-      {updatedAt && (
-        <span
-          className="item-header__date"
-          title={new Date(updatedAt).toLocaleString()}
-        >
-          {formatDate(updatedAt)}
-        </span>
-      )}
       {actions}
     </div>
   );

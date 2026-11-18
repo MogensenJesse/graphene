@@ -39,10 +39,10 @@ import {
 } from "../ui/Icon";
 import InlineInput from "../ui/InlineInput";
 import { NEW_KINDS, newItemEntries } from "../ui/newKinds";
+import Tooltip from "../ui/Tooltip";
 import FolderRow from "./FolderRow";
 import ItemRow from "./ItemRow";
 import SidebarHeader from "./SidebarHeader";
-import ThemeButton from "./ThemeButton";
 
 // How the sidebar lists notes and sibling folders. "manual" follows the ranks set by dragging
 // (a folder or note without one comes last, by name); folders have no date, so they go by name otherwise.
@@ -360,7 +360,7 @@ function Sidebar({
       onSelect: () => onMoveItem(item.id, folderId),
     });
     return [
-      to(null, "Unfiled", <NoFolderIcon size={14} />),
+      to(null, "No folder", <NoFolderIcon size={14} />),
       ...flattenFolders(folders, FOLDER_COMPARE[sortBy]).map(
         ({ folder, depth }) =>
           to(folder.id, folder.name, <FolderIcon size={14} />, depth),
@@ -453,7 +453,32 @@ function Sidebar({
         onShowUpdate={onShowUpdate}
       />
 
-      {/* Type filter */}
+      {/* New note, new code, search */}
+      <nav className="sidebar__nav">
+        {NEW_KINDS.map(({ kind, label, Icon, shortcut }) => (
+          <Tooltip key={kind} label={`New ${label}`} keys={shortcut}>
+            <button
+              type="button"
+              className="sidebar__nav-item"
+              onClick={() => onNew(kind)}
+            >
+              <Icon size={16} />
+              <span>New {label}</span>
+            </button>
+          </Tooltip>
+        ))}
+        <button
+          type="button"
+          className="sidebar__nav-item"
+          onClick={onOpenSearch}
+        >
+          <SearchIcon size={16} />
+          <span>Search</span>
+          <span className="sidebar__nav-count">Ctrl+K</span>
+        </button>
+      </nav>
+
+      {/* Type filter: right above the tree it filters */}
       <div className="sidebar__segments">
         {FILTERS.map(({ value, label }) => (
           <button
@@ -461,38 +486,16 @@ function Sidebar({
             type="button"
             className={`sidebar__segment${typeFilter === value ? " sidebar__segment--active" : ""}`}
             aria-pressed={typeFilter === value}
-            onClick={() => onTypeFilterChange(value)}
+            onClick={() => {
+              onTypeFilterChange(value);
+              // A filter can hide the selected folder, and its delete question lives on its row
+              onSelectFolder(null);
+            }}
           >
             {label}
           </button>
         ))}
       </div>
-
-      {/* New note, new code, search */}
-      <nav className="sidebar__nav">
-        {NEW_KINDS.map(({ kind, label, Icon, shortcut }) => (
-          <button
-            key={kind}
-            type="button"
-            className="sidebar__nav-item"
-            onClick={() => onNew(kind)}
-            title={`New ${label} (${shortcut})`}
-          >
-            <Icon size={16} />
-            <span>New {label}</span>
-          </button>
-        ))}
-        <button
-          type="button"
-          className="sidebar__nav-item"
-          onClick={onOpenSearch}
-          title="Search (Ctrl+K)"
-        >
-          <SearchIcon size={16} />
-          <span>Search</span>
-          <span className="sidebar__nav-count">Ctrl K</span>
-        </button>
-      </nav>
 
       {/* Folder + tree section */}
       <div
@@ -512,25 +515,27 @@ function Sidebar({
         <div className="sidebar__folders-header">
           <span className="sidebar__folders-label">Folders</span>
           <div className="sidebar__folders-tools">
-            <button
-              type="button"
-              className="sidebar__sort-btn"
-              onClick={openSortMenu}
-              aria-haspopup="menu"
-              title={`Order: ${SORT_LABEL[sortBy]} (click to change)`}
-            >
-              <SortIcon size={11} />
-              {SORT_LABEL[sortBy]}
-            </button>
-            <button
-              type="button"
-              className="sidebar__icon-btn"
-              onClick={() => setShowAddFolder((v) => !v)}
-              aria-label="Add folder"
-              title="Add folder"
-            >
-              <PlusIcon size={13} />
-            </button>
+            <Tooltip label={`Order: ${SORT_LABEL[sortBy]}`}>
+              <button
+                type="button"
+                className="sidebar__sort-btn"
+                onClick={openSortMenu}
+                aria-haspopup="menu"
+              >
+                <SortIcon size={11} />
+                {SORT_LABEL[sortBy]}
+              </button>
+            </Tooltip>
+            <Tooltip label="Add folder">
+              <button
+                type="button"
+                className="sidebar__icon-btn"
+                onClick={() => setShowAddFolder((v) => !v)}
+                aria-label="Add folder"
+              >
+                <PlusIcon size={13} />
+              </button>
+            </Tooltip>
           </div>
         </div>
 
@@ -545,33 +550,6 @@ function Sidebar({
               }}
               onCancel={() => setShowAddFolder(false)}
             />
-          </div>
-        )}
-
-        {/* Folder delete confirmation banner — only when the targeted folder is still selected */}
-        {folderDelete.confirming && selectedFolderId !== null && (
-          <div className="sidebar__folder-confirm-delete">
-            <span>
-              Delete &ldquo;
-              {folders.find((f) => f.id === selectedFolderId)?.name}
-              &rdquo; and its subfolders? Items inside move up one level.
-            </span>
-            <div className="sidebar__folder-confirm-actions">
-              <button
-                type="button"
-                className="sidebar__folder-confirm-btn sidebar__folder-confirm-btn--danger"
-                onClick={folderDelete.requestDelete}
-              >
-                delete
-              </button>
-              <button
-                type="button"
-                className="sidebar__folder-confirm-btn"
-                onClick={folderDelete.cancelConfirm}
-              >
-                cancel
-              </button>
-            </div>
           </div>
         )}
 
@@ -595,6 +573,9 @@ function Sidebar({
             onAddSubfolder={handleAddSubfolder}
             onRename={onRenameFolder}
             onDelete={requestDeleteFolder}
+            deleteConfirmId={folderDelete.confirming ? selectedFolderId : null}
+            onConfirmDelete={folderDelete.requestDelete}
+            onCancelDelete={folderDelete.cancelConfirm}
             onNew={onNew}
             onReveal={onRevealFolder}
             onOpenMenu={openAt}
@@ -641,7 +622,6 @@ function Sidebar({
             ])
           }
           data-folder-drop-id={TRASH_DROP_ID}
-          title="Trash"
         >
           <TrashIcon size={16} />
           <span>Trash</span>
@@ -649,7 +629,6 @@ function Sidebar({
             <span className="sidebar__nav-count">{trashedCount}</span>
           )}
         </button>
-        <ThemeButton />
       </div>
 
       {/* Drag ghost — follows cursor while dragging */}

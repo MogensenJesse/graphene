@@ -24,7 +24,7 @@ $done: 'li.task-list-item:has(> input:checked, > p > input:checked)';
     height: 14px;
     margin: 0 8px 0 0;
     vertical-align: -2px;
-    border: 1px solid var(--color-border-primary);
+    border: 1px solid var(--color-text-tertiary);
     border-radius: 4px;
     cursor: pointer;
     transition: background var(--transition-fast), border-color var(--transition-fast);
@@ -34,7 +34,7 @@ $done: 'li.task-list-item:has(> input:checked, > p > input:checked)';
     }
 
     &:focus-visible {
-      outline: 1px solid var(--color-text-info);
+      outline: 2px solid var(--color-text-info);
       outline-offset: 2px;
     }
 
@@ -58,6 +58,12 @@ $done: 'li.task-list-item:has(> input:checked, > p > input:checked)';
 
   #{$done} {
     color: var(--color-text-tertiary);
+  }
+
+  // A finished task is struck through; one with sub-tasks is not, since the line would cross theirs too
+  #{$done}:not(:has(.contains-task-list)) {
+    text-decoration: line-through;
+    text-decoration-color: var(--color-border-primary);
   }
 
   // ── Due date chip ───────────────────────────────────────────────────────

@@ -1,0 +1,73 @@
+// src/assets/styles/components/_Toast.scss
+
+// "Moved "x" to trash · Undo", at the bottom of the main panel (see UndoToast.tsx)
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 44px; // above the status line ("Edited today · 5 words"), which a narrow panel would otherwise put it over
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 48px);
+  padding: 6px 6px 6px 14px;
+  font-size: 12px;
+  color: var(--color-text-primary);
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-primary);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-popover);
+  animation: toast-in 0.15s ease-out;
+
+  &__text {
+    white-space: nowrap;
+  }
+
+  &__title {
+    display: inline-block;
+    max-width: 24ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+  }
+
+  &__btn {
+    flex-shrink: 0;
+    height: 24px;
+    padding: 0 10px;
+    font-size: 11px;
+    font-family: inherit;
+    font-weight: 500;
+    color: var(--color-text-info);
+    background: none;
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+
+    &:hover {
+      background: var(--color-background-info);
+      border-color: var(--color-text-info);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-text-info);
+      outline-offset: 1px;
+    }
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}

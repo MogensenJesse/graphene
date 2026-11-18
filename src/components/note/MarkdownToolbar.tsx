@@ -24,6 +24,8 @@ interface MarkdownToolbarProps {
   onFormat: (type: FormatType) => void;
   // The formats that are on where the caret is; their buttons light up
   active?: ReadonlySet<FormatType>;
+  // Inside a code block markdown means nothing, so the formats are off; the children (language chip) stay usable
+  disabled?: boolean;
   // Shown at the right end of the toolbar (the code block language chip)
   children?: ReactNode;
 }
@@ -118,7 +120,12 @@ export const formatMenuEntry = (
   ]),
 });
 
-function MarkdownToolbar({ onFormat, active, children }: MarkdownToolbarProps) {
+function MarkdownToolbar({
+  onFormat,
+  active,
+  disabled = false,
+  children,
+}: MarkdownToolbarProps) {
   return (
     <div className="markdown-toolbar">
       {GROUPS.map((group, gi) => (
@@ -135,9 +142,11 @@ function MarkdownToolbar({ onFormat, active, children }: MarkdownToolbarProps) {
                   className={`markdown-toolbar__btn${on ? " markdown-toolbar__btn--active" : ""}`}
                   // Keep focus and the highlighted text in the editor while clicking
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => onFormat(type)}
+                  onClick={() => !disabled && onFormat(type)}
                   aria-label={label}
                   aria-pressed={ONE_SHOT.has(type) ? undefined : on}
+                  // Not `disabled`: that would drop the button from the tab order and silence its tooltip
+                  aria-disabled={disabled || undefined}
                 >
                   <Icon size={15} />
                 </button>

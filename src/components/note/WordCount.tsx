@@ -1,12 +1,29 @@
 // src/components/note/WordCount.tsx
-import { wordCount } from "../../lib/utils";
+import { formatDate, isCodeBody, lineCount, wordCount } from "../../lib/utils";
+import Tooltip from "../ui/Tooltip";
 
-/** A small muted "123 words" line under a note's text, in the editor and the read view. */
-function WordCount({ body }: { body: string }) {
-  const n = wordCount(body);
+interface WordCountProps {
+  body: string;
+  // When the note was last edited; left out for a draft that is not saved yet
+  updatedAt?: string;
+}
+
+/** The status line under a note: "Edited today · 5 words", or lines for a code note. */
+function WordCount({ body, updatedAt }: WordCountProps) {
+  const code = isCodeBody(body);
+  const n = code ? lineCount(body) : wordCount(body);
   return (
     <div className="word-count">
-      {n} {n === 1 ? "word" : "words"}
+      {updatedAt && (
+        <>
+          <Tooltip label={new Date(updatedAt).toLocaleString()}>
+            <span>Edited {formatDate(updatedAt)}</span>
+          </Tooltip>
+          {" · "}
+        </>
+      )}
+      {n} {code ? "line" : "word"}
+      {n === 1 ? "" : "s"}
     </div>
   );
 }

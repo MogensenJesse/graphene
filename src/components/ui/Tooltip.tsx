@@ -32,12 +32,15 @@ function Bubble({
 }: Omit<TooltipProps, "children"> & { anchor: DOMRect }) {
   const ref = useRef<HTMLDivElement>(null);
 
-  // Centred under the button, then pulled back inside the window before the first paint
+  // Centred under the button (above it when the window has no room below), then pulled back
+  // inside the window before the first paint
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     const x = anchor.left + anchor.width / 2 - el.offsetWidth / 2;
     el.style.left = `${Math.max(EDGE, Math.min(x, window.innerWidth - el.offsetWidth - EDGE))}px`;
+    if (anchor.bottom + GAP + el.offsetHeight > window.innerHeight - EDGE)
+      el.style.top = `${Math.max(EDGE, anchor.top - GAP - el.offsetHeight)}px`;
   }, [anchor]);
 
   return (
@@ -65,9 +68,9 @@ function Bubble({
 }
 
 /**
- * Styled tooltip for an icon button: name, shortcut and, for the formatting buttons, the markdown
- * it writes. Shows after a short hover or at once on keyboard focus. The tip is portalled to the
- * body, so no overflow in the editor clips it.
+ * Styled tooltip for a button that has no visible name of its own, or a shortcut worth showing: name,
+ * shortcut and, for the formatting buttons, the markdown it writes. Shows after a short hover or at once
+ * on keyboard focus. The tip is portalled to the body, so no overflow in the editor clips it.
  */
 function Tooltip({ label, keys, hint, children }: TooltipProps) {
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
@@ -103,10 +106,24 @@ function Tooltip({ label, keys, hint, children }: TooltipProps) {
   return (
     <>
       {cloneElement(children, {
-        onMouseEnter: (e) => show(e.currentTarget, SHOW_DELAY_MS),
-        onMouseLeave: hide,
-        onFocus: (e) => show(e.currentTarget, 0),
-        onBlur: hide,
+        onMouseEnter: (e) => {
+          children.props.onMouseEnter?.(e);
+          show(e.currentTarget, SHOW_DELAY_MS);
+        },
+        onMouseLeave: (e) => {
+          children.props.onMouseLeave?.(e);
+          hide();
+        },
+        onFocus: (e) => {
+          children.props.onFocus?.(e);
+          show(e.currentTarget, 0);
+        },
+        onBlur: (e) => {
+          children.props.onBlur?.(e);
+          hide();
+        },
+        // The shortcut the tooltip shows, for screen readers too
+        "aria-keyshortcuts": keys ?? children.props["aria-keyshortcuts"],
       })}
       {anchor &&
         createPortal(

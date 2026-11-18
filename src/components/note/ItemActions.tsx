@@ -1,6 +1,10 @@
 // src/components/note/ItemActions.tsx
-import { useDeleteConfirm } from "../../hooks/useDeleteConfirm";
-import { EditIcon, TrashIcon } from "../ui/Icon";
+import { useEffect } from "react";
+import { useLatest } from "../../hooks/useLatest";
+import type { MenuEntry } from "../ui/ContextMenu";
+import { EditIcon } from "../ui/Icon";
+import MoreButton from "../ui/MoreButton";
+import Tooltip from "../ui/Tooltip";
 import CopyNoteButton from "./CopyNoteButton";
 
 interface ItemActionsProps {
@@ -11,68 +15,54 @@ interface ItemActionsProps {
   onDelete: (id: string) => void;
   // False while a folder is selected, so the Del key goes to the folder instead
   deleteKeyEnabled: boolean;
+  // What the "…" button offers (duplicate, reveal, move to trash)
+  moreEntries: MenuEntry[];
 }
 
-// Edit + two-step delete for the read view
+// Copy, "…" and Edit for the read view; Edit sits where Done sits in the editor. The Del key moves the
+// note to the trash (the app shows an Undo for that)
 function ItemActions({
   itemId,
   body,
   onEdit,
   onDelete,
   deleteKeyEnabled,
+  moreEntries,
 }: ItemActionsProps) {
-  const { confirming, requestDelete, cancelConfirm } = useDeleteConfirm(
-    itemId,
-    () => onDelete(itemId),
-    deleteKeyEnabled,
-  );
+  const remove = useLatest(() => onDelete(itemId));
+
+  useEffect(() => {
+    if (!deleteKeyEnabled) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Delete" || e.repeat) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
+      // A dialog or an open menu owns the keyboard
+      if (document.querySelector('[aria-modal="true"], [role="menu"]')) return;
+      remove.current();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [deleteKeyEnabled, remove]);
 
   return (
     <div className="item-header__actions">
       <CopyNoteButton text={body} />
-      <button
-        type="button"
-        className="item-header__btn"
-        onClick={onEdit}
-        title="Edit (Ctrl+E)"
-        aria-label="Edit item"
-      >
-        <EditIcon />
-        <span className="item-header__btn-label">edit</span>
-      </button>
-      {confirming ? (
-        <>
-          <button
-            type="button"
-            className="item-header__btn item-header__btn--danger"
-            onClick={requestDelete}
-            title="Confirm delete"
-            aria-label="Confirm delete item"
-          >
-            confirm?
-          </button>
-          <button
-            type="button"
-            className="item-header__btn item-header__btn--quiet"
-            onClick={cancelConfirm}
-            title="Cancel delete"
-            aria-label="Cancel delete"
-          >
-            cancel
-          </button>
-        </>
-      ) : (
+      <MoreButton entries={moreEntries} />
+      <Tooltip label="Edit" keys="Ctrl+E">
         <button
           type="button"
-          className="item-header__btn item-header__btn--danger"
-          onClick={requestDelete}
-          title="Move to trash (Del)"
-          aria-label="Delete item"
+          className="item-header__btn"
+          onClick={onEdit}
+          aria-label="Edit item"
         >
-          <TrashIcon />
-          <span className="item-header__btn-label">delete</span>
+          <EditIcon />
+          <span className="item-header__btn-label">Edit</span>
         </button>
-      )}
+      </Tooltip>
     </div>
   );
 }

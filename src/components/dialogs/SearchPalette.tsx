@@ -12,6 +12,7 @@ import { formatDate, getFolderPath, itemKind } from "../../lib/utils";
 import type { Folder, Item } from "../../types";
 import { KindIcon, SearchIcon, XIcon } from "../ui/Icon";
 import Modal from "../ui/Modal";
+import Tooltip from "../ui/Tooltip";
 
 const RECENT_COUNT = 12;
 
@@ -117,15 +118,16 @@ function SearchPalette({
           }}
           onKeyDown={handleKeyDown}
         />
-        <button
-          type="button"
-          className="search-palette__close"
-          onClick={onClose}
-          aria-label="Close search"
-          title="Close (Esc)"
-        >
-          <XIcon size={16} />
-        </button>
+        <Tooltip label="Close" keys="Esc">
+          <button
+            type="button"
+            className="search-palette__close"
+            onClick={onClose}
+            aria-label="Close search"
+          >
+            <XIcon size={16} />
+          </button>
+        </Tooltip>
       </div>
 
       {hits.length === 0 ? (
@@ -163,7 +165,7 @@ function SearchPalette({
                     {item.title ? (
                       <Marked text={item.title} marks={titleMarks} />
                     ) : (
-                      "untitled"
+                      "Untitled"
                     )}
                   </span>
                   <span className="search-palette__path">
