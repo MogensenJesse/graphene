@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.3.0
+
 ### New
 - Task lists: tick a task in the reading view and it is saved. A toolbar button writes the list, and Enter on a task starts the next one
 - To-do notes: a note that starts with a task gets its own icon and sidebar filter, a done count, and a button to hide finished tasks. Start one with Ctrl+Alt+N, reorder tasks by dragging, and add a due date by writing due:2026-12-01
