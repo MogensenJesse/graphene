@@ -1,0 +1,49 @@
+// src/assets/styles/components/_DragDrop.scss
+// What dragging looks like, shared by the sidebar (notes, folders) and to-do tasks:
+// the label that follows the pointer, and the line where the dragged row will land.
+
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 4px 10px;
+  background: rgba(var(--rgb-blue), 0.15);
+  border: 1px solid rgba(var(--rgb-blue), 0.4);
+  border-radius: var(--border-radius-sm);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+  translate: -50% calc(-100% - 8px);
+}
+
+// Set on a row while a dragged one would land before or after it. The line is a straight bar (not a
+// shadow, which would follow the row's rounded corners) centred on the gap between two rows, so the
+// same spot looks the same from both sides. --drop-gap is that gap: none for tasks, 2px for sidebar rows.
+[data-drop] {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--color-text-info);
+    pointer-events: none;
+    z-index: 1;
+  }
+}
+
+[data-drop='before']::after {
+  top: calc(-1px - var(--drop-gap, 0px) / 2);
+}
+
+[data-drop='after']::after {
+  bottom: calc(-1px - var(--drop-gap, 0px) / 2);
+}

@@ -1,20 +1,30 @@
 // src/hooks/useFolders.ts
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { isReservedFolderName } from "../lib/attachments";
 import {
   createFolderDir,
   deleteFolderDir,
   moveItemFile,
   renameFolderDir,
+  writeFolderOrder,
 } from "../lib/storage";
 import type { Folder, Item } from "../types";
+import { useListRef } from "./useListRef";
+
+const hasRanks = (list: Folder[]) => list.some((f) => f.order !== undefined);
 
 export function useFolders(
   vaultPath: string,
   onDeleteCascade: (folderId: string, newFolderId: string | null) => void,
   onRenameFolder?: (oldId: string, newId: string) => void,
 ) {
-  const [folders, setFolders] = useState<Folder[]>([]);
+  const [folders, setFolders, foldersRef] = useListRef<Folder>();
+
+  // The folders' order is saved whole from the list, so it follows renames and deletes: call after the list changed
+  const saveOrder = useCallback(
+    () => writeFolderOrder(vaultPath, foldersRef.current).catch(console.error),
+    [vaultPath, foldersRef],
+  );
 
   /**
    * Add a root or nested folder. The folder id is the relative path from vault root.
@@ -35,7 +45,7 @@ export function useFolders(
       createFolderDir(vaultPath, folder).catch(console.error);
       return id;
     },
-    [vaultPath],
+    [vaultPath, setFolders],
   );
 
   const updateFolder = useCallback(
@@ -51,13 +61,11 @@ export function useFolders(
         )
       )
         return;
+      if (!foldersRef.current.some((f) => f.id === id)) return;
 
-      setFolders((prev) => {
-        const target = prev.find((f) => f.id === id);
-        if (!target) return prev;
-
-        // Update the folder itself and any descendants whose id starts with old id
-        return prev.map((f) => {
+      // Update the folder itself and any descendants whose id starts with old id
+      setFolders((prev) =>
+        prev.map((f) => {
           if (f.id === id) {
             return { ...f, id: newId, name: newName };
           }
@@ -75,45 +83,63 @@ export function useFolders(
             return { ...f, parentId: newId };
           }
           return f;
-        });
-      });
+        }),
+      );
 
       renameFolderDir(vaultPath, id, newName).catch(console.error);
+      if (hasRanks(foldersRef.current)) saveOrder();
       onRenameFolder?.(id, newId);
     },
-    [vaultPath, onRenameFolder],
+    [vaultPath, onRenameFolder, setFolders, foldersRef, saveOrder],
   );
 
   const deleteFolder = useCallback(
     (id: string, items: Item[]) => {
-      setFolders((prev) => {
-        const target = prev.find((f) => f.id === id);
-        const newParentId = target?.parentId ?? null;
+      const newParentId =
+        foldersRef.current.find((f) => f.id === id)?.parentId ?? null;
+      const hadRanks = hasRanks(foldersRef.current);
 
-        // Move items in the deleted folder to parent
-        const moves = items
-          .filter(
-            (item) =>
-              item.folderId === id || item.folderId?.startsWith(`${id}/`),
-          )
-          .map((item) => moveItemFile(vaultPath, item, newParentId));
+      // Move items in the deleted folder to parent
+      const moves = items
+        .filter(
+          (item) => item.folderId === id || item.folderId?.startsWith(`${id}/`),
+        )
+        .map((item) => moveItemFile(vaultPath, item, newParentId));
 
-        const updated = prev
+      setFolders((prev) =>
+        prev
           .filter((f) => f.id !== id && !f.id.startsWith(`${id}/`))
           .map((f) =>
             f.parentId === id ? { ...f, parentId: newParentId } : f,
-          );
-
-        onDeleteCascade(id, newParentId);
-        // Only after the item files left, so the directory is never renamed under a move in flight
-        Promise.all(moves)
-          .then(() => deleteFolderDir(vaultPath, id))
-          .catch(console.error);
-        return updated;
-      });
+          ),
+      );
+      onDeleteCascade(id, newParentId);
+      if (hadRanks) saveOrder();
+      // Only after the item files left, so the directory is never renamed under a move in flight
+      Promise.all(moves)
+        .then(() => deleteFolderDir(vaultPath, id))
+        .catch(console.error);
     },
-    [vaultPath, onDeleteCascade],
+    [vaultPath, onDeleteCascade, setFolders, foldersRef, saveOrder],
   );
 
-  return { folders, setFolders, addFolder, updateFolder, deleteFolder };
+  /** Gives folders their rank in the order (see lib/order placeNear); the file follows. */
+  const reorderFolders = useCallback(
+    (ranks: Record<string, number>) => {
+      setFolders((prev) =>
+        prev.map((f) => (f.id in ranks ? { ...f, order: ranks[f.id] } : f)),
+      );
+      saveOrder();
+    },
+    [setFolders, saveOrder],
+  );
+
+  return {
+    folders,
+    setFolders,
+    addFolder,
+    updateFolder,
+    deleteFolder,
+    reorderFolders,
+  };
 }

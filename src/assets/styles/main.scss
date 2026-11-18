@@ -13,11 +13,12 @@
 @use 'components/ItemHeader';
 @use 'components/CodeBlock';
 @use 'components/Highlight';
-@use 'components/NewItemPanel';
+@use 'components/NoteEditor';
 @use 'components/FolderRow';
 @use 'components/NoteDetail';
 @use 'components/TaskList';
 @use 'components/Sidebar';
+@use 'components/DragDrop';
 @use 'components/TrashView';
 @use 'components/Modal';
 @use 'components/SearchPalette';

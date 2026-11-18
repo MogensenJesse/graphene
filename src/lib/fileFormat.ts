@@ -36,6 +36,7 @@ export function parseNoteFile(raw: string): Item {
     const frontmatterBlock = text.slice(4, fenceEnd);
     const body = text.slice(fenceEnd + 4).replace(/^\n/, "");
     const meta = parseYamlFrontmatter(frontmatterBlock);
+    const order = meta.order ? Number(meta.order) : Number.NaN;
     return {
       id: meta.id ?? "",
       title: meta.title ?? "",
@@ -43,6 +44,7 @@ export function parseNoteFile(raw: string): Item {
         meta.folderId && meta.folderId !== "null" ? meta.folderId : null,
       createdAt: meta.createdAt ?? new Date().toISOString(),
       updatedAt: meta.updatedAt ?? new Date().toISOString(),
+      ...(Number.isFinite(order) ? { order } : {}),
       body,
     };
   }
@@ -67,6 +69,7 @@ export function serializeItem(item: Item): string {
     folderLine,
     `createdAt: ${item.createdAt}`,
     `updatedAt: ${item.updatedAt}`,
+    ...(item.order !== undefined ? [`order: ${item.order}`] : []),
     "---",
     item.body,
   ].join("\n");
@@ -76,15 +79,8 @@ export function serializeItem(item: Item): string {
 // Code blocks
 // ---------------------------------------------------------------------------
 
-/** Extensions of code files that can be dropped in (and that old snippets were stored as). */
-export const CODE_EXTS = new Set([
-  ".js",
-  ".ts",
-  ".css",
-  ".scss",
-  ".html",
-  ".sh",
-]);
+/** Extensions of code files that can be dropped in. */
+export const CODE_EXTS = new Set(["js", "ts", "css", "scss", "html", "sh"]);
 
 /** Wrap code in a fenced block whose fence is longer than any backtick run inside the code. */
 export function fence(code: string, lang: string): string {
@@ -95,96 +91,4 @@ export function fence(code: string, lang: string): string {
   const ticks = "`".repeat(longest + 1);
   const text = code.replace(/\r\n/g, "\n").replace(/\n$/, "");
   return `${ticks}${lang}\n${text}\n${ticks}`;
-}
-
-// ---------------------------------------------------------------------------
-// Legacy snippets — read only, to convert them to notes on first launch
-// ---------------------------------------------------------------------------
-
-export interface LegacySnippet {
-  id: string;
-  title: string;
-  folderId: string | null;
-  lang: string;
-  note: string;
-  code: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-const PREFIX = "@graphene:";
-
-function extractMetaJson(firstLine: string): string | null {
-  // Try: // @graphene:{...}
-  let idx = firstLine.indexOf(`// ${PREFIX}`);
-  if (idx !== -1) return firstLine.slice(idx + 3 + PREFIX.length);
-
-  // Try: /* @graphene:{...} */
-  idx = firstLine.indexOf(`/* ${PREFIX}`);
-  if (idx !== -1) {
-    const inner = firstLine.slice(idx + 3 + PREFIX.length);
-    return inner.endsWith(" */") ? inner.slice(0, -3).trimEnd() : inner;
-  }
-
-  // Try: <!-- @graphene:{...} -->
-  idx = firstLine.indexOf(`<!-- ${PREFIX}`);
-  if (idx !== -1) {
-    const inner = firstLine.slice(idx + 5 + PREFIX.length);
-    return inner.endsWith(" -->") ? inner.slice(0, -4).trimEnd() : inner;
-  }
-
-  // Try: # @graphene:{...}
-  idx = firstLine.indexOf(`# ${PREFIX}`);
-  if (idx !== -1) return firstLine.slice(idx + 2 + PREFIX.length);
-
-  return null;
-}
-
-/** A JSON-LD snippet used to be a .md file whose frontmatter said `type: snippet`. */
-export function isLegacySnippetMd(raw: string): boolean {
-  return /^type:\s*["']?snippet["']?\s*$/m.test(raw.slice(0, 200));
-}
-
-/** Old snippet file: metadata JSON in a comment on line 1, code below. Null without usable metadata. */
-export function parseLegacySnippet(
-  raw: string,
-  ext: string,
-): LegacySnippet | null {
-  const lines = raw.split("\n");
-  const json = extractMetaJson(lines[0] ?? "");
-  if (!json) return null;
-  try {
-    const meta = JSON.parse(json) as Partial<LegacySnippet>;
-    if (!meta.id) return null;
-    return {
-      id: meta.id,
-      title: meta.title ?? "",
-      folderId: meta.folderId ?? null,
-      lang: meta.lang ?? ext.slice(1),
-      note: meta.note ?? "",
-      code: lines.slice(1).join("\n").replace(/^\n/, ""),
-      createdAt: meta.createdAt ?? new Date().toISOString(),
-      updatedAt: meta.updatedAt ?? new Date().toISOString(),
-    };
-  } catch {
-    return null;
-  }
-}
-
-/** Code goes into a fenced block (the old language becomes the fence tag), its notes text below. */
-export function legacyToItem(
-  snippet: LegacySnippet,
-  folderId: string | null,
-): Item {
-  // JS, TS, CSS, SCSS, HTML, Bash become js, ts, css, scss, html, bash
-  const lang = snippet.lang === "JSON-LD" ? "json" : snippet.lang.toLowerCase();
-  return {
-    id: snippet.id,
-    title: snippet.title,
-    folderId,
-    createdAt: snippet.createdAt,
-    updatedAt: snippet.updatedAt,
-    body:
-      fence(snippet.code, lang) + (snippet.note ? `\n\n${snippet.note}` : ""),
-  };
 }

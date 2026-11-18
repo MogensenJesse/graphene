@@ -1,47 +1,98 @@
 // src/hooks/useDragToFolder.ts
 import { useCallback, useEffect, useRef, useState } from "react";
+import { clearDropMarks, markDrop } from "../lib/dragDrop";
+import { useLatest } from "./useLatest";
 
-export interface DragState {
-  itemId: string;
+type DragKind = "item" | "folder";
+
+/** What is dragged. A folder can only be put among its siblings: those whose parent id is `parent` ("" for the root). */
+interface DragSource {
+  kind: DragKind;
+  id: string;
   label: string;
+  parent?: string;
+}
+
+interface DragState extends DragSource {
   x: number;
   y: number;
 }
+
+/** A row the dragged one would land next to: before it, or after it when `after`. */
+export interface NearRow {
+  id: string;
+  after: boolean;
+}
+
+/**
+ * Called when something is dropped. `target` is where a note lands as a whole: undefined = nowhere,
+ * null = unfiled, TRASH_DROP_ID = trash, other string = folder id. `near` is set when it was dropped
+ * between rows (any `kind` of drag); it wins over `target`.
+ */
+type DropHandler = (
+  source: Pick<DragSource, "kind" | "id">,
+  target: string | null | undefined,
+  near: NearRow | null,
+) => void;
 
 // Drop id of the Trash button. Not a folder id (those are generated, never start with a dot), so
 // the drop handler can tell "delete" from "move to folder".
 export const TRASH_DROP_ID = ".trash";
 
-// Scans elements at a point for the nearest one with data-folder-drop-id.
-// Returns: undefined = no target, null = unfiled zone, TRASH_DROP_ID = trash, other string = folder id
-function getFolderDropTarget(x: number, y: number): string | null | undefined {
-  const els = document.elementsFromPoint(x, y) as HTMLElement[];
-  for (const el of els) {
-    const attr = el.getAttribute("data-folder-drop-id");
-    if (attr !== null) {
-      return attr === "unfiled" ? null : attr;
+/**
+ * What is under the pointer. `target` is the nearest element with data-folder-drop-id. `near` is the nearest
+ * row this drag can be placed next to: item rows and folder groups carry data-sort-kind, data-sort-id and
+ * (folders) data-sort-parent. A folder group is judged by its header (its first child), so the whole
+ * expanded body counts as "after". `mark` is the element that shows the line.
+ */
+function locate(
+  x: number,
+  y: number,
+  source: DragSource,
+): {
+  target: string | null | undefined;
+  near: NearRow | null;
+  mark: HTMLElement | null;
+} {
+  let target: string | null | undefined;
+  let near: NearRow | null = null;
+  let mark: HTMLElement | null = null;
+  for (const el of document.elementsFromPoint(x, y) as HTMLElement[]) {
+    const drop = el.dataset.folderDropId;
+    if (target === undefined && drop !== undefined)
+      target = drop === "unfiled" ? null : drop;
+    const id = el.dataset.sortId;
+    if (
+      !near &&
+      id !== undefined &&
+      id !== source.id &&
+      el.dataset.sortKind === source.kind &&
+      (source.kind === "item" || el.dataset.sortParent === source.parent)
+    ) {
+      const row = source.kind === "folder" ? (el.firstElementChild ?? el) : el;
+      const r = row.getBoundingClientRect();
+      near = { id, after: y > r.top + r.height / 2 };
+      mark = el;
     }
   }
-  return undefined;
+  return { target, near, mark };
 }
 
 const DRAG_THRESHOLD_PX = 6;
 
-export function useDragToFolder(
-  onMove: (itemId: string, targetFolderId: string | null) => void,
-): {
+export function useDragToFolder(onDrop: DropHandler): {
   dragState: DragState | null;
   dragOverId: string | null | undefined;
-  startDrag: (e: React.PointerEvent, itemId: string, label: string) => void;
+  startDrag: (e: React.PointerEvent, source: DragSource) => void;
 } {
   const [dragState, setDragState] = useState<DragState | null>(null);
-  // undefined = no active target, null = unfiled zone, string = folder id
+  // undefined = no active target, null = unfiled zone, string = folder id (or the trash).
+  // Only a note dropped as a whole has one: with a line showing, or for a folder, there is no tint.
   const [dragOverId, setDragOverId] = useState<string | null | undefined>(
     undefined,
   );
 
-  const pendingRef = useRef<{ itemId: string; label: string } | null>(null);
-  const startPosRef = useRef<{ x: number; y: number } | null>(null);
+  const onDropRef = useLatest(onDrop);
   const cleanupRef = useRef<(() => void) | null>(null);
   const rafRef = useRef<number | null>(null);
 
@@ -55,35 +106,24 @@ export function useDragToFolder(
   );
 
   const startDrag = useCallback(
-    (e: React.PointerEvent, itemId: string, label: string) => {
+    (e: React.PointerEvent, source: DragSource) => {
       if (e.button !== 0) return;
       e.preventDefault();
 
-      pendingRef.current = { itemId, label };
-      startPosRef.current = { x: e.clientX, y: e.clientY };
-
+      const start = { x: e.clientX, y: e.clientY };
       let active = false;
 
       const handleMove = (ev: PointerEvent) => {
-        if (!startPosRef.current) return;
-        const dist = Math.hypot(
-          ev.clientX - startPosRef.current.x,
-          ev.clientY - startPosRef.current.y,
-        );
-
         if (!active) {
-          if (dist < DRAG_THRESHOLD_PX) return;
+          if (
+            Math.hypot(ev.clientX - start.x, ev.clientY - start.y) <
+            DRAG_THRESHOLD_PX
+          )
+            return;
           active = true;
           document.body.style.cursor = "grabbing";
           document.body.style.userSelect = "none";
-          if (pendingRef.current) {
-            setDragState({
-              itemId: pendingRef.current.itemId,
-              label: pendingRef.current.label,
-              x: ev.clientX,
-              y: ev.clientY,
-            });
-          }
+          setDragState({ ...source, x: ev.clientX, y: ev.clientY });
         }
 
         if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -92,8 +132,19 @@ export function useDragToFolder(
         rafRef.current = requestAnimationFrame(() => {
           rafRef.current = null;
           setDragState((prev) => (prev ? { ...prev, x, y } : null));
-          setDragOverId(getFolderDropTarget(x, y));
+          const { target, near, mark } = locate(x, y, source);
+          markDrop(near ? mark : null, near?.after);
+          setDragOverId(source.kind === "item" && !near ? target : undefined);
         });
+      };
+
+      const stop = () => {
+        window.removeEventListener("pointermove", handleMove);
+        window.removeEventListener("pointerup", handleUp);
+        cleanupRef.current = null;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        clearDropMarks();
       };
 
       const handleUp = (ev: PointerEvent) => {
@@ -102,33 +153,20 @@ export function useDragToFolder(
           rafRef.current = null;
         }
         if (active) {
-          const target = getFolderDropTarget(ev.clientX, ev.clientY);
-          if (target !== undefined && pendingRef.current) {
-            onMove(pendingRef.current.itemId, target);
-          }
+          const { target, near } = locate(ev.clientX, ev.clientY, source);
+          if (near || (source.kind === "item" && target !== undefined))
+            onDropRef.current(source, target, near);
         }
-
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
         setDragState(null);
         setDragOverId(undefined);
-        pendingRef.current = null;
-        startPosRef.current = null;
-        active = false;
-
-        window.removeEventListener("pointermove", handleMove);
-        window.removeEventListener("pointerup", handleUp);
-        cleanupRef.current = null;
+        stop();
       };
 
       window.addEventListener("pointermove", handleMove);
       window.addEventListener("pointerup", handleUp);
-      cleanupRef.current = () => {
-        window.removeEventListener("pointermove", handleMove);
-        window.removeEventListener("pointerup", handleUp);
-      };
+      cleanupRef.current = stop;
     },
-    [onMove],
+    [onDropRef],
   );
 
   return { dragState, dragOverId, startDrag };

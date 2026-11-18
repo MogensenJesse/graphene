@@ -5,7 +5,7 @@ import type { Components } from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
-import CodeBlock from "../components/CodeBlock";
+import CodeBlock from "../components/note/CodeBlock";
 import { useClipboard } from "../hooks/useClipboard";
 
 // No `as const` — it makes the array readonly and triggers TS4104 on remarkPlugins

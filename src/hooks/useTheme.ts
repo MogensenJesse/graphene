@@ -1,21 +1,18 @@
 // src/hooks/useTheme.ts
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState } from "react";
+import { readPref, writePref } from "../lib/prefs";
 
-export type ThemePref = "system" | "light" | "dark";
+type ThemePref = "system" | "light" | "dark";
 
 /** The order the theme button cycles through. */
-export const THEME_ORDER: ThemePref[] = ["system", "light", "dark"];
+const THEME_ORDER: ThemePref[] = ["system", "light", "dark"];
 
 const THEME_KEY = "graphene.theme";
 
 export function readThemePref(): ThemePref {
-  try {
-    const stored = localStorage.getItem(THEME_KEY);
-    return THEME_ORDER.find((t) => t === stored) ?? "system";
-  } catch {
-    return "system";
-  }
+  const stored = readPref(THEME_KEY);
+  return THEME_ORDER.find((t) => t === stored) ?? "system";
 }
 
 const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
@@ -50,11 +47,7 @@ export function useTheme(): { pref: ThemePref; cycle: () => void } {
     const next =
       THEME_ORDER[(THEME_ORDER.indexOf(pref) + 1) % THEME_ORDER.length];
     setPref(next);
-    try {
-      localStorage.setItem(THEME_KEY, next);
-    } catch {
-      // Preference only; it still applies for this session
-    }
+    writePref(THEME_KEY, next);
   };
 
   return { pref, cycle };

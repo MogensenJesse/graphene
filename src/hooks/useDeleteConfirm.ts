@@ -1,40 +1,38 @@
 // src/hooks/useDeleteConfirm.ts
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { useEscape } from "./useEscape";
+import { useLatest } from "./useLatest";
 
 /**
- * Two-step delete: the first request arms the confirmation, the second runs `onConfirm`.
- * The Del key does the same unless `keyEnabled` is false (e.g. a selected folder owns Del).
+ * Two-step delete of the thing `key` names (an item id, a folder id): the first request arms the
+ * confirmation, the second runs `onConfirm`. Escape disarms it, and so does `key` changing. The Del key
+ * does the same unless `keyEnabled` is false (a selected folder owns Del while a note is open).
  */
 export function useDeleteConfirm(
-  itemId: string,
+  key: string,
   onConfirm: () => void,
   keyEnabled = true,
 ): {
   confirming: boolean;
+  /** Ask for the confirmation of `forKey` (default `key`) without confirming an armed one. */
+  arm: (forKey?: string) => void;
+  /** Arms the confirmation; when it is armed already, runs `onConfirm`. */
   requestDelete: () => void;
   cancelConfirm: () => void;
 } {
-  const [confirming, setConfirming] = useState(false);
+  const [armed, setArmed] = useState<string | null>(null);
+  const confirming = armed === key;
+  const confirm = useLatest(onConfirm);
 
-  // Latest callback without re-subscribing the key listener on every render
-  const onConfirmRef = useRef(onConfirm);
-  useEffect(() => {
-    onConfirmRef.current = onConfirm;
-  });
+  const requestDelete = () => {
+    if (confirming) {
+      setArmed(null);
+      confirm.current();
+    } else setArmed(key);
+  };
+  const cancelConfirm = () => setArmed(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: itemId is an intentional trigger — reset confirming whenever the viewed item changes
-  useEffect(() => {
-    setConfirming(false);
-  }, [itemId]);
-
-  useEffect(() => {
-    if (!confirming) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setConfirming(false);
-    };
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [confirming]);
+  useEscape(cancelConfirm, { active: confirming });
 
   useEffect(() => {
     if (!keyEnabled) return;
@@ -45,19 +43,19 @@ export function useDeleteConfirm(
         e.target instanceof HTMLTextAreaElement
       )
         return;
-      if (confirming) onConfirmRef.current();
-      else setConfirming(true);
+      if (confirming) {
+        setArmed(null);
+        confirm.current();
+      } else setArmed(key);
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [keyEnabled, confirming]);
+  }, [keyEnabled, confirming, key, confirm]);
 
   return {
     confirming,
-    requestDelete: () => {
-      if (confirming) onConfirmRef.current();
-      else setConfirming(true);
-    },
-    cancelConfirm: () => setConfirming(false),
+    arm: (forKey = key) => setArmed(forKey),
+    requestDelete,
+    cancelConfirm,
   };
 }

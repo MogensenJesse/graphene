@@ -3,98 +3,37 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { MenuEntry } from "./components/ContextMenu";
+import SearchPalette from "./components/dialogs/SearchPalette";
+import TrashView from "./components/dialogs/TrashView";
+import UpdateDialog from "./components/dialogs/UpdateDialog";
+import VaultPicker from "./components/dialogs/VaultPicker";
+import NoteDetail from "./components/note/NoteDetail";
+import NoteEditor from "./components/note/NoteEditor";
+import Sidebar from "./components/sidebar/Sidebar";
+import type { MenuEntry } from "./components/ui/ContextMenu";
 import ContextMenuProvider, {
   useContextMenu,
-} from "./components/ContextMenuProvider";
-import {
-  CodeIcon,
-  HexagonIcon,
-  ListTodoIcon,
-  PlusIcon,
-  SearchIcon,
-} from "./components/Icon";
-import NewItemPanel from "./components/NewItemPanel";
-import NoteDetail from "./components/NoteDetail";
-import SearchPalette from "./components/SearchPalette";
-import Sidebar from "./components/Sidebar";
-import TrashView from "./components/TrashView";
-import UpdateDialog from "./components/UpdateDialog";
-import WindowControls from "./components/WindowControls";
+} from "./components/ui/ContextMenuProvider";
+import { SearchIcon } from "./components/ui/Icon";
+import { newItemEntries } from "./components/ui/newKinds";
+import WindowControls from "./components/ui/WindowControls";
 import { useFileDrop } from "./hooks/useFileDrop";
 import { useFolders } from "./hooks/useFolders";
 import type { AddItemFields, UpdateItemFields } from "./hooks/useItems";
 import { useItems } from "./hooks/useItems";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useUpdater } from "./hooks/useUpdater";
+import { useVaultRefresh } from "./hooks/useVaultRefresh";
 import { saveImage, VaultPathContext } from "./lib/attachmentStore";
-import { extOf } from "./lib/attachments";
-import { mergeFolders, mergeItems, sameItem } from "./lib/mergeScan";
-import {
-  folderAbsPath,
-  itemFilePath,
-  loadVault,
-  writeState,
-} from "./lib/storage";
+import { extOf } from "./lib/paths";
+import { folderAbsPath, itemFilePath, loadVault } from "./lib/storage";
 import { moveTask, toggleTaskAt } from "./lib/tasks";
-import { getVaultPath, pickVaultPath, setVaultPath } from "./lib/vault";
+import { getVaultPath } from "./lib/vault";
 import type { Item, ItemKind, TypeFilter } from "./types";
 
 type Mode = "new" | "detail" | "edit" | "trash";
 
 const appWindow = getCurrentWindow();
-
-// Coming back to the window rescans the vault, but not more often than this
-const REFRESH_MIN_MS = 5000;
-// A rescan that overlapped one of our own writes is thrown away and tried again after this
-const REFRESH_RETRY_MS = 1500;
-
-function VaultPicker({ onVaultSet }: { onVaultSet: (path: string) => void }) {
-  const [picking, setPicking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleChoose = async () => {
-    setPicking(true);
-    setError(null);
-    try {
-      const chosen = await pickVaultPath();
-      if (chosen) {
-        await setVaultPath(chosen);
-        onVaultSet(chosen);
-      }
-    } catch (err) {
-      setError("Failed to pick folder. Please try again.");
-      console.error("[VaultPicker]", err);
-    } finally {
-      setPicking(false);
-    }
-  };
-
-  return (
-    <div className="vault-picker" data-tauri-drag-region>
-      <div className="vault-picker__card">
-        <div className="vault-picker__icon" aria-hidden="true">
-          <HexagonIcon size={36} />
-        </div>
-        <h1 className="vault-picker__title">Graphene</h1>
-        <p className="vault-picker__desc">
-          Choose a folder to use as your vault. Notes and snippets will be
-          stored as files inside it.
-        </p>
-        {error && <p className="vault-picker__error">{error}</p>}
-        <button
-          type="button"
-          className="vault-picker__btn"
-          onClick={handleChoose}
-          disabled={picking}
-        >
-          {picking ? "Choosing…" : "Choose vault folder"}
-        </button>
-      </div>
-      <WindowControls className="vault-picker__win-controls" />
-    </div>
-  );
-}
 
 function MainApp({ vaultPath }: { vaultPath: string }) {
   const { open } = useContextMenu();
@@ -129,12 +68,16 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
   const handleRenameCascade = useCallback(
     (oldId: string, newId: string) => {
       for (const item of itemsRef.current) {
+        // The note stays in the same folder under a new path, so it keeps its rank (`order` given)
         if (item.folderId === oldId) {
-          updateItem(item.id, { folderId: newId }, false);
+          updateItem(item.id, { folderId: newId, order: item.order }, false);
         } else if (item.folderId?.startsWith(`${oldId}/`)) {
           updateItem(
             item.id,
-            { folderId: newId + item.folderId.slice(oldId.length) },
+            {
+              folderId: newId + item.folderId.slice(oldId.length),
+              order: item.order,
+            },
             false,
           );
         }
@@ -143,8 +86,25 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     [updateItem, itemsRef],
   );
 
-  const { folders, setFolders, addFolder, updateFolder, deleteFolder } =
-    useFolders(vaultPath, handleDeleteCascade, handleRenameCascade);
+  const {
+    folders,
+    setFolders,
+    addFolder,
+    updateFolder,
+    deleteFolder,
+    reorderFolders,
+  } = useFolders(vaultPath, handleDeleteCascade, handleRenameCascade);
+
+  // Notes put in a new order: each rank is saved with the note (no new "edited" date); the dragged one
+  // may also have landed in another folder
+  const handleReorderItems = (
+    ranks: Record<string, number>,
+    movedId: string,
+    folderId: string | null,
+  ) => {
+    for (const [id, order] of Object.entries(ranks))
+      updateItem(id, id === movedId ? { folderId, order } : { order }, false);
+  };
 
   // Load all items + folders + trash from vault on mount
   useEffect(() => {
@@ -182,7 +142,7 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
   const [isDirtyEdit, setIsDirtyEdit] = useState(false);
   // Item the open editor writes to; null = unsaved draft. A ref so a flush before re-render still sees it
   const editingIdRef = useRef<string | null>(null);
-  // Set by NewItemPanel: save now if dirty
+  // Set by NoteEditor: save now if dirty
   const flushRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -297,7 +257,7 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
   // Save a pending edit before the window goes away (close, or the updater's installer)
   const flushPendingSave = useCallback(async () => {
     flushRef.current?.();
-    // ponytail: saves are fire-and-forget inside state updaters, so a fixed delay lets the write land.
+    // ponytail: saves are fire-and-forget (not awaited), so a fixed delay lets the write land.
     // Upgrade to awaiting tracked writes if saves ever get slow.
     await new Promise((resolve) => setTimeout(resolve, 200));
   }, []);
@@ -309,69 +269,21 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     };
   }, [flushPendingSave]);
 
-  // Notes changed outside Graphene (another editor, Dropbox, git) show up when the window gets focus.
-  // The editor copies its note when it opens, so one with unsaved typing keeps its own text (its next
-  // autosave wins, as before); a clean one is reopened on what is on disk.
-  const isDirtyEditRef = useRef(false);
-  useEffect(() => {
-    isDirtyEditRef.current = isDirtyEdit;
-  }, [isDirtyEdit]);
-  const refreshing = useRef(false);
-  const lastRefresh = useRef(Date.now());
-
-  const refreshFromDisk = useCallback(async () => {
-    if (refreshing.current) return;
-    refreshing.current = true;
-    try {
-      for (let attempt = 0; attempt < 2; attempt++) {
-        const before = writeState();
-        const scanned = await loadVault(vaultPath);
-        const after = writeState();
-        if (before.pending || after.pending || before.seq !== after.seq) {
-          // A save, move or delete of ours ran during the scan, which may have caught a file mid-move
-          await new Promise((resolve) => setTimeout(resolve, REFRESH_RETRY_MS));
-          continue;
-        }
-        const open = editingIdRef.current;
-        const dirty = open !== null && isDirtyEditRef.current;
-        if (open && !dirty) {
-          const mine = itemsRef.current.find((i) => i.id === open);
-          const disk = scanned.items.find((i) => i.id === open);
-          if (!disk)
-            editingIdRef.current = null; // deleted outside: the editor goes with it
-          else if (mine && !sameItem(mine, disk))
-            setDraft((d) => ({ ...d, key: d.key + 1 })); // reopen on the new text
-        }
-        setItems((prev) =>
-          mergeItems(prev, scanned.items, dirty ? open : null),
-        );
-        setTrashed((prev) => mergeItems(prev, scanned.trashed, null));
-        setFolders((prev) => mergeFolders(prev, scanned.folders));
-        return;
-      }
-    } catch (err) {
-      console.error("[refreshFromDisk]", err);
-    } finally {
-      refreshing.current = false;
-    }
-  }, [vaultPath, setItems, setTrashed, setFolders, itemsRef]);
-
-  useEffect(() => {
-    const unlisten = appWindow.onFocusChanged(({ payload: focused }) => {
-      if (!focused || Date.now() - lastRefresh.current < REFRESH_MIN_MS) return;
-      lastRefresh.current = Date.now();
-      refreshFromDisk();
-    });
-    return () => {
-      unlisten.then((fn) => fn()).catch(console.error);
-    };
-  }, [refreshFromDisk]);
+  // Notes changed outside Graphene show up when the window gets focus
+  useVaultRefresh({
+    vaultPath,
+    itemsRef,
+    setItems,
+    setFolders,
+    editingIdRef,
+    isEditorDirty: isDirtyEdit,
+    onReopenEditor: () => setDraft((d) => ({ ...d, key: d.key + 1 })),
+  });
 
   const updater = useUpdater(flushPendingSave);
   const [updateOpen, setUpdateOpen] = useState(false);
   const closeUpdate = useCallback(() => setUpdateOpen(false), []);
 
-  // Dropped files land in the selected folder, and the last one imported opens
   // Pictures dropped on the window are copied into the vault's attachments folder and linked at the
   // cursor of the open editor; with no editor open there is nowhere to put them
   const insertImagesRef = useRef<((files: string[]) => void) | null>(null);
@@ -389,12 +301,13 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     [vaultPath],
   );
 
-  const { isDraggingOver } = useFileDrop(
+  // Dropped files land in the selected folder, and the last one imported opens
+  const { isDraggingOver } = useFileDrop({
     addItem,
-    () => selectedFolderId,
-    handleSelect,
-    handleDropImages,
-  );
+    getFolderId: () => selectedFolderId,
+    onImported: handleSelect,
+    onImages: handleDropImages,
+  });
 
   const handleDelete = (id: string) => {
     // The editor goes with the item. Left set, the next new draft's first save would update a
@@ -494,7 +407,7 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
 
     // One element for new + edit: the first save flips mode new -> edit without a remount
     return (
-      <NewItemPanel
+      <NoteEditor
         key={draft.key}
         folders={folders}
         initialItem={selectedItem}
@@ -513,21 +426,7 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
 
   // Right-click on any part of the window that has no menu of its own
   const appEntries: MenuEntry[] = [
-    {
-      label: "New note",
-      icon: <PlusIcon size={14} />,
-      onSelect: () => handleNew("note"),
-    },
-    {
-      label: "New to-do",
-      icon: <ListTodoIcon size={14} />,
-      onSelect: () => handleNew("todo"),
-    },
-    {
-      label: "New code",
-      icon: <CodeIcon size={14} />,
-      onSelect: () => handleNew("code"),
-    },
+    ...newItemEntries(handleNew),
     "separator",
     {
       label: "Search",
@@ -577,6 +476,8 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
             onRenameFolder={updateFolder}
             onDeleteFolder={handleDeleteFolder}
             onMoveItem={moveItem}
+            onReorderItems={handleReorderItems}
+            onReorderFolders={reorderFolders}
             onOpenSearch={() => setSearchOpen(true)}
             onTypeFilterChange={setTypeFilter}
           />

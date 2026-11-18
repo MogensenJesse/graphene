@@ -1,0 +1,224 @@
+// src/assets/styles/components/_NoteEditor.scss
+@use '../base/variables' as v;
+@use '../base/mixins' as mixins;
+
+.note-editor {
+  position: relative; // anchors the find bar
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+
+  // The header is shared, see _ItemHeader
+
+  // ── Body ──────────────────────────────────────────────────────────────────
+
+  &__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 28px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+
+    @include mixins.custom-scrollbar;
+  }
+
+  // ── Note editor ───────────────────────────────────────────────────────────
+
+  &__editor-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+    max-width: 720px; // same line length and position as the read view
+    margin: 0 auto;
+  }
+
+  // ── Textarea ──────────────────────────────────────────────────────────────
+
+  &__textarea {
+    flex: 1;
+    font-size: 13px;
+    font-family: var(--font-mono);
+    line-height: 1.7;
+    background: none;
+    border: none;
+    border-top: 0.5px solid var(--color-border-tertiary);
+    color: var(--color-text-primary);
+    padding: 12px 0;
+    outline: none;
+    resize: none;
+    min-height: 0;
+    width: 100%;
+
+    @include mixins.custom-scrollbar;
+
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+}
+
+// ── Markdown toolbar (used inside note editor) ───────────────────────────────
+
+.markdown-toolbar {
+  display: flex;
+  flex-wrap: wrap; // never clip at the narrowest window; the language chip drops to a second row
+  align-items: center;
+  gap: 2px;
+  padding: 4px 0 6px;
+  flex-shrink: 0;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  margin-bottom: 0;
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0.5px solid transparent;
+    border-radius: var(--border-radius-sm);
+    background: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), color var(--transition-fast),
+      background var(--transition-fast);
+
+    &:hover {
+      color: var(--color-text-primary);
+      border-color: var(--color-border-secondary);
+      background: var(--color-background-hover);
+    }
+
+    // The format is on where the caret is; pressing the button takes it off
+    &--active,
+    &--active:hover {
+      color: var(--color-text-primary);
+      border-color: var(--color-border-primary);
+      background: var(--color-background-active);
+    }
+
+    &:focus-visible {
+      outline: 1px solid var(--color-border-primary);
+      outline-offset: 1px;
+    }
+  }
+
+  &__sep {
+    display: inline-block;
+    width: 0.5px;
+    height: 14px;
+    background: var(--color-border-secondary);
+    margin: 0 4px;
+    flex-shrink: 0;
+  }
+
+  // Right end of the toolbar: the code block language chip
+  &__trailing {
+    margin-left: auto;
+  }
+}
+
+// ── Code block language chip (shown while the caret is inside a fenced block) ──
+
+.code-language {
+  position: relative;
+
+  &__chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    padding: 2px 8px;
+    border-radius: var(--border-radius-sm);
+    border: 0.5px solid var(--color-border-secondary);
+    background: var(--color-background-secondary);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), color var(--transition-fast);
+
+    &:hover,
+    &--open {
+      border-color: var(--color-border-primary);
+      color: var(--color-text-primary);
+    }
+
+    &:focus-visible {
+      outline: 1px solid var(--color-border-primary);
+      outline-offset: 1px;
+    }
+  }
+
+  &__chevron {
+    display: inline-flex;
+    color: var(--color-text-tertiary);
+  }
+
+  &__dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 200;
+    width: 180px;
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-primary);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-popover);
+    overflow: hidden;
+  }
+
+  &__input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    background: none;
+    border: none;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    color: var(--color-text-primary);
+    outline: none;
+
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  &__list {
+    max-height: 220px;
+    overflow-y: auto;
+
+    @include mixins.custom-scrollbar;
+  }
+
+  &__option {
+    display: block;
+    width: 100%;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+
+    &:hover,
+    &--active {
+      background: color-mix(in srgb, var(--color-background-secondary) 40%, transparent);
+      color: var(--color-text-primary);
+    }
+
+    &--current {
+      font-weight: 500;
+      color: var(--color-text-primary);
+    }
+  }
+}

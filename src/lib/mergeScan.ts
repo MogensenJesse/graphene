@@ -3,7 +3,10 @@ import type { Folder, Item } from "../types";
 
 /** Whether two copies of a note read the same (the dates do not count: another editor does not bump them). */
 export const sameItem = (a: Item, b: Item) =>
-  a.title === b.title && a.body === b.body && a.folderId === b.folderId;
+  a.title === b.title &&
+  a.body === b.body &&
+  a.folderId === b.folderId &&
+  a.order === b.order;
 
 /**
  * Brings the notes in memory in line with a fresh scan of the vault: files added on disk appear,
@@ -52,7 +55,9 @@ export function mergeFolders(prev: Folder[], scanned: Folder[]): Folder[] {
   const known = new Map(prev.map((f) => [f.id, f]));
   const next = scanned.map((f) => {
     const old = known.get(f.id);
-    return old && old.parentId === f.parentId ? old : f;
+    return old && old.parentId === f.parentId && old.order === f.order
+      ? old
+      : f;
   });
   const unchanged =
     next.length === prev.length && next.every((f) => known.get(f.id) === f);

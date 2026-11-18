@@ -229,6 +229,8 @@
     margin-top: 8px;
     padding: 8px 8px 4px;
     outline: none;
+    --drop-gap: 2px; // the space between rows (see _DragDrop.scss)
+    border-radius: v.$radius-lg; // rounds the drop tint and the focus ring below too
 
     @include mixins.custom-scrollbar;
 
@@ -465,22 +467,4 @@
     flex-shrink: 0;
     display: inline-block;
   }
-}
-
-// ── Drag ghost ────────────────────────────────────────────────────────────────
-
-.drag-ghost {
-  position: fixed;
-  pointer-events: none;
-  z-index: 9999;
-  padding: 4px 10px;
-  background: rgba(var(--rgb-blue), 0.15);
-  border: 1px solid rgba(var(--rgb-blue), 0.4);
-  border-radius: var(--border-radius-sm);
-  color: var(--color-text-primary);
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  backdrop-filter: blur(4px);
-  translate: -50% calc(-100% - 8px);
 }

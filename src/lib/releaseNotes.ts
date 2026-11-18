@@ -21,7 +21,7 @@ interface GithubRelease {
 }
 
 /** Published releases newer than `current` up to and including `latest`, newest first. */
-export function selectReleases(
+function selectReleases(
   releases: GithubRelease[],
   current: string,
   latest: string,

@@ -1,6 +1,6 @@
 // src/hooks/useItems.ts
 import { nanoid } from "nanoid";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
 import { relinkAttachments } from "../lib/attachments";
 import {
   emptyTrashFiles,
@@ -12,21 +12,14 @@ import {
   trashItemFile,
 } from "../lib/storage";
 import type { Item } from "../types";
+import { useListRef } from "./useListRef";
 
 export type AddItemFields = Pick<Item, "title" | "body" | "folderId">;
 export type UpdateItemFields = Partial<Omit<Item, "id" | "createdAt">>;
 
 export function useItems(vaultPath: string) {
-  const [items, setItems] = useState<Item[]>([]);
-  const [trashed, setTrashed] = useState<Item[]>([]);
-
-  // Latest lists for callbacks that must read them outside a state updater
-  const itemsRef = useRef(items);
-  const trashedRef = useRef(trashed);
-  useEffect(() => {
-    itemsRef.current = items;
-    trashedRef.current = trashed;
-  });
+  const [items, setItems, itemsRef] = useListRef<Item>();
+  const [trashed, setTrashed, trashedRef] = useListRef<Item>();
 
   const addItem = useCallback(
     (fields: AddItemFields): string => {
@@ -41,43 +34,32 @@ export function useItems(vaultPath: string) {
       saveItem(vaultPath, item).catch(console.error);
       return item.id;
     },
-    [vaultPath],
+    [vaultPath, setItems],
   );
 
   const updateItem = useCallback(
     // touch=false keeps updatedAt (folder renames/deletes must not make every item look edited)
     (id: string, fields: UpdateItemFields, touch = true) => {
-      setItems((prev) => {
-        const old = prev.find((i) => i.id === id);
-        const next = prev.map((item) => {
-          if (item.id !== id) return item;
-          const merged = {
-            ...item,
-            ...fields,
-            updatedAt: touch ? new Date().toISOString() : item.updatedAt,
-          };
-          // Moving to a folder of another depth changes how its image links reach the vault root
-          return {
-            ...merged,
-            body: relinkAttachments(
-              merged.body,
-              item.folderId,
-              merged.folderId,
-            ),
-          };
-        });
-        const updated = next.find((i) => i.id === id);
-        if (updated) {
-          // Title or folder changes move the file — replaceItemFile drops the stale one
-          (old
-            ? replaceItemFile(vaultPath, old, updated)
-            : saveItem(vaultPath, updated)
-          ).catch(console.error);
-        }
-        return next;
-      });
+      const old = itemsRef.current.find((i) => i.id === id);
+      if (!old) return;
+      const merged = {
+        ...old,
+        ...fields,
+        updatedAt: touch ? new Date().toISOString() : old.updatedAt,
+      };
+      // In another folder it has no place in that folder's order yet, unless the caller says what its rank is
+      if (merged.folderId !== old.folderId && !("order" in fields))
+        merged.order = undefined;
+      // Moving to a folder of another depth changes how its image links reach the vault root
+      const updated = {
+        ...merged,
+        body: relinkAttachments(merged.body, old.folderId, merged.folderId),
+      };
+      setItems((prev) => prev.map((i) => (i.id === id ? updated : i)));
+      // Title or folder changes move the file — replaceItemFile drops the stale one
+      replaceItemFile(vaultPath, old, updated).catch(console.error);
     },
-    [vaultPath],
+    [vaultPath, setItems, itemsRef],
   );
 
   // Soft delete: the file moves to <vault>/.trash and the item shows up in the Trash view
@@ -89,7 +71,7 @@ export function useItems(vaultPath: string) {
       setTrashed((prev) => [target, ...prev]);
       trashItemFile(vaultPath, target).catch(console.error);
     },
-    [vaultPath],
+    [vaultPath, setItems, setTrashed, itemsRef],
   );
 
   const restoreItem = useCallback(
@@ -104,7 +86,7 @@ export function useItems(vaultPath: string) {
         console.error("[useItems] restore failed:", err);
       }
     },
-    [vaultPath],
+    [vaultPath, setItems, setTrashed, trashedRef],
   );
 
   const emptyTrash = useCallback(() => {
@@ -114,28 +96,28 @@ export function useItems(vaultPath: string) {
     emptyTrashFiles(vaultPath, gone)
       .then(() => sweepUnusedImages(vaultPath))
       .catch(console.error);
-  }, [vaultPath]);
+  }, [vaultPath, setTrashed, trashedRef]);
 
   const moveItem = useCallback(
     (id: string, newFolderId: string | null) => {
-      setItems((prev) => {
-        const target = prev.find((i) => i.id === id);
-        if (!target) return prev;
-        const body = relinkAttachments(
-          target.body,
-          target.folderId,
-          newFolderId,
-        );
-        const moved = { ...target, folderId: newFolderId, body };
-        // A plain rename of the file; only a note whose image links change is rewritten
-        (body === target.body
-          ? moveItemFile(vaultPath, target, newFolderId)
-          : replaceItemFile(vaultPath, target, moved)
-        ).catch(console.error);
-        return prev.map((item) => (item.id === id ? moved : item));
-      });
+      const target = itemsRef.current.find((i) => i.id === id);
+      if (!target || target.folderId === newFolderId) return;
+      const body = relinkAttachments(target.body, target.folderId, newFolderId);
+      // Last in its new folder: its rank belonged to the old one
+      const moved = {
+        ...target,
+        folderId: newFolderId,
+        body,
+        order: undefined,
+      };
+      setItems((prev) => prev.map((i) => (i.id === id ? moved : i)));
+      // A plain rename of the file; a note whose image links change or that had a rank is rewritten
+      (body === target.body && target.order === undefined
+        ? moveItemFile(vaultPath, target, newFolderId)
+        : replaceItemFile(vaultPath, target, moved)
+      ).catch(console.error);
     },
-    [vaultPath],
+    [vaultPath, setItems, itemsRef],
   );
 
   return {

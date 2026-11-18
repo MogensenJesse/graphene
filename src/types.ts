@@ -5,6 +5,8 @@ export interface Folder {
   name: string;
   parentId: string | null;
   createdAt: string;
+  /** Rank in a chosen order among its siblings (see lib/order); none until it is put somewhere. */
+  order?: number;
 }
 
 // What an item is, derived from its text: "code" starts with a fenced block, "todo" starts with a
@@ -20,4 +22,6 @@ export interface Item {
   body: string;
   createdAt: string;
   updatedAt: string;
+  /** Rank in a chosen order among the notes of its folder (see lib/order); none until it is put somewhere. */
+  order?: number;
 }

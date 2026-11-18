@@ -13,12 +13,21 @@
 - Notes changed outside Graphene (another editor, Dropbox, git) show up when you switch back to the window
 - A word count under every note
 - Graphene remembers its window size and position, and opening it a second time brings the first window forward
+- Put notes and folders in the order you want by dragging them in the sidebar. The order button now offers Manual, Name and Recent, and dragging in Name or Recent switches to Manual
 
 ### Changed
 - Ctrl+F no longer opens the search palette while a note is open; Ctrl+K still does
+- Switching back to the window no longer re-reads the trash, and large vaults refresh faster. Changes made to the trash outside Graphene show after a restart
 
 ### Fixes
 - Notes saved with Windows line endings (CRLF) by another editor no longer vanish from the app
+- Reordering the tasks of a to-do works anywhere over the note, not only over a task's text, and shows the dragged task and where it lands
+- The sidebar's drop zone has rounded corners like the rest of the sidebar
+
+### Other
+- Snippet files from version 0.1.0 are no longer converted to notes when a vault opens. They stay where they are
+- Internal cleanup: the code is grouped into folders, repeated code was merged, and unit tests were added (`npm test`)
+- Removed unused code, styles and settings left over from earlier versions
 
 ## v1.2.0
 

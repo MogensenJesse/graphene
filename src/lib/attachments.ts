@@ -2,6 +2,7 @@
 // Pasted and dropped images are copied into <vault>/attachments/ and linked from the note by a
 // path relative to the note ("../attachments/x.png"), which other markdown editors resolve too.
 // The pure parts live here; reading and writing files is in attachmentStore.ts.
+import { extOf, joinPath } from "./paths";
 
 /** The folder at the vault root that holds the images. The folder tree hides it and refuses the name. */
 export const ATTACH_DIR = "attachments";
@@ -22,11 +23,6 @@ export function extForMime(mime: string): string | null {
       ([ext, m]) => m === mime && ext !== "jpeg",
     )?.[0] ?? null
   );
-}
-
-export function extOf(name: string): string {
-  const dot = name.lastIndexOf(".");
-  return dot < 0 ? "" : name.slice(dot + 1).toLowerCase();
 }
 
 export const isImagePath = (path: string) => extOf(path) in MIME_BY_EXT;
@@ -82,8 +78,7 @@ export function resolveAttachment(
   } catch {
     // keep the name as written
   }
-  const root = vaultPath.replace(/\\/g, "/").replace(/\/$/, "");
-  return `${root}/${ATTACH_DIR}/${name}`;
+  return joinPath(vaultPath, ATTACH_DIR, name);
 }
 
 /**

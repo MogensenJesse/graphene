@@ -20,7 +20,7 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 - **Enter** on a task line in the editor starts the next task; Enter on an empty task clears it
 - A note whose first line (after blank lines and headings) is a task is a **to-do**: it has its own icon and sidebar filter, shows how many tasks are done (`2/5`), and you can hide the finished ones with the eye button in its header
 - **+ to-do** (or **Ctrl+Alt+N**) starts a to-do with the first task ready
-- Reorder the tasks of a to-do by dragging the handle that shows at the left of a task when you hover it; tasks indented under another move with it
+- Reorder the tasks of a to-do by dragging the handle that shows at the left of a task when you hover it; drop anywhere over the note, a line shows where it lands, and tasks indented under another move with it
 - Add a due date by writing `due:2026-12-01` in a task. It shows as a chip: red when overdue, blue on the day
 
 ### Code
@@ -32,14 +32,14 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 
 ### Organization
 - Hierarchical folders — nest as deep as needed
-- Drag-and-drop items between folders, or onto Trash to delete them
+- Drag-and-drop items between folders, or onto Trash to delete them; drag a note or a folder between its neighbours to put it where you want
 - Search palette (**Ctrl+K**): your recent items while the box is empty, live matches while you type, **Enter** opens the highlighted one. Title letters that match are highlighted (a title also matches when your letters appear in order, so `gitch` finds "Git cheatsheet"), and text matches show the sentence they were found in
 - Search narrows with `in:folder`, `type:todo` (or `note`, `code`), `title:word`, `"an exact phrase"` and `-word` to leave notes out (`-type:code` works too). Several words must all match
 - **Ctrl+F** finds in the open note, in the reading view and in the editor: **Enter** and **Shift+Enter** step through the matches, Escape closes the box
 - Right-click works everywhere in the app. In the sidebar, items: open, edit, rename, duplicate, copy note or code, move to a folder, reveal in Explorer, move to trash; folders: new note or code here, new subfolder, rename, reveal, delete; empty space: new note, code or folder. **Shift+F10** (or the menu key) opens the menu of the selected item
 - Text fields (the editor, titles, search) get undo, redo, cut, copy, paste and select all, and the editor adds a Format submenu. The read view offers copy, links and code blocks, and the header, trash and empty space have menus too
 - Filter by type (all / notes / to-dos / code)
-- Sort by name or recent; sort order and collapsed folders are remembered
+- Order by hand, by name or by recent; the order choice and collapsed folders are remembered. A hand-made order is saved in each note's frontmatter (`order:`) and, for folders, in a hidden `.folder-order.json` in the vault
 - Rename (click the title or **F2**) and move (folder chip) straight from the item header
 - Drop an item on empty sidebar space to move it out of its folder
 
@@ -94,7 +94,7 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 - Folders are real OS directories
 - Edit a note in another editor (or let Dropbox, Syncthing or git change it) and Graphene picks the change up when you switch back to its window. A note you are typing in keeps your text; notes saved with Windows line endings load fine
 - Deleted items live in a hidden `.trash` folder inside the vault (dot folders are ignored by the app)
-- Snippet files from earlier versions (`.js`, `.css`, etc. with a metadata comment) are converted to notes on first launch: the code goes into a fenced block, and the original file moves to `.trash`. Copy counts are not kept
+- Only `.md` files with an id in their frontmatter are notes; anything else in the vault is left alone. Snippet files from version 0.1.0 (`.js`, `.css`, etc. with a metadata comment) are no longer converted
 - Vault location stored at `%APPDATA%\graphene\config.json`
 - No cloud, no accounts — everything stays on your machine
 
@@ -104,7 +104,7 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 - React 19 + TypeScript — UI
 - Vite — build tooling
 - SCSS + CSS custom properties — styling
-- [Lucide](https://lucide.dev) icons (ISC license), copied as inline SVG in `src/components/Icon.tsx`, so no icon package is bundled
+- [Lucide](https://lucide.dev) icons (ISC license), copied as inline SVG in `src/components/ui/Icon.tsx`, so no icon package is bundled
 - [Biome](https://biomejs.dev) — linting and formatting
 
 ## Development
@@ -112,6 +112,7 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 ```bash
 npm install
 npm run tauri dev
+npm test
 ```
 
 ## Build

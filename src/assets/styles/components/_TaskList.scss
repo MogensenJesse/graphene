@@ -107,13 +107,6 @@ $done: 'li.task-list-item:has(> input:checked, > p > input:checked)';
     opacity: 1;
   }
 
-  li[data-drop='before'] {
-    box-shadow: 0 -2px 0 0 var(--color-text-info);
-  }
-
-  li[data-drop='after'] {
-    box-shadow: 0 2px 0 0 var(--color-text-info);
-  }
 }
 
 // "Hide done tasks" in the header

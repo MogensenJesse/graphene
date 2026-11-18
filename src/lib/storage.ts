@@ -10,20 +10,13 @@ import {
 } from "@tauri-apps/plugin-fs";
 import type { Folder, Item } from "../types";
 import { ATTACH_DIR, unusedImages } from "./attachments";
-import {
-  CODE_EXTS,
-  isLegacySnippetMd,
-  legacyToItem,
-  parseLegacySnippet,
-  parseNoteFile,
-  serializeItem,
-} from "./fileFormat";
-import { getVaultPath, setVaultPath } from "./vault";
-
-// Re-export so callers can import from one place
-export { getVaultPath as loadVaultPath, setVaultPath as saveVaultPath };
+import { parseNoteFile, serializeItem } from "./fileFormat";
+import { joinPath, relativePath } from "./paths";
 
 const TRASH_DIR = ".trash";
+// The chosen order of folders: { "<folderId>": rank }. A folder is a directory with no file to hold it
+// (notes keep theirs in their frontmatter). Dot entries are not part of the scan, so this one stays out of sight.
+const FOLDER_ORDER_FILE = ".folder-order.json";
 
 // ---------------------------------------------------------------------------
 // Write tracking: a rescan of the vault (see loadVault) is only trusted when no write
@@ -64,24 +57,6 @@ function slugify(title: string): string {
     .replace(/^-|-$/g, "")
     .slice(0, 50);
   return slug || "untitled";
-}
-
-function joinPath(...parts: string[]): string {
-  return parts
-    .join("/")
-    .replace(/\\/g, "/")
-    .replace(/\/+/g, "/")
-    .replace(/\/$/, "");
-}
-
-/** Relative path of a file/dir from vault root, no leading slash */
-function relativePath(vaultPath: string, absolutePath: string): string {
-  const vaultNorm = vaultPath.replace(/\\/g, "/").replace(/\/$/, "");
-  const absNorm = absolutePath.replace(/\\/g, "/");
-  if (absNorm.startsWith(`${vaultNorm}/`)) {
-    return absNorm.slice(vaultNorm.length + 1);
-  }
-  return absNorm;
 }
 
 /** Derive folder id (relative path from vault) from a file's absolute path */
@@ -140,7 +115,7 @@ interface ScannedDir {
   relPath: string; // relative to vault root
 }
 
-export async function scanVaultRecursive(
+async function scanVaultRecursive(
   vaultPath: string,
   currentAbsPath: string,
 ): Promise<{ files: ScannedFile[]; dirs: ScannedDir[] }> {
@@ -185,82 +160,46 @@ export async function scanVaultRecursive(
 // Items
 // ---------------------------------------------------------------------------
 
-/** Write the converted note first (a crash never loses the snippet), then retire the old file. */
-async function convertLegacy(
-  vaultPath: string,
-  legacyPath: string,
-  item: Item,
-): Promise<Item> {
-  try {
-    await saveItem(vaultPath, item);
-    // An old JSON-LD .md sits at the very same path and is already replaced; other files keep a backup in .trash
-    if (itemFilePath(vaultPath, item) !== legacyPath) {
-      await moveToTrash(vaultPath, legacyPath);
-    }
-  } catch (err) {
-    // The item still shows up; the conversion is retried on the next launch
-    console.warn("[storage] Failed to convert snippet:", legacyPath, err);
-  }
-  return item;
-}
-
 async function readItemFile(
   vaultPath: string,
   { absPath, name }: ScannedFile,
 ): Promise<Item | null> {
-  const dotIdx = name.lastIndexOf(".");
-  if (dotIdx < 0) return null;
-  const ext = name.slice(dotIdx).toLowerCase();
-  if (ext !== ".md" && !CODE_EXTS.has(ext)) return null;
-
-  const raw = await readTextFile(absPath);
-  const folderId = folderIdFromFilePath(vaultPath, absPath);
-
-  if (ext === ".md") {
-    const parsed = parseNoteFile(raw);
-    if (!parsed.id) return null;
-    const itemFolderId = folderId ?? parsed.folderId;
-    if (!isLegacySnippetMd(raw)) return { ...parsed, folderId: itemFolderId };
-    // Old JSON-LD snippet: the body is the code
-    const converted = legacyToItem(
-      {
-        id: parsed.id,
-        title: parsed.title,
-        folderId: itemFolderId,
-        lang: "JSON-LD",
-        note: "",
-        code: parsed.body,
-        createdAt: parsed.createdAt,
-        updatedAt: parsed.updatedAt,
-      },
-      itemFolderId,
-    );
-    return convertLegacy(vaultPath, absPath, converted);
-  }
-
-  const legacy = parseLegacySnippet(raw, ext);
-  if (!legacy) return null;
-  const converted = legacyToItem(legacy, folderId ?? legacy.folderId);
-  return convertLegacy(vaultPath, absPath, converted);
+  if (!name.toLowerCase().endsWith(".md")) return null;
+  const parsed = parseNoteFile(await readTextFile(absPath));
+  if (!parsed.id) return null;
+  // The folder a note sits in wins over the one its frontmatter remembers
+  return {
+    ...parsed,
+    folderId: folderIdFromFilePath(vaultPath, absPath) ?? parsed.folderId,
+  };
 }
+
+const READ_POOL = 16;
 
 async function itemsFromFiles(
   vaultPath: string,
   files: ScannedFile[],
 ): Promise<Item[]> {
-  const items: Item[] = [];
-
-  // One at a time: conversions rename files and must not race each other
-  for (const file of files) {
-    try {
-      const item = await readItemFile(vaultPath, file);
-      if (item) items.push(item);
-    } catch (err) {
-      console.warn("[storage] Failed to read item file:", file.absPath, err);
+  // A few reads at a time (each is a call into Tauri); results keep the scan order, so the
+  // duplicate-id handling in loadVault sees the same sequence as before
+  const results: (Item | null)[] = new Array(files.length).fill(null);
+  let next = 0;
+  const worker = async () => {
+    while (next < files.length) {
+      const at = next++;
+      try {
+        results[at] = await readItemFile(vaultPath, files[at]);
+      } catch (err) {
+        console.warn(
+          "[storage] Failed to read item file:",
+          files[at].absPath,
+          err,
+        );
+      }
     }
-  }
-
-  return items;
+  };
+  await Promise.all(Array.from({ length: READ_POOL }, worker));
+  return results.filter((i): i is Item => i !== null);
 }
 
 export function saveItem(vaultPath: string, item: Item): Promise<void> {
@@ -285,7 +224,7 @@ export async function replaceItemFile(
 }
 
 /** Hard remove, for the stale file left behind by a rename. A user delete goes through trashItemFile. */
-export function deleteItemFile(vaultPath: string, item: Item): Promise<void> {
+function deleteItemFile(vaultPath: string, item: Item): Promise<void> {
   return tracked(async () => {
     const filePath = itemFilePath(vaultPath, item);
     try {
@@ -343,8 +282,8 @@ export function trashItemFile(vaultPath: string, item: Item): Promise<void> {
   });
 }
 
-/** Items in <vault>/.trash. Not recursive: converted snippet originals and loose files stay out of sight. */
-export async function loadTrash(vaultPath: string): Promise<Item[]> {
+/** Items in <vault>/.trash. Not recursive: loose files and deleted folders stay out of sight. */
+async function loadTrash(vaultPath: string): Promise<Item[]> {
   const trashDir = joinPath(vaultPath, TRASH_DIR);
   let entries: { name: string; isFile: boolean }[];
   try {
@@ -383,8 +322,8 @@ export function restoreItemFile(vaultPath: string, item: Item): Promise<Item> {
 }
 
 /**
- * Delete the listed items from the trash for good. Converted snippet originals and folder leftovers
- * are never listed, so they stay. ponytail: delete the .trash folder by hand once the migration looks right.
+ * Delete the listed items from the trash for good. Loose files and folder leftovers
+ * are never listed, so they stay.
  */
 export function emptyTrashFiles(
   vaultPath: string,
@@ -456,26 +395,72 @@ export async function sweepUnusedImages(vaultPath: string): Promise<void> {
 // Folders
 // ---------------------------------------------------------------------------
 
-function foldersFromDirs(dirs: ScannedDir[]): Folder[] {
+function foldersFromDirs(
+  dirs: ScannedDir[],
+  ranks: Record<string, number>,
+): Folder[] {
   return dirs.map(({ relPath }) => {
     const slashIdx = relPath.lastIndexOf("/");
     const parentId = slashIdx > 0 ? relPath.slice(0, slashIdx) : null;
     const name = slashIdx > 0 ? relPath.slice(slashIdx + 1) : relPath;
+    const order = ranks[relPath];
     return {
       id: relPath,
       name,
       parentId,
       createdAt: new Date().toISOString(),
+      ...(order === undefined ? {} : { order }),
     };
   });
 }
 
+/** The folder ranks on disk. A missing or unreadable file is no order at all. */
+async function loadFolderOrder(
+  vaultPath: string,
+): Promise<Record<string, number>> {
+  try {
+    const parsed: unknown = JSON.parse(
+      await readTextFile(joinPath(vaultPath, FOLDER_ORDER_FILE)),
+    );
+    if (parsed === null || typeof parsed !== "object") return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        ([, rank]) => typeof rank === "number" && Number.isFinite(rank),
+      ),
+    );
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Saves the folders' order: the ranks of the folders that have one, whole, so a rename or a delete never
+ * leaves a stale key behind. With no rank left the file goes away.
+ */
+export function writeFolderOrder(
+  vaultPath: string,
+  folders: Folder[],
+): Promise<void> {
+  return tracked(async () => {
+    const ranks = Object.fromEntries(
+      folders.flatMap((f) => (f.order === undefined ? [] : [[f.id, f.order]])),
+    );
+    const path = joinPath(vaultPath, FOLDER_ORDER_FILE);
+    if (Object.keys(ranks).length > 0)
+      await writeTextFile(path, JSON.stringify(ranks, null, 2));
+    else if (await exists(path)) await remove(path);
+  });
+}
+
+/** `withTrash` false skips reading .trash (`trashed` comes back empty): the focus rescan has no use for it. */
 export async function loadVault(
   vaultPath: string,
+  withTrash = true,
 ): Promise<{ items: Item[]; folders: Folder[]; trashed: Item[] }> {
-  const [{ files, dirs }, trash] = await Promise.all([
+  const [{ files, dirs }, trash, ranks] = await Promise.all([
     scanVaultRecursive(vaultPath, vaultPath),
-    loadTrash(vaultPath),
+    withTrash ? loadTrash(vaultPath) : Promise.resolve([]),
+    loadFolderOrder(vaultPath),
   ]);
   const read = await itemsFromFiles(vaultPath, files);
   // A crash between "write the new note" and "retire the old file" must not show an item twice
@@ -483,7 +468,7 @@ export async function loadVault(
   const liveIds = new Set(items.map((i) => i.id));
   return {
     items,
-    folders: foldersFromDirs(dirs),
+    folders: foldersFromDirs(dirs, ranks),
     trashed: trash.filter((i) => !liveIds.has(i.id)),
   };
 }

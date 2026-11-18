@@ -18,7 +18,7 @@ export function filterByType(items: Item[], typeFilter: TypeFilter): Item[] {
 
 type Key = "in" | "type" | "title" | null;
 
-export interface Term {
+interface Term {
   neg: boolean;
   key: Key;
   value: string; // lower case
@@ -71,7 +71,7 @@ export function fuzzyMatch(text: string, term: string): number[] | null {
     : null;
 }
 
-export interface Snippet {
+interface Snippet {
   before: string;
   match: string;
   after: string;
@@ -128,6 +128,19 @@ function passes(term: Term, item: Item, title: string, body: string): boolean {
   return found !== term.neg;
 }
 
+// Lower-case title and text per note, so a keystroke does not lower-case every note again. Keyed by the
+// item object: an edit makes a new one, and a rescan keeps the old object for notes that did not change.
+const lowerCache = new WeakMap<Item, { title: string; body: string }>();
+
+function lowered(item: Item): { title: string; body: string } {
+  let l = lowerCache.get(item);
+  if (!l) {
+    l = { title: item.title.toLowerCase(), body: item.body.toLowerCase() };
+    lowerCache.set(item, l);
+  }
+  return l;
+}
+
 /**
  * Notes that fit the query, best first (title matches, then text matches, newest within a score).
  * Only the `limit` kept notes get their highlights and snippet worked out.
@@ -137,8 +150,7 @@ export function searchItems(items: Item[], query: string, limit = 50): Hit[] {
   const scored: { item: Item; score: number }[] = [];
 
   for (const item of items) {
-    const title = item.title.toLowerCase();
-    const body = item.body.toLowerCase();
+    const { title, body } = lowered(item);
     let score = 0;
     let ok = true;
     for (const term of terms) {
@@ -164,7 +176,7 @@ export function searchItems(items: Item[], query: string, limit = 50): Hit[] {
 
   const words = terms.filter((t) => t.key === null && !t.neg);
   return scored.slice(0, limit).map(({ item, score }) => {
-    const title = item.title.toLowerCase();
+    const { title, body } = lowered(item);
     const marks = new Set<number>();
     for (const { value } of words) {
       const at = title.indexOf(value);
@@ -175,7 +187,6 @@ export function searchItems(items: Item[], query: string, limit = 50): Hit[] {
       }
     }
     let snippet: Snippet | null = null;
-    const body = item.body.toLowerCase();
     for (const { value } of words) {
       const at = body.indexOf(value);
       if (at !== -1) {

@@ -1,7 +1,7 @@
 // src/lib/codeBlocks.ts
 
 /** A fenced code block, with where the language tag sits on its opening fence line. */
-export interface FencedBlock {
+interface FencedBlock {
   lang: string; // current tag, "" when there is none
   langStart: number; // offset where the tag starts (or would start)
   langEnd: number;

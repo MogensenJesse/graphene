@@ -1,8 +1,8 @@
 // src/lib/textMenu.ts
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
-import type { MenuEntry } from "../components/ContextMenu";
+import type { MenuEntry } from "../components/ui/ContextMenu";
 
-export type TextField = HTMLInputElement | HTMLTextAreaElement;
+type TextField = HTMLInputElement | HTMLTextAreaElement;
 
 export const isTextField = (target: EventTarget | null): target is TextField =>
   target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;

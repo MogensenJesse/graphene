@@ -3,7 +3,7 @@ import type { Folder, Item, ItemKind } from "../types";
 import { isTodoBody } from "./tasks";
 
 /** A code item is a note that starts with a fenced block; it gets the code icon and the "code" filter. */
-export function isCodeItem(item: Item): boolean {
+function isCodeItem(item: Item): boolean {
   return /^\s*```/.test(item.body);
 }
 
@@ -45,35 +45,6 @@ export function compareNames(a: string, b: string): number {
   return nameCollator.compare(a, b);
 }
 
-const COLLAPSED_KEY = "graphene.collapsed";
-
-/** Folder ids the user collapsed. localStorage can be missing or corrupt, so fall back to "none". */
-export function readCollapsed(): Set<string> {
-  try {
-    const parsed: unknown = JSON.parse(
-      localStorage.getItem(COLLAPSED_KEY) ?? "[]",
-    );
-    return new Set(
-      Array.isArray(parsed)
-        ? parsed.filter((v): v is string => typeof v === "string")
-        : [],
-    );
-  } catch {
-    return new Set();
-  }
-}
-
-export function setFolderCollapsed(id: string, collapsed: boolean): void {
-  try {
-    const set = readCollapsed();
-    if (collapsed) set.add(id);
-    else set.delete(id);
-    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...set]));
-  } catch {
-    // Persistence is a convenience; the tree still works without it
-  }
-}
-
 /** Returns ordered folder names from root down to `folderId`, e.g. ["Notes", "boop", "ragdollll"] */
 export function getFolderPath(
   folders: Folder[],
@@ -91,22 +62,23 @@ export function getFolderPath(
   return result;
 }
 
-export interface FlatFolder {
+interface FlatFolder {
   folder: Folder;
   depth: number;
 }
 
-/** Every folder, depth-first with siblings in name order, each with its nesting depth. */
+/** Every folder, depth-first with siblings sorted by `compare`, each with its nesting depth. */
 export function flattenFolders(
   folders: Folder[],
+  compare: (a: Folder, b: Folder) => number,
   parentId: string | null = null,
   depth = 0,
 ): FlatFolder[] {
   return folders
     .filter((f) => f.parentId === parentId)
-    .sort((a, b) => compareNames(a.name, b.name))
+    .sort(compare)
     .flatMap((f) => [
       { folder: f, depth },
-      ...flattenFolders(folders, f.id, depth + 1),
+      ...flattenFolders(folders, compare, f.id, depth + 1),
     ]);
 }
