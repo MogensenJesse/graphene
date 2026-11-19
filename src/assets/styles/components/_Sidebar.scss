@@ -315,6 +315,13 @@
     }
   }
 
+  // The plug button in the footer, as tall as the Trash button beside it
+  &__icon-btn--footer {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+  }
+
   &__folder-add-row {
     padding: 3px 4px 3px 10px;
   }

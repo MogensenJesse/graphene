@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:mcp": "vite build --config mcp/vite.config.ts",
+    "pack:mcpb": "node scripts/pack-mcpb.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "tauri": "tauri",
@@ -32,7 +34,9 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@anthropic-ai/mcpb": "^2.1.2",
     "@biomejs/biome": "^2.6.7",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
@@ -41,6 +45,7 @@
     "sass": "^1.108.2",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "zod": "^4.6.7"
   }
 }

@@ -5,10 +5,31 @@ import { activeFormats, continueTask, formatText } from "./markdownFormat";
 import {
   dueStatus,
   isTodoBody,
+  listTasks,
   moveTask,
+  setTaskDone,
   taskProgress,
   toggleTaskAt,
 } from "./tasks";
+
+test("listTasks and setTaskDone number tasks by line and skip code fences", () => {
+  const body =
+    "# T\n- [ ] a due:2026-12-01\n  - [x] b\n```\n- [ ] fenced\n```\n1. [ ] c\r\n";
+  const tasks = listTasks(body);
+  assert.deepEqual(
+    tasks.map((t) => [t.line, t.done, t.text, t.due]),
+    [
+      [2, false, "a due:2026-12-01", "2026-12-01"],
+      [3, true, "b", null],
+      [7, false, "c", null], // the fenced one is not a task
+    ],
+  );
+  assert.equal(setTaskDone(body, 2, true), body.replace("- [ ] a", "- [x] a"));
+  assert.equal(setTaskDone(body, 3, false), body.replace("- [x] b", "- [ ] b"));
+  assert.equal(setTaskDone(body, 2, false), body); // already open
+  assert.equal(setTaskDone(body, 5, true), null); // inside the fence
+  assert.equal(setTaskDone(body, 1, true), null); // a heading
+});
 
 test("task lists and to-do notes", () => {
   // ── toggleTaskAt ──

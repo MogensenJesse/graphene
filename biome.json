@@ -10,6 +10,7 @@
     "includes": [
       "**",
       "!**/dist",
+      "!**/dist-mcp",
       "!**/src-tauri",
       "!**/node_modules",
       "!**/.gitnexus",

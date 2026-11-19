@@ -1,6 +1,6 @@
 # .github/workflows/release.yml
 # Pushing a tag like v0.2.0 builds the Windows installer and opens a DRAFT release with the
-# CHANGELOG section as its notes. Installed apps only see it once you publish the draft.
+# CHANGELOG section as its notes and graphene.mcpb attached. Installed apps only see it once you publish the draft.
 name: Release
 
 on:
@@ -55,6 +55,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - uses: tauri-apps/tauri-action@v0
+        id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -64,3 +65,14 @@ jobs:
           releaseName: Graphene ${{ github.ref_name }}
           releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
+
+      # The Claude extension for people who do not install Graphene; uploaded by the draft release's id, which works before it is published
+      - name: Attach the Claude extension to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method POST \
+            "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.tauri.outputs.releaseId }}/assets?name=graphene.mcpb" \
+            -H "Content-Type: application/octet-stream" \
+            --input dist-mcp/graphene.mcpb

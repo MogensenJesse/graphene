@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ConnectAgentsDialog from "./components/dialogs/ConnectAgentsDialog";
 import SearchPalette from "./components/dialogs/SearchPalette";
 import TrashView from "./components/dialogs/TrashView";
 import UpdateDialog from "./components/dialogs/UpdateDialog";
@@ -332,6 +333,8 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
   const updater = useUpdater(flushPendingSave);
   const [updateOpen, setUpdateOpen] = useState(false);
   const closeUpdate = useCallback(() => setUpdateOpen(false), []);
+  const [connectOpen, setConnectOpen] = useState(false);
+  const closeConnect = useCallback(() => setConnectOpen(false), []);
 
   // Pictures dropped on the window are copied into the vault's attachments folder and linked at the
   // cursor of the open editor; with no editor open there is nowhere to put them
@@ -582,6 +585,7 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
             onRevealItem={handleRevealItem}
             onRevealFolder={handleRevealFolder}
             onOpenTrash={handleOpenTrash}
+            onOpenConnect={() => setConnectOpen(true)}
             onAddFolder={addFolder}
             onRenameFolder={updateFolder}
             onDeleteFolder={handleDeleteFolder}
@@ -627,6 +631,9 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
           onInstall={updater.install}
           onClose={closeUpdate}
         />
+      )}
+      {connectOpen && (
+        <ConnectAgentsDialog version={updater.version} onClose={closeConnect} />
       )}
       {searchOpen && (
         <SearchPalette

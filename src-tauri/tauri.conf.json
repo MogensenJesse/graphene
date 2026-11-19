@@ -4,9 +4,9 @@
   "version": "../package.json",
   "identifier": "com.graphene.app",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run build:mcp && npm run pack:mcpb && npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build:mcp && npm run pack:mcpb && npm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -51,6 +51,10 @@
     "active": true,
     "createUpdaterArtifacts": true,
     "targets": ["nsis", "dmg", "deb", "appimage"],
+    "resources": {
+      "../dist-mcp/graphene-mcp.mjs": "mcp/graphene-mcp.mjs",
+      "../dist-mcp/graphene.mcpb": "mcp/graphene.mcpb"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

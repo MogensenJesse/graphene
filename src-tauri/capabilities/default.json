@@ -51,6 +51,10 @@
     },
     "dialog:allow-open",
     "opener:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [{ "path": "$RESOURCE/**" }]
+    },
     "clipboard-manager:allow-write-text",
     "clipboard-manager:allow-read-text",
     "updater:default"

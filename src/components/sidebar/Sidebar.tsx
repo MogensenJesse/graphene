@@ -31,6 +31,7 @@ import {
   FolderPlusIcon,
   KindIcon,
   NoFolderIcon,
+  PlugIcon,
   PlusIcon,
   SearchIcon,
   SortIcon,
@@ -108,6 +109,7 @@ interface SidebarProps {
   onCheckUpdates: () => void;
   onShowUpdate: () => void;
   onOpenTrash: () => void;
+  onOpenConnect: () => void;
   onAddFolder: (name: string, parentId: string | null) => void;
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
@@ -148,6 +150,7 @@ function Sidebar({
   onCheckUpdates,
   onShowUpdate,
   onOpenTrash,
+  onOpenConnect,
   onAddFolder,
   onRenameFolder,
   onDeleteFolder,
@@ -606,7 +609,7 @@ function Sidebar({
         )}
       </div>
 
-      {/* Trash */}
+      {/* Trash and the AI assistants dialog */}
       <div className="sidebar__footer">
         <button
           type="button"
@@ -629,6 +632,16 @@ function Sidebar({
             <span className="sidebar__nav-count">{trashedCount}</span>
           )}
         </button>
+        <Tooltip label="Connect AI assistants">
+          <button
+            type="button"
+            className="sidebar__icon-btn sidebar__icon-btn--footer"
+            onClick={onOpenConnect}
+            aria-label="Connect AI assistants"
+          >
+            <PlugIcon size={16} />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Drag ghost — follows cursor while dragging */}

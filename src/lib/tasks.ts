@@ -29,14 +29,16 @@ function* eachLine(body: string): Generator<string> {
   }
 }
 
-/** The lines outside fenced code blocks (the fence lines themselves are left out too). */
-function* textLines(body: string): Generator<string> {
+/** The lines outside fenced code blocks (the fence lines themselves are left out too), with their 1-based number. */
+function* textLines(body: string): Generator<[line: string, no: number]> {
   let fence: string | null = null;
+  let no = 0;
   for (const line of eachLine(body)) {
+    no++;
     const f = FENCE_LINE.exec(line)?.[1];
     if (f && fence === null) fence = f[0];
     else if (f && f[0] === fence) fence = null;
-    else if (fence === null) yield line;
+    else if (fence === null) yield [line, no];
   }
 }
 
@@ -44,13 +46,56 @@ function* textLines(body: string): Generator<string> {
 export function taskProgress(body: string): { done: number; total: number } {
   let done = 0;
   let total = 0;
-  for (const line of textLines(body)) {
+  for (const [line] of textLines(body)) {
     const m = TASK_LINE.exec(line);
     if (!m) continue;
     total++;
     if (m[1] !== " ") done++;
   }
   return { done, total };
+}
+
+export interface TaskInfo {
+  /** The 1-based line of the task in the note: how `setTaskDone` finds it again. */
+  line: number;
+  done: boolean;
+  /** The task's text without its list marker and checkbox; a due token stays in it. */
+  text: string;
+  /** The date of a "due:YYYY-MM-DD" in the text, or null. */
+  due: string | null;
+}
+
+/** Every task of a note, outside code fences. ponytail: like taskProgress, a task inside a blockquote is not seen. */
+export function listTasks(body: string): TaskInfo[] {
+  const tasks: TaskInfo[] = [];
+  for (const [line, no] of textLines(body)) {
+    const m = TASK_LINE.exec(line);
+    if (!m) continue;
+    const text = line
+      .replace(/^[ \t]*(?:[*+-]|\d{1,9}[.)])[ \t]+\[[ xX]\][ \t]*/, "")
+      .replace(/\r$/, "");
+    tasks.push({
+      line: no,
+      done: m[1] !== " ",
+      text,
+      due: /\bdue:(\d{4}-\d{2}-\d{2})\b/.exec(text)?.[1] ?? null,
+    });
+  }
+  return tasks;
+}
+
+/** Ticks or unticks the task on `line` (as `listTasks` numbers it). Null when that line is not a task. */
+export function setTaskDone(
+  body: string,
+  line: number,
+  done: boolean,
+): string | null {
+  const task = listTasks(body).find((t) => t.line === line);
+  if (!task) return null;
+  if (task.done === done) return body;
+  const lines = body.split("\n");
+  const start = lines.slice(0, line - 1).reduce((n, l) => n + l.length + 1, 0);
+  return toggleTaskAt(body, start + indentOf(lines[line - 1]));
 }
 
 /** A to-do note: the first line that is not blank or a heading is a task. */
