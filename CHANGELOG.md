@@ -12,7 +12,7 @@
 - Under each note: when it was last edited and its word count, or its line count for code
 
 ### Changed
-- The window can be as narrow as 675px (it was 800px)
+- The window can be as narrow as 575px (it was 800px)
 - The title bar lines up with the note: the title starts where the text does, the folder picker sits at the left on wide windows and next to Copy on narrow ones, and Edit/Done always stays in the same place
 - The progress chip ("3/5 done") is now the button that hides finished tasks, and finished tasks are struck through
 - The theme button moved to the top of the sidebar, the All/Notes/To-dos/Code filter sits above the folders, and deleting a folder asks right under that folder
