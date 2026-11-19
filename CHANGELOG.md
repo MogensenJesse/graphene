@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.5.0
+
 ### New
 - Connect an AI assistant such as Claude to your notes. The plug button at the bottom of the sidebar has a one-click setup for the Claude app and copy-and-paste steps for Claude Code, Cursor, ChatGPT, VS Code and Gemini. Assistants can search, read, add to and edit your notes, but never delete, rename or move one
 - The Claude app does not update its Graphene add-on by itself, so after you update Graphene, the same dialog reminds you to add it again
