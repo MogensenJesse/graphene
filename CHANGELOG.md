@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.6.0
+
 ### New
 - Several vaults. Add as many as you like and switch between them from the vault name at the top of the sidebar. Rename, reorder and remove them in Settings; removing one only takes it off the list, its folder stays
 - Settings, from the gear at the bottom of the sidebar or Ctrl+,. It has the theme, a note font, a code font and a text size for notes and code, plus your vaults and the AI assistant setup
