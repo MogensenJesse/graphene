@@ -48,7 +48,7 @@
     height: 24px;
     padding: 0 6px 0 8px;
     font-family: inherit;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--color-text-secondary);
     background: var(--color-background-hover);
     border: none;
@@ -80,11 +80,12 @@
 
   &__update-pill {
     padding: 1px 8px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     color: rgb(var(--rgb-blue));
     background: rgba(var(--rgb-blue), 0.14);
     border-radius: 999px;
+    animation: pop-in 0.16s var(--ease-out);
     transition: background var(--transition-fast);
 
     &:hover {
@@ -97,7 +98,7 @@
     align-items: center;
     flex-shrink: 0;
     gap: 7px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--color-text-primary);
     letter-spacing: -0.01em;
@@ -108,14 +109,7 @@
     }
   }
 
-  // ── Type filter: the shared segmented control, above the folder tree ────
-
-  &__segments {
-    margin: 8px 8px 0;
-    flex-shrink: 0;
-  }
-
-  // ── Nav rows: new note, new code, search, trash ─────────────────────────
+  // ── Nav rows: search, new note, new code (and trash) ────────────────────
 
   &__nav {
     display: flex;
@@ -223,7 +217,7 @@
     &--drop {
       flex: 1;
       justify-content: center;
-      font-size: 12px;
+      font-size: 13px;
       color: var(--color-text-danger);
       border: 1px dashed var(--color-border-danger);
     }
@@ -242,7 +236,7 @@
   }
 
   &__trash-count {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--color-text-tertiary);
   }
 
@@ -279,7 +273,7 @@
   }
 
   &__folders-label {
-    font-size: 11px;
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
     font-weight: 600;
     color: var(--color-text-secondary);
@@ -295,7 +289,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 10px;
+    font-size: 11px;
     font-family: inherit;
     height: 22px; // as tall as the "+" beside it
     padding: 0 6px;
@@ -353,7 +347,7 @@
 
   &__folder-add-input {
     width: 100%;
-    font-size: 12px;
+    font-size: 13px;
     font-family: inherit;
     background: var(--color-background-primary);
     border: 0.5px solid var(--color-border-primary);
@@ -371,7 +365,7 @@
   &__empty {
     padding: 40px 16px;
     text-align: center;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--color-text-tertiary);
   }
 }
@@ -384,7 +378,7 @@
   border-radius: v.$radius-sm;
   background: rgba(var(--rgb-danger), 0.12);
   border: 1px solid rgba(var(--rgb-danger), 0.3);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-secondary);
   display: flex;
   flex-direction: column;
@@ -397,7 +391,7 @@
 }
 
 .sidebar__folder-confirm-btn {
-  font-size: 11px;
+  font-size: 12px;
   font-family: inherit;
   padding: 3px 8px;
   border-radius: v.$radius-sm;
@@ -453,7 +447,7 @@
   }
 
   &__title {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--color-text-secondary);
     white-space: nowrap;
     overflow: hidden;
@@ -476,7 +470,7 @@
     flex: 1;
     min-width: 0;
     padding: 2px 6px;
-    font-size: 12px;
+    font-size: 13px;
     font-family: inherit;
     color: var(--color-text-primary);
     background: var(--color-background-primary);

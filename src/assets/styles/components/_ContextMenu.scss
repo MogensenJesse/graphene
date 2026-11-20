@@ -13,6 +13,8 @@
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-popover);
   outline: none;
+  // Opacity only: the menu is measured against the window before it is shown, and a transform would skew that
+  animation: fade-in 0.1s ease-out;
 
   &--sub {
     position: absolute;
@@ -35,7 +37,7 @@
     height: 28px;
     padding: 0 8px;
     font-family: inherit;
-    font-size: 12px;
+    font-size: 13px;
     text-align: left;
     white-space: nowrap;
     color: var(--color-text-secondary);

@@ -28,6 +28,10 @@ $radius-sm: 3px;
 $radius-md: 7px;
 $radius-lg: 12px;
 
+// ─── Motion ─────────────────────────────────────────────────────────────────
+// How a panel opens and closes: the sidebar, and the task details pane (prefers-reduced-motion turns it off, see base/_reset)
+$panel-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
+
 // ─── CSS Custom Properties (:root) ─────────────────────────────────────────
 // Dark is the default; :root[data-theme="light"] below overrides the colours.
 // initTheme (lib/theme.ts) sets data-theme on <html>, so popups outside .app follow it too.

@@ -1,14 +1,7 @@
 // src/lib/search.ts
-import type { Item, TypeFilter } from "../types";
+import type { Item } from "../types";
 import type { Task } from "./taskStore";
 import { itemKind } from "./utils";
-
-/** The items of one type; "all" keeps everything. Returns a fresh array. */
-export function filterByType(items: Item[], typeFilter: TypeFilter): Item[] {
-  return typeFilter === "all"
-    ? [...items]
-    : items.filter((item) => itemKind(item) === typeFilter);
-}
 
 // ── Query language ────────────────────────────────────────────────────────────
 // Words and "quoted phrases" must all be found in a note's (or task's) title or text. Operators narrow it down:

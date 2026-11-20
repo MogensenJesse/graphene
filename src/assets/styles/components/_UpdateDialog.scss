@@ -14,14 +14,14 @@
   }
 
   &__title {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--color-text-primary);
   }
 
   &__sub {
     margin-top: 3px;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--color-text-tertiary);
   }
 
@@ -48,19 +48,19 @@
     align-items: baseline;
     gap: 10px;
     margin-bottom: 8px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--color-text-primary);
   }
 
   &__date {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 400;
     color: var(--color-text-tertiary);
   }
 
   &__markdown {
-    font-size: 12.5px;
+    font-size: 13.5px;
     line-height: 1.65;
     color: var(--color-text-secondary);
     word-break: break-word;
@@ -97,7 +97,7 @@
   }
 
   &__error {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--color-text-danger);
   }
 
@@ -121,7 +121,7 @@
   &__btn {
     padding: 6px 14px;
     font-family: inherit;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--color-text-secondary);
     background: none;
     border: 0.5px solid var(--color-border-primary);

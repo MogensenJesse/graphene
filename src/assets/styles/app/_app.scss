@@ -38,9 +38,6 @@ body {
   gap: 10px;
 }
 
-// Opening and closing the sidebar (prefers-reduced-motion turns every transition off, see base/_reset)
-$sidebar-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
-
 .app__sidebar {
   --sidebar-width: 252px;
   width: var(--sidebar-width);
@@ -51,11 +48,11 @@ $sidebar-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
   flex-direction: column;
   overflow: hidden;
   transition:
-    width $sidebar-anim,
-    margin-right $sidebar-anim,
-    transform $sidebar-anim,
-    opacity $sidebar-anim,
-    visibility $sidebar-anim; // stays visible until the others have finished, and is gone from the tab order after
+    width v.$panel-anim,
+    margin-right v.$panel-anim,
+    transform v.$panel-anim,
+    opacity v.$panel-anim,
+    visibility v.$panel-anim; // stays visible until the others have finished, and is gone from the tab order after
 
   // The content keeps its width while the panel narrows, and is clipped instead of reflowing
   > * {
@@ -101,8 +98,8 @@ $sidebar-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
   opacity: 0;
   visibility: hidden;
   transition:
-    opacity $sidebar-anim,
-    visibility $sidebar-anim;
+    opacity v.$panel-anim,
+    visibility v.$panel-anim;
 
   &--on {
     opacity: 1;
@@ -227,14 +224,14 @@ $sidebar-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .vault-picker__desc {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--color-text-secondary);
   line-height: 1.6;
   margin: 0;
 }
 
 .vault-picker__error {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-text-danger);
   margin: 0;
 }
@@ -246,7 +243,7 @@ $sidebar-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
   border: 1px solid var(--color-border-secondary);
   border-radius: v.$radius-md;
   color: var(--color-text-primary);
-  font-size: 13px;
+  font-size: 14px;
   font-family: var(--font-sans);
   cursor: pointer;
   transition: background var(--transition-fast), border-color var(--transition-fast);
@@ -280,10 +277,11 @@ $sidebar-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: fade-in 0.12s ease-out;
 
   &::after {
     content: 'Drop to import';
-    font-size: 14px;
+    font-size: 15px;
     color: var(--color-text-info);
     letter-spacing: 0.06em;
   }

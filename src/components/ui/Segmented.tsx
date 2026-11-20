@@ -10,7 +10,7 @@ interface SegmentedProps<T extends string> {
   className?: string;
 }
 
-// A row of buttons of which one is pressed: the sidebar's type filter, the theme and size pickers in Settings
+// A row of buttons of which one is pressed: the Notes | Tasks tabs, the theme and size pickers in Settings
 function Segmented<T extends string>({
   label,
   value,

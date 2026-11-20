@@ -1,13 +1,7 @@
 // src/lib/search.test.ts
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import {
-  filterByType,
-  fuzzyMatch,
-  parseQuery,
-  searchItems,
-  searchTasks,
-} from "./search";
+import { fuzzyMatch, parseQuery, searchItems, searchTasks } from "./search";
 import { makeTask } from "./taskStore";
 
 test("search", () => {
@@ -116,14 +110,6 @@ test("search", () => {
   assert.equal(searchItems(items, "", 2).length, 2);
   // no terms: everything, newest first
   assert.equal(searchItems(items, "")[0].item.id, "4");
-
-  // ── filterByType ──
-  assert.deepEqual(
-    filterByType(items, "code").map((i) => i.id),
-    ["2"],
-  );
-  assert.equal(filterByType(items, "all").length, 5);
-  assert.notEqual(filterByType(items, "all"), items); // a fresh array, safe to sort
 });
 
 test("searchTasks and the operators that tell tasks from notes", () => {

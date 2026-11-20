@@ -12,8 +12,10 @@
   justify-content: center;
   padding-top: 14vh;
   background: var(--surface-scrim);
+  animation: fade-in 0.12s ease-out;
 
   &__panel {
+    animation: pop-in 0.16s var(--ease-out);
     background: var(--color-background-primary);
     border: 0.5px solid var(--color-border-primary);
     border-radius: v.$radius-lg;

@@ -1,6 +1,6 @@
 // src/hooks/useDragToFolder.ts
 import { useCallback, useEffect, useRef, useState } from "react";
-import { clearDropMarks, markDrop } from "../lib/dragDrop";
+import { clearDropMarks, markDrop, swallowNextClick } from "../lib/dragDrop";
 import { useLatest } from "./useLatest";
 
 // Notes and tasks (and to-do lists) land next to any peer or as a whole on a container; folders and groups only among their siblings
@@ -115,8 +115,35 @@ export function useDragToFolder(onDrop: DropHandler): {
 
       const start = { x: e.clientX, y: e.clientY };
       let active = false;
+      // Escape was pressed: the drag is over, but the button is still down until it is released
+      let cancelled = false;
+
+      // Back to rest: no ghost, no tint, no line, no grabbing cursor
+      const reset = () => {
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+        setDragState(null);
+        setDragOverId(undefined);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        clearDropMarks();
+      };
+
+      // While the drag runs the key is the drag's: the editor, the details pane or a picker under it must not
+      // also react to the Escape that cancels it (this listener is first: window, capture)
+      const handleKey = (ev: KeyboardEvent) => {
+        if (ev.key !== "Escape") return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (cancelled) return;
+        cancelled = true;
+        reset();
+      };
 
       const handleMove = (ev: PointerEvent) => {
+        if (cancelled) return;
         if (!active) {
           if (
             Math.hypot(ev.clientX - start.x, ev.clientY - start.y) <
@@ -127,6 +154,7 @@ export function useDragToFolder(onDrop: DropHandler): {
           document.body.style.cursor = "grabbing";
           document.body.style.userSelect = "none";
           setDragState({ ...source, x: ev.clientX, y: ev.clientY });
+          window.addEventListener("keydown", handleKey, true);
         }
 
         if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -146,29 +174,37 @@ export function useDragToFolder(onDrop: DropHandler): {
       const stop = () => {
         window.removeEventListener("pointermove", handleMove);
         window.removeEventListener("pointerup", handleUp);
+        window.removeEventListener("pointercancel", abort);
+        window.removeEventListener("blur", abort);
+        window.removeEventListener("keydown", handleKey, true);
         cleanupRef.current = null;
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
         clearDropMarks();
       };
 
+      // The release was lost (the system took the pointer, the window lost the focus): end the drag, drop nothing
+      const abort = () => {
+        reset();
+        stop();
+      };
+
       const handleUp = (ev: PointerEvent) => {
-        if (rafRef.current !== null) {
-          cancelAnimationFrame(rafRef.current);
-          rafRef.current = null;
-        }
-        if (active) {
+        reset();
+        if (active && !cancelled) {
           const { target, near } = locate(ev.clientX, ev.clientY, source);
           if (near || (!siblingsOnly(source.kind) && target !== undefined))
             onDropRef.current(source, target, near);
         }
-        setDragState(null);
-        setDragOverId(undefined);
+        // The click that follows the release would open or select what the drag started on
+        if (active) swallowNextClick();
         stop();
       };
 
       window.addEventListener("pointermove", handleMove);
       window.addEventListener("pointerup", handleUp);
+      window.addEventListener("pointercancel", abort);
+      window.addEventListener("blur", abort);
       cleanupRef.current = stop;
     },
     [onDropRef],

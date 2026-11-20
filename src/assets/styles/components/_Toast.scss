@@ -13,13 +13,18 @@
   gap: 12px;
   max-width: calc(100% - 48px);
   padding: 6px 6px 6px 14px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-text-primary);
   background: var(--color-background-primary);
   border: 0.5px solid var(--color-border-primary);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-popover);
   animation: toast-in 0.15s ease-out;
+
+  // It goes by itself: UndoToast plays this before it closes
+  &--leaving {
+    animation: toast-out 0.15s var(--ease-out) forwards;
+  }
 
   &__text {
     white-space: nowrap;
@@ -37,7 +42,7 @@
     flex-shrink: 0;
     height: 24px;
     padding: 0 10px;
-    font-size: 11px;
+    font-size: 12px;
     font-family: inherit;
     font-weight: 500;
     color: var(--color-text-info);

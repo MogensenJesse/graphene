@@ -28,7 +28,7 @@ A to-do app of its own, apart from your notes: switch between **Notes** and **Ta
 - A note that starts with a code block counts as code in the sidebar
 
 ### Organization and search
-- Drag notes and folders to move or reorder them, or onto Trash to delete. Order by hand, name or recent; filter by All / Notes / Code
+- Drag notes and folders to move or reorder them, or onto Trash to delete. Order by hand, name or recent
 - Search palette (**Ctrl+K**) finds notes and tasks, with `in:folder` (a task's list too), `type:note`, `code` or `task`, `title:word`, `"an exact phrase"` and `-word`. **Ctrl+F** finds in the open note
 - Right-click works everywhere (**Shift+F10** opens the menu of the selected item). Rename with **F2**
 

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### New
+- Press Escape while dragging a note, folder, task, list or group to cancel the drag. Nothing moves
+- Right-click a task for a menu of its own: open details, mark done, mark important, add to My Day, set the due date, move to a list, copy the title or delete it
+
+### Changed
+- In the Notes tab, Search is the first item in the sidebar, as in the Tasks tab, and the All / Notes / Code filter is gone (search still understands `type:`)
+- The text in the interface is a little bigger
+- The right-click menu on an empty spot of the window now fits the tab you are in: "New task" in Tasks, the new note and code entries in Notes
+- Things ease in and out instead of snapping: menus and dialogs, dropdowns, folder and list arrows, the Undo bar, a task you add, and a task you tick or delete, which folds away
+- A task's details (title, steps, My Day, due date, list and note) now open in a side pane next to the list, which slides in and out, instead of under the task. Escape or the close button closes it
+
 ## v1.6.0
 
 ### New

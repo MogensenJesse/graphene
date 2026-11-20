@@ -25,6 +25,7 @@ import {
   CopyIcon,
   ExternalLinkIcon,
   GearIcon,
+  PlusIcon,
   SearchIcon,
   TrashIcon,
 } from "./components/ui/Icon";
@@ -51,7 +52,7 @@ import { folderAbsPath, itemFilePath, loadVault } from "./lib/storage";
 import { DEFAULT_LIST_ID, orderedLists, type Task } from "./lib/taskStore";
 import { toggleTaskAt } from "./lib/tasks";
 import { isTextField } from "./lib/textMenu";
-import type { Item, ItemKind, TypeFilter } from "./types";
+import type { Item, ItemKind } from "./types";
 
 type Mode = "new" | "detail" | "edit" | "trash";
 
@@ -180,7 +181,6 @@ function MainApp({
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [searchOpen, setSearchOpen] = useState(false);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
   // Goes up on each Ctrl+F; the open note or editor shows its find bar when it changes
@@ -596,6 +596,8 @@ function MainApp({
     if (inTasks) {
       return (
         <TasksPane
+          // A vault of its own: switching vaults must not look like every task leaving the list
+          key={vaultPath}
           view={taskView}
           api={tasksApi}
           openTaskId={openTaskId}
@@ -655,9 +657,17 @@ function MainApp({
     );
   };
 
-  // Right-click on any part of the window that has no menu of its own
+  // Right-click on any part of the window that has no menu of its own. The Tasks tab has tasks to add, not notes
   const appEntries: MenuEntry[] = [
-    ...newItemEntries(handleNew),
+    ...(inTasks
+      ? [
+          {
+            label: "New task",
+            icon: <PlusIcon size={14} />,
+            onSelect: () => setAddTaskSignal((n) => n + 1),
+          },
+        ]
+      : newItemEntries(handleNew)),
     "separator",
     {
       label: "Search",
@@ -691,7 +701,6 @@ function MainApp({
             unsavedItemId={
               isDirtyEdit && mode === "edit" && selectedId ? selectedId : null
             }
-            typeFilter={typeFilter}
             trashedCount={trashed.length}
             trashOpen={mode === "trash"}
             tab={sidebarTab}
@@ -732,7 +741,6 @@ function MainApp({
             onReorderItems={handleReorderItems}
             onReorderFolders={reorderFolders}
             onOpenSearch={() => setSearchOpen(true)}
-            onTypeFilterChange={setTypeFilter}
           />
         </div>
         <main className="app__main">

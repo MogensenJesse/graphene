@@ -181,7 +181,8 @@ function NoteDetail({
           if (e.target === e.currentTarget) onEdit();
         }}
       >
-        <div className="note-detail__markdown" ref={markdownRef}>
+        {/* Keyed on the note so that going from one note to another fades the text in (see _motion.scss) */}
+        <div className="note-detail__markdown" key={noteId} ref={markdownRef}>
           <div ref={textRef}>
             <TaskActionsContext.Provider value={taskActions}>
               <ReactMarkdown

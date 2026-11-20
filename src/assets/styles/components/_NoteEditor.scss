@@ -142,7 +142,7 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 11px;
+    font-size: 12px;
     font-family: var(--font-mono);
     padding: 2px 8px;
     border-radius: var(--border-radius-sm);
@@ -167,6 +167,11 @@
   &__chevron {
     display: inline-flex;
     color: var(--color-text-tertiary);
+    transition: transform var(--anim-in);
+  }
+
+  &__chip--open &__chevron {
+    transform: rotate(180deg);
   }
 
   &__dropdown {
@@ -175,6 +180,7 @@
     right: 0;
     z-index: 200;
     width: 180px;
+    animation: pop-in 0.12s var(--ease-out);
     background: var(--color-background-primary);
     border: 0.5px solid var(--color-border-primary);
     border-radius: var(--border-radius-md);
@@ -187,7 +193,7 @@
     width: 100%;
     box-sizing: border-box;
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: 13px;
     font-family: var(--font-mono);
     background: none;
     border: none;
@@ -211,7 +217,7 @@
     display: block;
     width: 100%;
     padding: 5px 10px;
-    font-size: 12px;
+    font-size: 13px;
     font-family: var(--font-mono);
     text-align: left;
     background: none;

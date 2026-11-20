@@ -5,7 +5,6 @@ import { isFolderCollapsed, setFolderCollapsed } from "../../lib/prefs";
 import type { Folder, Item, ItemKind } from "../../types";
 import type { MenuEntry } from "../ui/ContextMenu";
 import {
-  ChevronDownIcon,
   ChevronRightIcon,
   EllipsisIcon,
   ExternalLinkIcon,
@@ -28,8 +27,6 @@ interface FolderRowProps {
   unsavedItemId: string | null;
   // undefined = no drag active / not over this folder; null = unfiled zone matched; string = folder id matched
   dragOverId: string | null | undefined;
-  // While searching/filtering: hide folders with no match and show matches expanded
-  forceExpand: boolean;
   renamingItemId: string | null;
   // Orders the sub-folders of every folder (by rank, or by name)
   compareFolders: (a: Folder, b: Folder) => number;
@@ -63,7 +60,6 @@ function FolderRow({
   selectedId,
   unsavedItemId,
   dragOverId,
-  forceExpand,
   renamingItemId,
   compareFolders,
   onSelect,
@@ -99,21 +95,10 @@ function FolderRow({
     () => items.filter((i) => i.folderId === folder.id),
     [items, folder.id],
   );
-  // Any match in this folder or below it (folder ids are paths, so descendants share the prefix)
-  const hasMatch = useMemo(
-    () =>
-      items.some(
-        (i) =>
-          i.folderId === folder.id || i.folderId?.startsWith(`${folder.id}/`),
-      ),
-    [items, folder.id],
-  );
   const hasContents = children.length > 0 || myItems.length > 0;
   const isSelected = selectedFolderId === folder.id;
   const isDragOver = dragOverId === folder.id;
-  const expanded = forceExpand || isExpanded;
-
-  if (forceExpand && !hasMatch) return null;
+  const expanded = isExpanded;
 
   const setExpanded = (value: boolean) => {
     setIsExpanded(value);
@@ -201,12 +186,11 @@ function FolderRow({
           >
             <span className="folder-row__label">{folder.name}</span>
             {hasContents && (
-              <span className="folder-row__chevron" aria-hidden="true">
-                {expanded ? (
-                  <ChevronDownIcon size={12} />
-                ) : (
-                  <ChevronRightIcon size={12} />
-                )}
+              <span
+                className={`folder-row__chevron chevron-turn${expanded ? " chevron-turn--open" : ""}`}
+                aria-hidden="true"
+              >
+                <ChevronRightIcon size={12} />
               </span>
             )}
           </button>
@@ -288,7 +272,6 @@ function FolderRow({
                 selectedId={selectedId}
                 unsavedItemId={unsavedItemId}
                 dragOverId={dragOverId}
-                forceExpand={forceExpand}
                 renamingItemId={renamingItemId}
                 compareFolders={compareFolders}
                 onSelect={onSelect}

@@ -60,7 +60,7 @@
     height: 100%;
     padding: 0;
     font: inherit;
-    font-size: 12px;
+    font-size: 13px;
     text-align: left;
     color: var(--color-text-secondary);
     background: none;
@@ -89,7 +89,7 @@
 
   &__count {
     flex-shrink: 0;
-    font-size: 11px;
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
     color: var(--color-text-tertiary);
   }
@@ -104,6 +104,11 @@
 .sidebar__tabs {
   margin: 0 8px 8px;
   flex-shrink: 0;
+
+  // Like the nav rows below it, it keeps its size when the rest of the UI text grows (see .segments__item)
+  .segments__item {
+    font-size: 12px;
+  }
 }
 
 // Only Settings in the footer (the Trash is the notes'): at the end, as it is beside the Trash

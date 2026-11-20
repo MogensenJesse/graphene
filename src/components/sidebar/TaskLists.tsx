@@ -19,7 +19,6 @@ import {
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
 import {
-  ChevronDownIcon,
   ChevronRightIcon,
   EllipsisIcon,
   FolderIcon,
@@ -349,12 +348,11 @@ function TaskLists({
               }}
             >
               <span className="folder-row__label">{group.name}</span>
-              <span className="folder-row__chevron" aria-hidden="true">
-                {expanded ? (
-                  <ChevronDownIcon size={12} />
-                ) : (
-                  <ChevronRightIcon size={12} />
-                )}
+              <span
+                className={`folder-row__chevron chevron-turn${expanded ? " chevron-turn--open" : ""}`}
+                aria-hidden="true"
+              >
+                <ChevronRightIcon size={12} />
               </span>
             </button>
           )}

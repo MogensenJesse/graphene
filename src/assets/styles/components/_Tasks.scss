@@ -1,13 +1,44 @@
 // src/assets/styles/components/_Tasks.scss
-// The Tasks tab's main pane: heading, the box to add a task, the rows, and the details that open under one.
-// The header reuses .item-header (drag region, padding that clears the window controls).
+// The Tasks tab's main pane: heading, the box to add a task, the rows, and the details of the open task in a
+// side pane on the right. The header reuses .item-header (drag region, padding that clears the window controls).
 @use '../base/mixins' as mixins;
+@use '../base/variables' as v;
 
 .tasks-pane {
+  --details-width: 320px;
   display: flex;
-  flex-direction: column;
   height: 100%;
   overflow: hidden;
+
+  // The slot of the side pane. It opens and closes like the sidebar (see .app__sidebar): the width runs to
+  // nothing and the pane, which keeps its own width, is clipped instead of reflowing
+  &__details {
+    display: flex;
+    flex-shrink: 0;
+    width: var(--details-width);
+    overflow: hidden;
+    transition:
+      width v.$panel-anim,
+      transform v.$panel-anim,
+      opacity v.$panel-anim,
+      visibility v.$panel-anim; // stays visible until the others have finished, and is gone from the tab order after
+
+    &--hidden {
+      width: 0;
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
+
+  // The list. It is a container of its own, so the header's text column lines up with the rows beside the
+  // side pane (100cqw in .item-header is this width, not the whole panel's).
+  &__main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    container-type: inline-size;
+  }
 
   &__title {
     margin: 0;
@@ -57,7 +88,7 @@
   }
 
   &__count {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--color-text-tertiary);
   }
 
@@ -81,11 +112,12 @@
     list-style: none;
     // The line where a dragged task lands sits on the row, there is no gap to centre it in
     --drop-gap: 0px;
+    animation: fade-in 0.12s ease-out;
   }
 
   &__empty {
     margin: 20px 2px;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--color-text-tertiary);
   }
 
@@ -96,7 +128,7 @@
     margin: 16px 0 0;
     padding: 4px 2px;
     font: inherit;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--color-text-secondary);
     background: none;
@@ -141,7 +173,7 @@
     flex: 1;
     min-width: 0;
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--color-text-primary);
     background: none;
     border: none;
@@ -181,7 +213,7 @@
 .due-chip {
   padding: 2px 9px;
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-info);
   background: var(--color-background-info);
   border: none;
@@ -252,6 +284,7 @@
         border: solid var(--color-background-secondary);
         border-width: 0 1.5px 1.5px 0;
         transform: translateY(-1px) rotate(45deg);
+        animation: check-pop 0.18s var(--ease-out);
       }
     }
   }
@@ -279,7 +312,7 @@
   }
 
   &__title {
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.4;
     overflow-wrap: anywhere;
   }
@@ -290,12 +323,40 @@
     text-decoration-color: var(--color-border-primary);
   }
 
+  // A task you just added eases in
+  &--enter {
+    animation: pop-in 0.16s var(--ease-out);
+  }
+
+  // A task that left the list (done, deleted, moved) folds away for a moment before TasksPane lets go of it
+  // (row-out in _motion.scss). It is a grid so that its one row can shrink to nothing, and it is inert
+  &--leaving {
+    display: grid;
+    grid-template-rows: 1fr;
+    overflow: hidden;
+    pointer-events: none;
+    animation: row-out var(--anim-out) forwards;
+  }
+
+  &--leaving > &__head {
+    overflow: hidden;
+    animation: row-head-out var(--anim-out) forwards;
+  }
+
+  // The task whose details are open: the highlight reaches past the text without moving it
+  &--selected &__head {
+    margin: 0 -8px;
+    padding: 4px 8px;
+    background: var(--color-background-hover);
+    border-radius: var(--border-radius-row);
+  }
+
   &__meta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 2px 10px;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--color-text-tertiary);
   }
 
@@ -311,23 +372,6 @@
 
   &__due--today {
     color: var(--color-text-info);
-  }
-
-  &__title-input {
-    flex: 1;
-    min-width: 0;
-    padding: 3px 6px;
-    font: inherit;
-    font-size: 13px;
-    color: var(--color-text-primary);
-    background: var(--color-background-primary);
-    border: 0.5px solid var(--color-border-secondary);
-    border-radius: var(--border-radius-sm);
-    outline: none;
-
-    &:focus {
-      border-color: var(--color-border-primary);
-    }
   }
 
   &__icon-btn {
@@ -360,13 +404,70 @@
   }
 }
 
-// ── What opens under a task ────────────────────────────────────────────────────
+// ── The side pane of the open task ─────────────────────────────────────────────
 
 .task-detail {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 2px 0 14px 28px; // in line with the title, past the checkbox
+  flex-shrink: 0;
+  width: var(--details-width);
+  border-left: 0.5px solid var(--color-border-tertiary);
+
+  // As tall as the header bar, so the window controls, which sit over its right end, have room
+  &__bar {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    height: 52px;
+    padding: 0 calc(var(--win-controls-width) + 24px) 0 12px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    -webkit-app-region: drag;
+    user-select: none;
+  }
+
+  &__body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 16px;
+    overflow-y: auto;
+
+    @include mixins.custom-scrollbar;
+  }
+
+  // The checkbox, the title and the star, as in the row
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__title {
+    flex: 1;
+    min-width: 0;
+    padding: 4px 6px;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--color-text-primary);
+    background: none;
+    border: 0.5px solid transparent;
+    border-radius: var(--border-radius-sm);
+    outline: none;
+    resize: none;
+    field-sizing: content;
+
+    &:hover {
+      background: var(--color-background-hover);
+    }
+
+    &:focus {
+      border-color: var(--color-border-primary);
+      background: var(--color-background-primary);
+    }
+  }
 
   &__steps {
     margin: 0;
@@ -403,7 +504,7 @@
     min-width: 0;
     padding: 4px 2px;
     font: inherit;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--color-text-primary);
     background: none;
     border: none;
@@ -424,66 +525,84 @@
     text-decoration: line-through;
   }
 
-  &__chips {
+  // My Day, due date and list: one card, a row each (icon, then what it sets), like the note below it
+  &__options {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-  }
-
-  &__due {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-  }
-
-  &__chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 26px;
-    padding: 0 10px;
-    font: inherit;
-    font-size: 12px;
-    color: var(--color-text-secondary);
+    flex-direction: column;
     background: var(--color-background-hover);
     border: 0.5px solid var(--color-border-secondary);
-    border-radius: 999px;
+    border-radius: var(--border-radius-row);
+  }
+
+  &__option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative; // the list's dropdown opens under its row
+    height: 36px;
+    padding: 0 0 0 12px; // no right padding: the clear button lines up with the steps' remove buttons
+    font-size: 13px;
+    color: var(--color-text-secondary);
+
+    & + & {
+      border-top: 0.5px solid var(--color-border-tertiary);
+    }
+
+    // The date picker's wrapper fills the row, so the whole row is its button
+    .date-pick {
+      flex: 1;
+      min-width: 0;
+    }
+
+    // The list's dropdown has the folder picker's look (see _ItemHeader.scss), as wide as the row
+    .folder-picker__dropdown {
+      right: 0;
+    }
+  }
+
+  &__chevron {
+    display: inline-flex;
+    margin: 0 12px 0 auto;
+    color: var(--color-text-tertiary);
+    transition: transform var(--anim-in);
+  }
+
+  &__option-btn[aria-expanded='true'] &__chevron {
+    transform: rotate(180deg);
+  }
+
+  &__option-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 36px;
+    padding: 0;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    background: none;
+    border: none;
     cursor: pointer;
-    transition: background var(--transition-fast), color var(--transition-fast);
+    transition: color var(--transition-fast);
 
     &:hover {
       color: var(--color-text-primary);
-      background: var(--color-background-active);
     }
 
     &--on {
       color: var(--color-text-info);
-      background: var(--color-background-info);
-    }
 
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
+      &:hover {
+        color: var(--color-text-info);
+      }
     }
   }
 
-  &__list {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: var(--color-text-tertiary);
-
-    select {
-      max-width: 160px;
-      padding: 3px 6px;
-      font: inherit;
-      color: var(--color-text-secondary);
-      background: var(--color-background-hover);
-      border: 0.5px solid var(--color-border-secondary);
-      border-radius: var(--border-radius-md);
-    }
+  &__option-btn:focus-visible {
+    outline: 2px solid var(--color-text-info);
+    outline-offset: -2px;
+    border-radius: var(--border-radius-row);
   }
 
   &__note {
@@ -492,7 +611,7 @@
     min-height: 52px;
     padding: 8px 10px;
     font: inherit;
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.5;
     color: var(--color-text-primary);
     background: var(--color-background-hover);
@@ -513,10 +632,13 @@
 
   &__foot {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     justify-content: space-between;
-    font-size: 11px;
+    padding: 10px 16px;
+    font-size: 12px;
     color: var(--color-text-tertiary);
+    border-top: 0.5px solid var(--color-border-tertiary);
   }
 
   &__delete {
@@ -525,7 +647,7 @@
     gap: 5px;
     padding: 2px 4px;
     font: inherit;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--color-text-tertiary);
     background: none;
     border: none;
@@ -539,6 +661,25 @@
     &:focus-visible {
       outline: 2px solid var(--color-text-info);
       outline-offset: 1px;
+    }
+  }
+}
+
+// A narrow panel has no room for the list beside the pane: the pane floats over its right side instead, as the
+// sidebar floats over the note in a small window (and slides out to the side, keeping its width, as that does)
+@container main (max-width: 739px) {
+  .tasks-pane__details {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 8; // above the drag strip (5), below the window buttons (10)
+    background: var(--color-background-primary); // opaque: the app surfaces are translucent
+    box-shadow: var(--shadow-popover);
+
+    &--hidden {
+      width: var(--details-width);
+      transform: translateX(100%);
     }
   }
 }

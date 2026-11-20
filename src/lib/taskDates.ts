@@ -20,6 +20,11 @@ export function dueLabel(date: string, today: string): string {
   });
 }
 
+/** The day after `today`. */
+export function nextDay(today: string): string {
+  return new Date(utcDay(today) + DAY_MS).toISOString().slice(0, 10);
+}
+
 /** The heading of My Day: "Friday, 20 November". */
 export function longDay(today: string): string {
   return new Date(`${today}T00:00:00`).toLocaleDateString(undefined, {

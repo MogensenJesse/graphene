@@ -15,9 +15,8 @@ import {
   placeNear,
 } from "../../lib/order";
 import { readPref, writePref } from "../../lib/prefs";
-import { filterByType } from "../../lib/search";
 import { compareNames, flattenFolders, itemKind } from "../../lib/utils";
-import type { Folder, Item, ItemKind, TypeFilter } from "../../types";
+import type { Folder, Item, ItemKind } from "../../types";
 import type { OpenSettings } from "../dialogs/SettingsDialog";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
@@ -69,19 +68,6 @@ const SORT_LABEL: Record<SortBy, string> = {
 };
 const SORT_KEY = "graphene.sort";
 
-const FILTERS: { value: TypeFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "note", label: "Notes" },
-  { value: "code", label: "Code" },
-];
-
-// What the list heading counts for each filter: "12 notes", "1 code note"
-const COUNT_NOUN: Record<TypeFilter, [one: string, many: string]> = {
-  all: ["note", "notes"],
-  note: ["note", "notes"],
-  code: ["code note", "code notes"],
-};
-
 const COMPARE: Record<SortBy, (a: Item, b: Item) => number> = {
   manual: compareItemsManual,
   name: (a, b) => compareNames(a.title, b.title),
@@ -106,7 +92,6 @@ interface SidebarProps {
   selectedId: string | null;
   selectedFolderId: string | null;
   unsavedItemId: string | null;
-  typeFilter: TypeFilter;
   trashedCount: number;
   trashOpen: boolean;
   tab: SidebarTab;
@@ -142,7 +127,6 @@ interface SidebarProps {
   ) => void;
   onReorderFolders: (ranks: Record<string, number>) => void;
   onOpenSearch: () => void;
-  onTypeFilterChange: (filter: TypeFilter) => void;
 }
 
 function Sidebar({
@@ -151,7 +135,6 @@ function Sidebar({
   selectedId,
   selectedFolderId,
   unsavedItemId,
-  typeFilter,
   trashedCount,
   trashOpen,
   tab,
@@ -179,7 +162,6 @@ function Sidebar({
   onReorderItems,
   onReorderFolders,
   onOpenSearch,
-  onTypeFilterChange,
 }: SidebarProps) {
   const [showAddFolder, setShowAddFolder] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>(readSort);
@@ -223,22 +205,18 @@ function Sidebar({
     [folders, sortBy],
   );
 
-  // No folder filter — the tree handles folder grouping visually.
-  // filterByType returns a fresh array, so sorting it in place is safe.
-  const filtered = useMemo(
-    () => filterByType(items, typeFilter).sort(COMPARE[sortBy]),
-    [items, typeFilter, sortBy],
+  // No folder filter — the tree handles folder grouping visually
+  const sorted = useMemo(
+    () => items.slice().sort(COMPARE[sortBy]),
+    [items, sortBy],
   );
 
   const unfiledItems = useMemo(
-    () => filtered.filter((i) => i.folderId === null),
-    [filtered],
+    () => sorted.filter((i) => i.folderId === null),
+    [sorted],
   );
 
-  // While filtering by type, folders without a match disappear and the rest open up
-  const isFiltering = typeFilter !== "all";
-  const [countOne, countMany] = COUNT_NOUN[typeFilter];
-  const countLabel = `${filtered.length} ${filtered.length === 1 ? countOne : countMany}`;
+  const countLabel = `${sorted.length} ${sorted.length === 1 ? "note" : "notes"}`;
 
   const chooseSort = (next: SortBy) => {
     setSortBy(next);
@@ -492,8 +470,17 @@ function Sidebar({
         tasksPanel
       ) : (
         <>
-          {/* New note, new code, search */}
+          {/* Search first, as in the Tasks tab; then new note, new code */}
           <nav className="sidebar__nav">
+            <button
+              type="button"
+              className="sidebar__nav-item"
+              onClick={onOpenSearch}
+            >
+              <SearchIcon size={16} />
+              <span>Search</span>
+              <span className="sidebar__nav-count">Ctrl+K</span>
+            </button>
             {NEW_KINDS.map(({ kind, label, Icon, shortcut }) => (
               <Tooltip key={kind} label={`New ${label}`} keys={shortcut}>
                 <button
@@ -506,29 +493,7 @@ function Sidebar({
                 </button>
               </Tooltip>
             ))}
-            <button
-              type="button"
-              className="sidebar__nav-item"
-              onClick={onOpenSearch}
-            >
-              <SearchIcon size={16} />
-              <span>Search</span>
-              <span className="sidebar__nav-count">Ctrl+K</span>
-            </button>
           </nav>
-
-          {/* Type filter: right above the tree it filters */}
-          <Segmented
-            label="Show"
-            className="sidebar__segments"
-            value={typeFilter}
-            options={FILTERS}
-            onChange={(value) => {
-              onTypeFilterChange(value);
-              // A filter can hide the selected folder, and its delete question lives on its row
-              onSelectFolder(null);
-            }}
-          />
 
           {/* Folder + tree section */}
           <div
@@ -591,12 +556,11 @@ function Sidebar({
                 key={folder.id}
                 folder={folder}
                 allFolders={folders}
-                items={filtered}
+                items={sorted}
                 selectedFolderId={selectedFolderId}
                 selectedId={selectedId}
                 unsavedItemId={unsavedItemId}
                 dragOverId={dragOverId}
-                forceExpand={isFiltering}
                 renamingItemId={renamingItemId}
                 onSelect={onSelectFolder}
                 onSelectItem={selectItem}
@@ -634,10 +598,8 @@ function Sidebar({
               />
             ))}
 
-            {filtered.length === 0 && (
-              <div className="sidebar__empty">
-                {items.length === 0 ? "Nothing here yet" : "No results"}
-              </div>
+            {sorted.length === 0 && (
+              <div className="sidebar__empty">Nothing here yet</div>
             )}
           </div>
         </>

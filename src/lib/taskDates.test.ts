@@ -1,7 +1,15 @@
 // src/lib/taskDates.test.ts
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { dueLabel } from "./taskDates";
+import { dueLabel, nextDay } from "./taskDates";
+
+test("nextDay steps over month, year and leap-day ends by calendar days", () => {
+  assert.equal(nextDay("2026-11-20"), "2026-11-21");
+  assert.equal(nextDay("2026-11-30"), "2026-12-01");
+  assert.equal(nextDay("2026-12-31"), "2027-01-01");
+  assert.equal(nextDay("2028-02-28"), "2028-02-29");
+  assert.equal(nextDay("2027-02-28"), "2027-03-01");
+});
 
 test("dueLabel names the days around today and leaves the rest to the locale", () => {
   const today = "2026-11-20";

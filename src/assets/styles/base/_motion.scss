@@ -1,0 +1,75 @@
+// src/assets/styles/base/_motion.scss
+// How things come and go. Short and ease-out, so the app feels quick. prefers-reduced-motion turns every animation
+// and transition off (see _reset); the timers in TasksPane and UndoToast follow it too. Panels that slide
+// (the sidebar, the task details pane) use $panel-anim from _variables.scss, the same curve as --ease-out.
+
+:root {
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --anim-in: 0.14s var(--ease-out);
+  // How long a row takes to fold away: TasksPane waits ROW_LEAVE_MS (the same time) before it lets go of it
+  --anim-out: 0.2s var(--ease-out);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+}
+
+// The tick of a checkbox: it pops in as the circle fills (the transform keeps the check's own tilt)
+@keyframes check-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-1px) rotate(45deg) scale(0.4);
+  }
+}
+
+// A task that leaves its list folds away: its row (a one-row grid) shrinks while it fades, and its head gives up
+// the height it was holding (see .task-row--leaving)
+@keyframes row-out {
+  to {
+    opacity: 0;
+    grid-template-rows: 0fr;
+  }
+}
+
+@keyframes row-head-out {
+  to {
+    min-height: 0;
+    padding-block: 0;
+  }
+}
+
+// A view that comes in (a note, the editor, the trash, the Tasks tab) fades in. Opacity only: nothing in a view may
+// be transformed, because the drag ghost is positioned against the window.
+.note-detail,
+.note-detail__markdown, // keyed on the note (NoteDetail.tsx): a switch from note to note fades too
+.note-editor,
+.tasks-pane,
+.trash-view {
+  animation: fade-in 0.1s ease-out;
+}
+
+// A disclosure chevron: it points right, and turns down when open
+.chevron-turn {
+  display: inline-flex;
+  transition: transform var(--anim-in);
+
+  &--open {
+    transform: rotate(90deg);
+  }
+}

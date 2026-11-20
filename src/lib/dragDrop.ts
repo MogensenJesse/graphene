@@ -7,6 +7,17 @@ export function clearDropMarks(): void {
     el.removeAttribute("data-drop");
 }
 
+/** Lets the click that follows the release of a drag go to nobody: it would otherwise open or select the row the drag started on. */
+export function swallowNextClick(): void {
+  const block = (e: Event) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+  window.addEventListener("click", block, { capture: true, once: true });
+  // No click comes when nothing was pressed and released on the same ancestor: do not block a later, real one
+  setTimeout(() => window.removeEventListener("click", block, true), 0);
+}
+
 /** Marks `el` (or nothing) as the row the dragged one lands before, or after it when `after`. */
 export function markDrop(el: HTMLElement | null, after = false): void {
   clearDropMarks();
