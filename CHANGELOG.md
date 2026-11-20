@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### New
+- Several vaults. Add as many as you like and switch between them from the vault name at the top of the sidebar. Rename, reorder and remove them in Settings; removing one only takes it off the list, its folder stays
+- Settings, from the gear at the bottom of the sidebar or Ctrl+,. It has the theme, a note font, a code font and a text size for notes and code, plus your vaults and the AI assistant setup
+- AI assistants can use all your vaults. Each vault has a "Share with AI assistants" switch, and the assistant picks a vault by name
+- Tasks, a to-do app of its own next to your notes. Switch with Notes | Tasks at the top of the sidebar (Ctrl+Shift+T). Lists with colours and groups, My Day and Important, due dates, steps and a note on each task, and a Completed section. Drag tasks and lists to reorder them, and tasks onto a list to move them
+- Ctrl+K finds tasks as well as notes, marked with a Task tag. `type:task` shows only tasks
+- AI assistants can use your tasks: look at them, add them, change them and tick them off, but never delete or rename them
+
+### Changed
+- The to-do note type is gone. A note that starts with a task is an ordinary note now, and its checkboxes still work in the reading view. Ctrl+Alt+N is gone, the filter is All / Notes / Code, and `type:todo` in search finds nothing (use `type:task` for tasks)
+- The assistant tool `list_tasks` now lists the tasks of the Tasks tab instead of the checkboxes in notes, and `set_task_done` is replaced by `complete_task`. To change a checkbox in a note, an assistant uses `edit_note`
+- The theme button and the plug button are now in Settings
+- The version number and "Check for updates" moved to Settings, in a new About tab. The sidebar header shows the Update pill only when an update is waiting
+- Trash is now a small button with its count at the bottom of the sidebar. While you drag a note, it grows into a wide "Drop to move to Trash" target
+- The list heading in the sidebar now counts what the filter shows ("12 notes", "3 code notes") instead of saying "Folders"
+
+### Fixes
+- A vault on another drive no longer stops working after Graphene restarts
+- A vault whose folder is missing, such as a drive that is not connected, says so instead of showing an empty list
+
 ## v1.5.0
 
 ### New

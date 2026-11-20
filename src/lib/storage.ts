@@ -100,7 +100,10 @@ async function scanVaultRecursive(
   let entries: { name: string; isFile: boolean; isDirectory: boolean }[];
   try {
     entries = await readDir(currentAbsPath);
-  } catch {
+  } catch (err) {
+    // A vault folder that is gone must not read as an empty vault: the lists would be emptied on a refresh,
+    // and the next save would create the folder again. An unreadable subfolder is only skipped.
+    if (currentAbsPath === vaultPath) throw err;
     return { files, dirs };
   }
 

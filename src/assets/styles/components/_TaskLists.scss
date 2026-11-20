@@ -1,0 +1,112 @@
+// src/assets/styles/components/_TaskLists.scss
+// The Tasks tab of the sidebar. Groups reuse .folder-row (see _FolderRow.scss), the list rows are lighter.
+
+// The colour dot of a list; no colour is a quiet grey
+.task-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-tertiary);
+  opacity: 0.7;
+
+  @each $key in ('red', 'orange', 'yellow', 'green', 'blue', 'purple') {
+    &[data-color='#{$key}'] {
+      background: var(--accent-#{$key});
+      opacity: 1;
+    }
+  }
+}
+
+.task-list-row__group {
+  margin-top: 2px; // the space between rows (see also .folder-row__group)
+}
+
+.task-list-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 28px;
+  padding: 0 4px 0 10px;
+  border-radius: var(--border-radius-row);
+  transition: background var(--transition-fast);
+
+  &:hover {
+    background: var(--color-background-hover);
+  }
+
+  &:hover .folder-row__actions,
+  &:focus-within .folder-row__actions {
+    opacity: 1;
+  }
+
+  &--selected,
+  &--selected:hover {
+    background: var(--color-background-active);
+  }
+
+  &--drag-over {
+    background: rgba(var(--rgb-blue), 0.12);
+    outline: 1px solid rgba(var(--rgb-blue), 0.3);
+    outline-offset: -1px;
+  }
+
+  &__name {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 100%;
+    padding: 0;
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    color: var(--color-text-secondary);
+    background: none;
+    border: none;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--color-text-info);
+      outline-offset: 2px;
+      border-radius: var(--border-radius-sm);
+    }
+  }
+
+  &--selected &__name {
+    color: var(--color-text-primary);
+    font-weight: 500;
+  }
+
+  &__label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__count {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+}
+
+// The lists inside a group sit under the group's guide line, like the notes in a folder
+.folder-row__children .task-list-row {
+  padding-left: 10px;
+}
+
+// The Notes | Tasks switch under the header
+.sidebar__tabs {
+  margin: 0 8px 8px;
+  flex-shrink: 0;
+}
+
+// Only Settings in the footer (the Trash is the notes'): at the end, as it is beside the Trash
+.sidebar__footer--end {
+  justify-content: flex-end;
+}

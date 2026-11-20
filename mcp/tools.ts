@@ -1,12 +1,11 @@
 // mcp/tools.ts
 // What the MCP server can do with a vault. Plain async functions, so the tests (and anything else) can call them without
-// the protocol. Note format, kinds, search and task rules all come from the app's own pure modules in src/lib.
+// the protocol. Note format, kinds and search all come from the app's own pure modules in src/lib.
 import { nanoid } from "nanoid";
 import { isReservedFolderName } from "../src/lib/attachments";
 import { itemFilePath } from "../src/lib/itemPaths";
 import { joinPath } from "../src/lib/paths";
 import { searchItems } from "../src/lib/search";
-import { listTasks, setTaskDone, taskProgress } from "../src/lib/tasks";
 import { compareNames, itemKind } from "../src/lib/utils";
 import type { Item } from "../src/types";
 import { type Note, scanVault, writeNote } from "./vault";
@@ -18,12 +17,6 @@ const summary = (item: Item) => ({
   kind: itemKind(item),
   updated: item.updatedAt,
 });
-
-const progress = (item: Item) => {
-  if (itemKind(item) !== "todo") return {};
-  const { done, total } = taskProgress(item.body);
-  return { tasks: `${done}/${total} done` };
-};
 
 async function findNote(vault: string, id: string): Promise<Note> {
   const note = (await scanVault(vault)).notes.find((n) => n.item.id === id);
@@ -80,7 +73,6 @@ export async function searchNotes(
     limit,
   ).map(({ item, snippet }) => ({
     ...summary(item),
-    ...progress(item),
     ...(snippet
       ? { snippet: snippet.before + snippet.match + snippet.after }
       : {}),
@@ -92,59 +84,8 @@ export async function readNote(vault: string, { id }: { id: string }) {
   return {
     ...summary(item),
     created: item.createdAt,
-    ...progress(item),
     body: item.body,
   };
-}
-
-/** Tasks across all notes, soonest due first; those without a due date come last. */
-export async function listOpenTasks(
-  vault: string,
-  {
-    due_by,
-    folder,
-    include_done = false,
-    limit = 100,
-  }: {
-    due_by?: string;
-    folder?: string;
-    include_done?: boolean;
-    limit?: number;
-  },
-) {
-  const { notes } = await scanVault(vault);
-  const under = folderPath(folder);
-  const rows = notes
-    .filter(
-      ({ item }) =>
-        !under ||
-        item.folderId === under ||
-        item.folderId?.startsWith(`${under}/`),
-    )
-    .flatMap(({ item }) =>
-      listTasks(item.body)
-        .filter(
-          (t) =>
-            (include_done || !t.done) &&
-            (!due_by || (t.due !== null && t.due <= due_by)),
-        )
-        .map((t) => ({
-          note: item.id,
-          title: item.title || "Untitled",
-          folder: item.folderId,
-          line: t.line,
-          done: t.done,
-          text: t.text,
-          due: t.due,
-        })),
-    );
-  rows.sort(
-    (a, b) =>
-      (a.due ?? "9999").localeCompare(b.due ?? "9999") ||
-      compareNames(a.title, b.title) ||
-      a.line - b.line,
-  );
-  return { total: rows.length, tasks: rows.slice(0, limit) };
 }
 
 // ── Write ─────────────────────────────────────────────────────────────────────
@@ -220,23 +161,4 @@ export async function editNote(
   const updatedAt = changed ? new Date().toISOString() : item.updatedAt;
   if (changed) await writeNote(path, { ...item, body, updatedAt });
   return { id, title: item.title, replaced: found, updated: updatedAt };
-}
-
-export async function tickTask(
-  vault: string,
-  { id, line, done }: { id: string; line: number; done: boolean },
-) {
-  const { item, path } = await findNote(vault, id);
-  const body = setTaskDone(item.body, line, done);
-  if (body === null)
-    throw new Error(
-      `Line ${line} of this note is not a task. Use list_tasks for the line numbers.`,
-    );
-  if (body !== item.body)
-    await writeNote(path, {
-      ...item,
-      body,
-      updatedAt: new Date().toISOString(),
-    });
-  return { id, line, done };
 }

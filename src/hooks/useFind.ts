@@ -123,6 +123,9 @@ function scrollToOffset(el: HTMLTextAreaElement, offset: number): void {
   for (const p of [
     "fontFamily",
     "fontSize",
+    "fontWeight",
+    "fontStyle",
+    "fontFeatureSettings",
     "lineHeight",
     "letterSpacing",
     "tabSize",

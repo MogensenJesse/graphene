@@ -7,7 +7,7 @@ import {
   TRASH_DROP_ID,
   useDragToFolder,
 } from "../../hooks/useDragToFolder";
-import type { UpdateStatus } from "../../hooks/useUpdater";
+import type { Vaults } from "../../hooks/useVaults";
 import { firstCodeBlock } from "../../lib/codeBlocks";
 import {
   compareFoldersManual,
@@ -18,9 +18,11 @@ import { readPref, writePref } from "../../lib/prefs";
 import { filterByType } from "../../lib/search";
 import { compareNames, flattenFolders, itemKind } from "../../lib/utils";
 import type { Folder, Item, ItemKind, TypeFilter } from "../../types";
+import type { OpenSettings } from "../dialogs/SettingsDialog";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
 import {
+  CircleCheckIcon,
   ClipboardCopyIcon,
   ClipboardIcon,
   CopyIcon,
@@ -29,9 +31,10 @@ import {
   FolderIcon,
   FolderInputIcon,
   FolderPlusIcon,
+  GearIcon,
   KindIcon,
   NoFolderIcon,
-  PlugIcon,
+  NoteIcon,
   PlusIcon,
   SearchIcon,
   SortIcon,
@@ -40,10 +43,19 @@ import {
 } from "../ui/Icon";
 import InlineInput from "../ui/InlineInput";
 import { NEW_KINDS, newItemEntries } from "../ui/newKinds";
+import Segmented from "../ui/Segmented";
 import Tooltip from "../ui/Tooltip";
 import FolderRow from "./FolderRow";
 import ItemRow from "./ItemRow";
 import SidebarHeader from "./SidebarHeader";
+
+/** The two halves of the app: the notes, and the to-do lists. */
+export type SidebarTab = "notes" | "tasks";
+
+const TABS: { value: SidebarTab; label: string; icon: ReactNode }[] = [
+  { value: "notes", label: "Notes", icon: <NoteIcon size={13} /> },
+  { value: "tasks", label: "Tasks", icon: <CircleCheckIcon size={13} /> },
+];
 
 // How the sidebar lists notes and sibling folders. "manual" follows the ranks set by dragging
 // (a folder or note without one comes last, by name); folders have no date, so they go by name otherwise.
@@ -60,9 +72,15 @@ const SORT_KEY = "graphene.sort";
 const FILTERS: { value: TypeFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "note", label: "Notes" },
-  { value: "todo", label: "To-dos" },
   { value: "code", label: "Code" },
 ];
+
+// What the list heading counts for each filter: "12 notes", "1 code note"
+const COUNT_NOUN: Record<TypeFilter, [one: string, many: string]> = {
+  all: ["note", "notes"],
+  note: ["note", "notes"],
+  code: ["code note", "code notes"],
+};
 
 const COMPARE: Record<SortBy, (a: Item, b: Item) => number> = {
   manual: compareItemsManual,
@@ -91,9 +109,12 @@ interface SidebarProps {
   typeFilter: TypeFilter;
   trashedCount: number;
   trashOpen: boolean;
-  version: string;
-  updateStatus: UpdateStatus;
+  tab: SidebarTab;
+  onTabChange: (tab: SidebarTab) => void;
+  // What the Tasks tab shows in place of the notes (the lists: see TaskLists)
+  tasksPanel: ReactNode;
   updateAvailable: boolean;
+  vaults: Vaults;
   // Item open in the editor: its title and folder belong to the editor until it closes
   editingItemId: string | null;
   onSelect: (id: string) => void;
@@ -106,10 +127,9 @@ interface SidebarProps {
   onRenameItem: (id: string, title: string) => void;
   onRevealItem: (item: Item) => void;
   onRevealFolder: (folderId: string) => void;
-  onCheckUpdates: () => void;
   onShowUpdate: () => void;
   onOpenTrash: () => void;
-  onOpenConnect: () => void;
+  onOpenSettings: OpenSettings;
   onAddFolder: (name: string, parentId: string | null) => void;
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
@@ -134,9 +154,11 @@ function Sidebar({
   typeFilter,
   trashedCount,
   trashOpen,
-  version,
-  updateStatus,
+  tab,
+  onTabChange,
+  tasksPanel,
   updateAvailable,
+  vaults,
   editingItemId,
   onSelect,
   onSelectFolder,
@@ -147,10 +169,9 @@ function Sidebar({
   onRenameItem,
   onRevealItem,
   onRevealFolder,
-  onCheckUpdates,
   onShowUpdate,
   onOpenTrash,
-  onOpenConnect,
+  onOpenSettings,
   onAddFolder,
   onRenameFolder,
   onDeleteFolder,
@@ -216,6 +237,8 @@ function Sidebar({
 
   // While filtering by type, folders without a match disappear and the rest open up
   const isFiltering = typeFilter !== "all";
+  const [countOne, countMany] = COUNT_NOUN[typeFilter];
+  const countLabel = `${filtered.length} ${filtered.length === 1 ? countOne : countMany}`;
 
   const chooseSort = (next: SortBy) => {
     setSortBy(next);
@@ -445,201 +468,222 @@ function Sidebar({
 
   // The tree itself is the "unfiled" drop target: folder groups win, empty space and root items unfile
   const isRootDragOver = dragState !== null && dragOverId === null;
+  // Only a note can go to the Trash; a dragged folder cannot
+  const noteDragging = dragState?.kind === "item";
 
   return (
     <aside className="sidebar">
       <SidebarHeader
-        version={version}
-        updateStatus={updateStatus}
         updateAvailable={updateAvailable}
-        onCheckUpdates={onCheckUpdates}
+        vaults={vaults}
         onShowUpdate={onShowUpdate}
+        onOpenSettings={onOpenSettings}
       />
 
-      {/* New note, new code, search */}
-      <nav className="sidebar__nav">
-        {NEW_KINDS.map(({ kind, label, Icon, shortcut }) => (
-          <Tooltip key={kind} label={`New ${label}`} keys={shortcut}>
+      <Segmented
+        label="Sidebar"
+        className="sidebar__tabs"
+        value={tab}
+        options={TABS}
+        onChange={onTabChange}
+      />
+
+      {tab === "tasks" ? (
+        tasksPanel
+      ) : (
+        <>
+          {/* New note, new code, search */}
+          <nav className="sidebar__nav">
+            {NEW_KINDS.map(({ kind, label, Icon, shortcut }) => (
+              <Tooltip key={kind} label={`New ${label}`} keys={shortcut}>
+                <button
+                  type="button"
+                  className="sidebar__nav-item"
+                  onClick={() => onNew(kind)}
+                >
+                  <Icon size={16} />
+                  <span>New {label}</span>
+                </button>
+              </Tooltip>
+            ))}
             <button
               type="button"
               className="sidebar__nav-item"
-              onClick={() => onNew(kind)}
+              onClick={onOpenSearch}
             >
-              <Icon size={16} />
-              <span>New {label}</span>
+              <SearchIcon size={16} />
+              <span>Search</span>
+              <span className="sidebar__nav-count">Ctrl+K</span>
             </button>
-          </Tooltip>
-        ))}
-        <button
-          type="button"
-          className="sidebar__nav-item"
-          onClick={onOpenSearch}
-        >
-          <SearchIcon size={16} />
-          <span>Search</span>
-          <span className="sidebar__nav-count">Ctrl+K</span>
-        </button>
-      </nav>
+          </nav>
 
-      {/* Type filter: right above the tree it filters */}
-      <div className="sidebar__segments">
-        {FILTERS.map(({ value, label }) => (
-          <button
-            key={value}
-            type="button"
-            className={`sidebar__segment${typeFilter === value ? " sidebar__segment--active" : ""}`}
-            aria-pressed={typeFilter === value}
-            onClick={() => {
+          {/* Type filter: right above the tree it filters */}
+          <Segmented
+            label="Show"
+            className="sidebar__segments"
+            value={typeFilter}
+            options={FILTERS}
+            onChange={(value) => {
               onTypeFilterChange(value);
               // A filter can hide the selected folder, and its delete question lives on its row
               onSelectFolder(null);
             }}
+          />
+
+          {/* Folder + tree section */}
+          <div
+            ref={treeRef}
+            className={`sidebar__folders${isRootDragOver ? " sidebar__folders--drag-over" : ""}`}
+            data-folder-drop-id="unfiled"
+            role="tree"
+            // a tree is a composite widget: the container is the single tab stop and takes the arrow keys
+            tabIndex={0}
+            onKeyDown={handleTreeKeyDown}
+            onContextMenu={(e) => open(e, treeEntries())}
+            onClick={(e) => {
+              // Empty space deselects the folder
+              if (e.target === e.currentTarget) onSelectFolder(null);
+            }}
           >
-            {label}
-          </button>
-        ))}
-      </div>
+            <div className="sidebar__folders-header">
+              <span className="sidebar__folders-label">{countLabel}</span>
+              <div className="sidebar__folders-tools">
+                <Tooltip label={`Order: ${SORT_LABEL[sortBy]}`}>
+                  <button
+                    type="button"
+                    className="sidebar__sort-btn"
+                    onClick={openSortMenu}
+                    aria-haspopup="menu"
+                  >
+                    <SortIcon size={11} />
+                    {SORT_LABEL[sortBy]}
+                  </button>
+                </Tooltip>
+                <Tooltip label="Add folder">
+                  <button
+                    type="button"
+                    className="sidebar__icon-btn"
+                    onClick={() => setShowAddFolder((v) => !v)}
+                    aria-label="Add folder"
+                  >
+                    <PlusIcon size={13} />
+                  </button>
+                </Tooltip>
+              </div>
+            </div>
 
-      {/* Folder + tree section */}
+            {showAddFolder && (
+              <div className="sidebar__folder-add-row">
+                <InlineInput
+                  className="sidebar__folder-add-input"
+                  placeholder="Folder name…"
+                  onCommit={(name) => {
+                    onAddFolder(name, null);
+                    setShowAddFolder(false);
+                  }}
+                  onCancel={() => setShowAddFolder(false)}
+                />
+              </div>
+            )}
+
+            {rootFolders.map((folder) => (
+              <FolderRow
+                key={folder.id}
+                folder={folder}
+                allFolders={folders}
+                items={filtered}
+                selectedFolderId={selectedFolderId}
+                selectedId={selectedId}
+                unsavedItemId={unsavedItemId}
+                dragOverId={dragOverId}
+                forceExpand={isFiltering}
+                renamingItemId={renamingItemId}
+                onSelect={onSelectFolder}
+                onSelectItem={selectItem}
+                compareFolders={FOLDER_COMPARE[sortBy]}
+                onItemPointerDown={startItemDrag}
+                onFolderPointerDown={startFolderDrag}
+                onAddSubfolder={handleAddSubfolder}
+                onRename={onRenameFolder}
+                onDelete={requestDeleteFolder}
+                deleteConfirmId={
+                  folderDelete.confirming ? selectedFolderId : null
+                }
+                onConfirmDelete={folderDelete.requestDelete}
+                onCancelDelete={folderDelete.cancelConfirm}
+                onNew={onNew}
+                onReveal={onRevealFolder}
+                onOpenMenu={openAt}
+                onItemContextMenu={handleItemContextMenu}
+                onItemRenameEnd={handleItemRenameEnd}
+              />
+            ))}
+
+            {/* Unfiled items — no folder assigned */}
+            {unfiledItems.map((item) => (
+              <ItemRow
+                key={item.id}
+                item={item}
+                isSelected={selectedId === item.id}
+                isUnsaved={unsavedItemId === item.id}
+                isRenaming={renamingItemId === item.id}
+                onSelect={selectItem}
+                onPointerDown={startItemDrag}
+                onContextMenu={handleItemContextMenu}
+                onRenameEnd={handleItemRenameEnd}
+              />
+            ))}
+
+            {filtered.length === 0 && (
+              <div className="sidebar__empty">
+                {items.length === 0 ? "Nothing here yet" : "No results"}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Trash (a wide drop target while a note is dragged) and Settings */}
       <div
-        ref={treeRef}
-        className={`sidebar__folders${isRootDragOver ? " sidebar__folders--drag-over" : ""}`}
-        data-folder-drop-id="unfiled"
-        role="tree"
-        // a tree is a composite widget: the container is the single tab stop and takes the arrow keys
-        tabIndex={0}
-        onKeyDown={handleTreeKeyDown}
-        onContextMenu={(e) => open(e, treeEntries())}
-        onClick={(e) => {
-          // Empty space deselects the folder
-          if (e.target === e.currentTarget) onSelectFolder(null);
-        }}
+        className={`sidebar__footer${noteDragging ? " sidebar__footer--dragging" : ""}${tab === "tasks" ? " sidebar__footer--end" : ""}`}
       >
-        <div className="sidebar__folders-header">
-          <span className="sidebar__folders-label">Folders</span>
-          <div className="sidebar__folders-tools">
-            <Tooltip label={`Order: ${SORT_LABEL[sortBy]}`}>
-              <button
-                type="button"
-                className="sidebar__sort-btn"
-                onClick={openSortMenu}
-                aria-haspopup="menu"
-              >
-                <SortIcon size={11} />
-                {SORT_LABEL[sortBy]}
-              </button>
-            </Tooltip>
-            <Tooltip label="Add folder">
-              <button
-                type="button"
-                className="sidebar__icon-btn"
-                onClick={() => setShowAddFolder((v) => !v)}
-                aria-label="Add folder"
-              >
-                <PlusIcon size={13} />
-              </button>
-            </Tooltip>
-          </div>
-        </div>
-
-        {showAddFolder && (
-          <div className="sidebar__folder-add-row">
-            <InlineInput
-              className="sidebar__folder-add-input"
-              placeholder="Folder name…"
-              onCommit={(name) => {
-                onAddFolder(name, null);
-                setShowAddFolder(false);
-              }}
-              onCancel={() => setShowAddFolder(false)}
-            />
-          </div>
+        {tab === "notes" && (
+          <Tooltip label="Trash">
+            <button
+              type="button"
+              className={`sidebar__trash${trashOpen ? " sidebar__trash--active" : ""}${noteDragging ? " sidebar__trash--drop" : ""}${noteDragging && dragOverId === TRASH_DROP_ID ? " sidebar__trash--over" : ""}`}
+              aria-label={`Trash, ${trashedCount} ${trashedCount === 1 ? "note" : "notes"}`}
+              onClick={onOpenTrash}
+              onContextMenu={(e) =>
+                open(e, [
+                  {
+                    label: "Open trash",
+                    icon: <TrashIcon size={14} />,
+                    onSelect: onOpenTrash,
+                  },
+                ])
+              }
+              data-folder-drop-id={TRASH_DROP_ID}
+            >
+              <TrashIcon size={16} />
+              {noteDragging ? (
+                <span>Drop to move to Trash</span>
+              ) : (
+                trashedCount > 0 && (
+                  <span className="sidebar__trash-count">{trashedCount}</span>
+                )
+              )}
+            </button>
+          </Tooltip>
         )}
-
-        {rootFolders.map((folder) => (
-          <FolderRow
-            key={folder.id}
-            folder={folder}
-            allFolders={folders}
-            items={filtered}
-            selectedFolderId={selectedFolderId}
-            selectedId={selectedId}
-            unsavedItemId={unsavedItemId}
-            dragOverId={dragOverId}
-            forceExpand={isFiltering}
-            renamingItemId={renamingItemId}
-            onSelect={onSelectFolder}
-            onSelectItem={selectItem}
-            compareFolders={FOLDER_COMPARE[sortBy]}
-            onItemPointerDown={startItemDrag}
-            onFolderPointerDown={startFolderDrag}
-            onAddSubfolder={handleAddSubfolder}
-            onRename={onRenameFolder}
-            onDelete={requestDeleteFolder}
-            deleteConfirmId={folderDelete.confirming ? selectedFolderId : null}
-            onConfirmDelete={folderDelete.requestDelete}
-            onCancelDelete={folderDelete.cancelConfirm}
-            onNew={onNew}
-            onReveal={onRevealFolder}
-            onOpenMenu={openAt}
-            onItemContextMenu={handleItemContextMenu}
-            onItemRenameEnd={handleItemRenameEnd}
-          />
-        ))}
-
-        {/* Unfiled items — no folder assigned */}
-        {unfiledItems.map((item) => (
-          <ItemRow
-            key={item.id}
-            item={item}
-            isSelected={selectedId === item.id}
-            isUnsaved={unsavedItemId === item.id}
-            isRenaming={renamingItemId === item.id}
-            onSelect={selectItem}
-            onPointerDown={startItemDrag}
-            onContextMenu={handleItemContextMenu}
-            onRenameEnd={handleItemRenameEnd}
-          />
-        ))}
-
-        {filtered.length === 0 && (
-          <div className="sidebar__empty">
-            {items.length === 0 ? "Nothing here yet" : "No results"}
-          </div>
-        )}
-      </div>
-
-      {/* Trash and the AI assistants dialog */}
-      <div className="sidebar__footer">
-        <button
-          type="button"
-          className={`sidebar__nav-item${trashOpen ? " sidebar__nav-item--active" : ""}${dragState && dragOverId === TRASH_DROP_ID ? " sidebar__nav-item--drag-over" : ""}`}
-          onClick={onOpenTrash}
-          onContextMenu={(e) =>
-            open(e, [
-              {
-                label: "Open trash",
-                icon: <TrashIcon size={14} />,
-                onSelect: onOpenTrash,
-              },
-            ])
-          }
-          data-folder-drop-id={TRASH_DROP_ID}
-        >
-          <TrashIcon size={16} />
-          <span>Trash</span>
-          {trashedCount > 0 && (
-            <span className="sidebar__nav-count">{trashedCount}</span>
-          )}
-        </button>
-        <Tooltip label="Connect AI assistants">
+        <Tooltip label="Settings" keys="Ctrl+,">
           <button
             type="button"
             className="sidebar__icon-btn sidebar__icon-btn--footer"
-            onClick={onOpenConnect}
-            aria-label="Connect AI assistants"
+            onClick={() => onOpenSettings()}
+            aria-label="Settings"
           >
-            <PlugIcon size={16} />
+            <GearIcon size={16} />
           </button>
         </Tooltip>
       </div>

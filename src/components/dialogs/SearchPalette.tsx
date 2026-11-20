@@ -7,10 +7,18 @@ import {
   useRef,
   useState,
 } from "react";
-import { type Hit, searchItems } from "../../lib/search";
+import {
+  type Hit,
+  searchItems,
+  searchTasks,
+  type TaskEntry,
+  type TaskHit,
+} from "../../lib/search";
+import { dueLabel } from "../../lib/taskDates";
+import { localDate } from "../../lib/taskStore";
 import { formatDate, getFolderPath, itemKind } from "../../lib/utils";
 import type { Folder, Item } from "../../types";
-import { KindIcon, SearchIcon, XIcon } from "../ui/Icon";
+import { CircleCheckIcon, KindIcon, SearchIcon, XIcon } from "../ui/Icon";
 import Modal from "../ui/Modal";
 import Tooltip from "../ui/Tooltip";
 
@@ -19,11 +27,32 @@ const RECENT_COUNT = 12;
 interface SearchPaletteProps {
   items: Item[];
   folders: Folder[];
+  /** Every task with its list, searched together with the notes. */
+  tasks: TaskEntry[];
   onOpen: (id: string) => void;
+  onOpenTask: (listId: string, taskId: string) => void;
   onClose: () => void;
 }
 
-const byRecent = (a: Item, b: Item) => b.updatedAt.localeCompare(a.updatedAt);
+/** A note or a task, as one row of the results. */
+type Result =
+  | { kind: "note"; id: string; updatedAt: string; hit: Hit }
+  | { kind: "task"; id: string; updatedAt: string; hit: TaskHit };
+
+const noteResult = (hit: Hit): Result => ({
+  kind: "note",
+  id: hit.item.id,
+  updatedAt: hit.item.updatedAt,
+  hit,
+});
+const taskResult = (hit: TaskHit): Result => ({
+  kind: "task",
+  id: hit.entry.task.id,
+  updatedAt: hit.entry.task.updatedAt,
+  hit,
+});
+const byRecent = (a: Result, b: Result) =>
+  b.updatedAt.localeCompare(a.updatedAt);
 
 /** `text` with the letters at `marks` highlighted. */
 function Marked({ text, marks }: { text: string; marks: number[] }) {
@@ -41,11 +70,14 @@ function Marked({ text, marks }: { text: string; marks: number[] }) {
 }
 
 // Ctrl+K palette: recent items while empty, live results while typing.
-// Words and "phrases" must all match; in:folder, type:todo and -exclude narrow it (see lib/search).
+// Words and "phrases" must all match; in:folder, type:task and -exclude narrow it (see lib/search).
+// Tasks are marked with a check icon and a "Task" tag, and show their list and due date.
 function SearchPalette({
   items,
   folders,
+  tasks,
   onOpen,
+  onOpenTask,
   onClose,
 }: SearchPaletteProps) {
   const [query, setQuery] = useState("");
@@ -55,16 +87,23 @@ function SearchPalette({
   // Typing stays responsive in a big vault: the list catches up when it can
   const deferred = useDeferredValue(query);
 
-  const hits = useMemo<Hit[]>(
-    () =>
-      deferred.trim()
-        ? searchItems(items, deferred)
-        : [...items]
-            .sort(byRecent)
-            .slice(0, RECENT_COUNT)
-            .map((item) => ({ item, score: 0, titleMarks: [], snippet: null })),
-    [items, deferred],
-  );
+  const results = useMemo<Result[]>(() => {
+    if (deferred.trim())
+      return [
+        ...searchItems(items, deferred).map(noteResult),
+        ...searchTasks(tasks, deferred).map(taskResult),
+      ].sort((a, b) => b.hit.score - a.hit.score || byRecent(a, b));
+    return [
+      ...items.map((item) =>
+        noteResult({ item, score: 0, titleMarks: [], snippet: null }),
+      ),
+      ...tasks.map((entry) =>
+        taskResult({ entry, score: 0, titleMarks: [], snippet: null }),
+      ),
+    ]
+      .sort(byRecent)
+      .slice(0, RECENT_COUNT);
+  }, [items, tasks, deferred]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -76,8 +115,11 @@ function SearchPalette({
 
   const move = (delta: number) =>
     setActive((i) =>
-      hits.length === 0 ? 0 : (i + delta + hits.length) % hits.length,
+      results.length === 0 ? 0 : (i + delta + results.length) % results.length,
     );
+
+  const open = (r: Result) =>
+    r.kind === "note" ? onOpen(r.id) : onOpenTask(r.hit.entry.listId, r.id);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
@@ -88,12 +130,13 @@ function SearchPalette({
       move(-1);
     } else if (e.key === "Enter") {
       e.preventDefault();
-      const hit = hits[active];
-      if (hit) onOpen(hit.item.id);
+      const result = results[active];
+      if (result) open(result);
     }
   };
 
-  const activeHit = hits[active];
+  const activeResult = results[active];
+  const today = localDate();
 
   return (
     <Modal label="Search" onClose={onClose} className="search-palette">
@@ -107,10 +150,10 @@ function SearchPalette({
           aria-expanded="true"
           aria-controls="search-palette-results"
           aria-activedescendant={
-            activeHit ? `search-palette-${activeHit.item.id}` : undefined
+            activeResult ? `search-palette-${activeResult.id}` : undefined
           }
-          aria-label="Search notes and code"
-          placeholder="Search. Try in:folder  type:todo  -word  “a phrase”"
+          aria-label="Search notes and tasks"
+          placeholder="Search notes and tasks. Try in:folder  type:task  -word  “a phrase”"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -130,9 +173,11 @@ function SearchPalette({
         </Tooltip>
       </div>
 
-      {hits.length === 0 ? (
+      {results.length === 0 ? (
         <p className="search-palette__empty">
-          {items.length === 0 ? "Nothing here yet" : "No results"}
+          {items.length === 0 && tasks.length === 0
+            ? "Nothing here yet"
+            : "No results"}
         </p>
       ) : (
         <div
@@ -142,49 +187,70 @@ function SearchPalette({
           role="listbox"
           aria-label="Results"
         >
-          {hits.map(({ item, titleMarks, snippet }, i) => (
-            <div
-              key={item.id}
-              id={`search-palette-${item.id}`}
-              role="option"
-              aria-selected={i === active}
-              tabIndex={-1}
-              className={`search-palette__row${i === active ? " search-palette__row--active" : ""}`}
-              onMouseMove={() => setActive(i)}
-              onClick={() => onOpen(item.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") onOpen(item.id);
-              }}
-            >
-              <span className="search-palette__icon" aria-hidden="true">
-                <KindIcon kind={itemKind(item)} size={16} />
-              </span>
-              <div className="search-palette__text">
-                <div className="search-palette__line">
-                  <span className="search-palette__title">
-                    {item.title ? (
-                      <Marked text={item.title} marks={titleMarks} />
-                    ) : (
-                      "Untitled"
+          {results.map((r, i) => {
+            const isTask = r.kind === "task";
+            const title = isTask ? r.hit.entry.task.title : r.hit.item.title;
+            const { titleMarks, snippet } = r.hit;
+            const done = isTask && r.hit.entry.task.done;
+            return (
+              <div
+                key={r.id}
+                id={`search-palette-${r.id}`}
+                role="option"
+                aria-selected={i === active}
+                tabIndex={-1}
+                className={`search-palette__row${i === active ? " search-palette__row--active" : ""}${isTask ? " search-palette__row--task" : ""}${done ? " search-palette__row--done" : ""}`}
+                onMouseMove={() => setActive(i)}
+                onClick={() => open(r)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") open(r);
+                }}
+              >
+                <span className="search-palette__icon" aria-hidden="true">
+                  {r.kind === "note" ? (
+                    <KindIcon kind={itemKind(r.hit.item)} size={16} />
+                  ) : (
+                    <CircleCheckIcon size={16} />
+                  )}
+                </span>
+                <div className="search-palette__text">
+                  <div className="search-palette__line">
+                    <span className="search-palette__title">
+                      {title ? (
+                        <Marked text={title} marks={titleMarks} />
+                      ) : (
+                        "Untitled"
+                      )}
+                    </span>
+                    {isTask && (
+                      <span className="search-palette__tag">Task</span>
                     )}
-                  </span>
-                  <span className="search-palette__path">
-                    {getFolderPath(folders, item.folderId).join(" / ")}
-                  </span>
-                  <span className="search-palette__date">
-                    {formatDate(item.updatedAt)}
-                  </span>
-                </div>
-                {snippet && (
-                  <div className="search-palette__snippet">
-                    {snippet.before}
-                    <mark>{snippet.match}</mark>
-                    {snippet.after}
+                    <span className="search-palette__path">
+                      {r.kind === "note"
+                        ? getFolderPath(folders, r.hit.item.folderId).join(
+                            " / ",
+                          )
+                        : r.hit.entry.listName}
+                    </span>
+                    <span className="search-palette__date">
+                      {r.kind === "note"
+                        ? formatDate(r.hit.item.updatedAt)
+                        : r.hit.entry.task.due
+                          ? dueLabel(r.hit.entry.task.due, today)
+                          : ""}
+                    </span>
                   </div>
-                )}
+                  {snippet && (
+                    <div className="search-palette__snippet">
+                      {snippet.before}
+                      <mark>{snippet.match}</mark>
+                      {snippet.after}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </Modal>

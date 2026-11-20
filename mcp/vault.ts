@@ -7,6 +7,13 @@ import { basename, dirname } from "node:path";
 import { ATTACH_DIR } from "../src/lib/attachments";
 import { parseNoteFile, serializeItem } from "../src/lib/fileFormat";
 import { joinPath, relativePath } from "../src/lib/paths";
+import {
+  folderName,
+  parseVaultConfig,
+  pathKey,
+  sharedVaults,
+  type VaultConfig,
+} from "../src/lib/vaultList";
 import type { Item } from "../src/types";
 
 /** A note and the file it was read from (which is not always the name the app would give it). */
@@ -90,31 +97,76 @@ function appDataDir(env: NodeJS.ProcessEnv): string {
 const envValue = (value: string | undefined) =>
   value && !value.includes("${") ? value : undefined;
 
-/** `--vault <folder>`, then GRAPHENE_VAULT, then the folder the app saved in its config (see src/lib/vault.ts). */
-export async function resolveVaultPath(
-  argv: string[],
-  env: NodeJS.ProcessEnv,
-): Promise<string> {
-  const at = argv.indexOf("--vault");
-  const given =
-    (at >= 0 ? argv[at + 1] : undefined) ??
-    argv.find((a) => a.startsWith("--vault="))?.slice("--vault=".length) ??
-    envValue(env.GRAPHENE_VAULT);
-  if (given) return joinPath(given);
+/** A vault the assistant can name */
+export interface VaultRef {
+  name: string;
+  path: string;
+}
 
-  const config = joinPath(
+/** The vaults shared with assistants right now, and the name of the one open in Graphene (null when it is not shared). */
+export interface VaultView {
+  vaults: VaultRef[];
+  active: string | null;
+}
+
+/** Asked on every tool call, so a vault added, renamed or unshared in Graphene applies without restarting the assistant. */
+export type VaultSource = () => Promise<VaultView>;
+
+const NO_VAULT =
+  "No vault found. Open Graphene once and choose a vault, or pass --vault <folder> (or set GRAPHENE_VAULT).";
+
+/** One folder, whatever it is called, as the only vault (the flag, the env variable, tests). */
+export function singleVault(path: string): VaultSource {
+  const clean = joinPath(path);
+  const name = folderName(clean);
+  const view = { vaults: [{ name, path: clean }], active: name };
+  return async () => view;
+}
+
+/**
+ * The vaults in the app's config (see src/lib/vaultList.ts), those it shares. If the file cannot be read for a moment
+ * the list from the last good read stays in use.
+ */
+export function configVaults(env: NodeJS.ProcessEnv): VaultSource {
+  const file = joinPath(
     appDataDir(env),
     "com.graphene.app",
     "graphene",
     "config.json",
   );
-  try {
-    const { vaultPath } = JSON.parse(await readFile(config, "utf8"));
-    if (typeof vaultPath === "string") return joinPath(vaultPath);
-  } catch {
-    // fall through to the error below
-  }
-  throw new Error(
-    "No vault found. Open Graphene once and choose a vault, or pass --vault <folder> (or set GRAPHENE_VAULT).",
-  );
+  let lastGood: VaultView | null = null;
+  return async () => {
+    let config: VaultConfig;
+    try {
+      config = parseVaultConfig(JSON.parse(await readFile(file, "utf8")));
+    } catch {
+      if (!lastGood) throw new Error(NO_VAULT);
+      return lastGood;
+    }
+    // Graphene has never had a vault chosen: that is the "open Graphene once" case, not "nothing is shared"
+    if (config.vaults.length === 0 && !lastGood) throw new Error(NO_VAULT);
+    const vaults = sharedVaults(config).map(({ name, path }) => ({
+      name,
+      path: joinPath(path),
+    }));
+    const open = vaults.find(
+      (v) =>
+        config.active !== null && pathKey(v.path) === pathKey(config.active),
+    );
+    lastGood = { vaults, active: open?.name ?? vaults[0]?.name ?? null };
+    return lastGood;
+  };
+}
+
+/** `--vault <folder>` or GRAPHENE_VAULT pin one vault; otherwise the vaults Graphene shares. */
+export function vaultSource(
+  argv: string[],
+  env: NodeJS.ProcessEnv,
+): VaultSource {
+  const at = argv.indexOf("--vault");
+  const given =
+    (at >= 0 ? argv[at + 1] : undefined) ??
+    argv.find((a) => a.startsWith("--vault="))?.slice("--vault=".length) ??
+    envValue(env.GRAPHENE_VAULT);
+  return given ? singleVault(given) : configVaults(env);
 }

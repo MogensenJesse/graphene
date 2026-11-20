@@ -1,11 +1,18 @@
 // src/components/dialogs/VaultPicker.tsx
 import { useState } from "react";
-import { pickVaultPath, setVaultPath } from "../../lib/vault";
+import { pickVaultPath } from "../../lib/vault";
 import { HexagonIcon } from "../ui/Icon";
 import WindowControls from "../ui/WindowControls";
 
+interface VaultPickerProps {
+  /** Adds the folder as a vault and opens it */
+  onChoose: (path: string) => Promise<unknown>;
+  /** The saved list of vaults could not be read */
+  unreadable?: boolean;
+}
+
 // The first screen: choose the folder that holds the notes
-function VaultPicker({ onVaultSet }: { onVaultSet: (path: string) => void }) {
+function VaultPicker({ onChoose, unreadable }: VaultPickerProps) {
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,10 +21,7 @@ function VaultPicker({ onVaultSet }: { onVaultSet: (path: string) => void }) {
     setError(null);
     try {
       const chosen = await pickVaultPath();
-      if (chosen) {
-        await setVaultPath(chosen);
-        onVaultSet(chosen);
-      }
+      if (chosen) await onChoose(chosen);
     } catch (err) {
       setError("Failed to pick folder. Please try again.");
       console.error("[VaultPicker]", err);
@@ -37,6 +41,12 @@ function VaultPicker({ onVaultSet }: { onVaultSet: (path: string) => void }) {
           Choose a folder to use as your vault. Your notes will be stored as
           files inside it.
         </p>
+        {unreadable && (
+          <p className="vault-picker__error">
+            Graphene could not read its list of vaults. The old file was kept as
+            config.json.bak next to it. Choose your vault folder again.
+          </p>
+        )}
         {error && <p className="vault-picker__error">{error}</p>}
         <button
           type="button"

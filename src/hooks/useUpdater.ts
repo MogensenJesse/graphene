@@ -17,6 +17,8 @@ const FLASH_MS = 2500;
 const messageOf = (err: unknown) =>
   err instanceof Error ? err.message : String(err);
 
+export type Updater = ReturnType<typeof useUpdater>;
+
 /**
  * Looks for a newer release once after launch and on demand. The install is the user's call:
  * `update` is set when one exists, and `install` downloads it and hands over to the installer

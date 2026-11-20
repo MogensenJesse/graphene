@@ -19,36 +19,62 @@
     cursor: default;
   }
 
-  // Right end of the header: update pill + version, both clickable inside the drag region
-  &__version-wrap {
+  // Right end of the header: the update pill (while there is an update) and the vault switcher, both clickable inside
+  // the drag region. The sidebar is 252px wide: the brand keeps its width and the vault name gives way with an ellipsis.
+  &__header-end {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    min-width: 0;
     margin-left: auto;
     -webkit-app-region: no-drag;
   }
 
-  &__version,
   &__update-pill {
+    flex-shrink: 0;
     font-family: inherit;
     background: none;
     border: none;
     cursor: pointer;
   }
 
-  &__version {
-    padding: 2px 4px;
+  // The open vault's name; opens the list of vaults
+  &__vault {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    max-width: 160px;
+    height: 24px;
+    padding: 0 6px 0 8px;
+    font-family: inherit;
     font-size: 11px;
-    color: var(--color-text-tertiary);
-    border-radius: var(--border-radius-sm);
-    transition: color var(--transition-fast);
+    color: var(--color-text-secondary);
+    background: var(--color-background-hover);
+    border: none;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
 
-    &:hover:not(:disabled) {
-      color: var(--color-text-secondary);
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    &:disabled {
-      cursor: default;
+    svg {
+      flex-shrink: 0;
+      color: var(--color-text-tertiary);
+    }
+
+    &:hover {
+      color: var(--color-text-primary);
+      background: var(--color-background-hover-strong);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-text-info);
+      outline-offset: 1px;
     }
   }
 
@@ -69,6 +95,7 @@
   &__brand {
     display: flex;
     align-items: center;
+    flex-shrink: 0;
     gap: 7px;
     font-size: 12px;
     font-weight: 600;
@@ -81,45 +108,11 @@
     }
   }
 
-  // ── Type filter: segmented control ──────────────────────────────────────
+  // ── Type filter: the shared segmented control, above the folder tree ────
 
   &__segments {
-    display: flex;
-    gap: 2px;
     margin: 8px 8px 0;
-    padding: 2px;
-    border-radius: calc(var(--border-radius-row) + 3px);
-    background: var(--color-background-hover);
     flex-shrink: 0;
-  }
-
-  &__segment {
-    flex: 1;
-    padding: 5px 0;
-    font-size: 12px;
-    font-family: inherit;
-    border: none;
-    border-radius: var(--border-radius-row);
-    background: none;
-    color: var(--color-text-tertiary);
-    cursor: pointer;
-    transition: background var(--transition-fast), color var(--transition-fast);
-
-    &:hover {
-      color: var(--color-text-secondary);
-    }
-
-    &--active,
-    &--active:hover {
-      background: var(--color-background-active);
-      color: var(--color-text-primary);
-      font-weight: 500;
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
-    }
   }
 
   // ── Nav rows: new note, new code, search, trash ─────────────────────────
@@ -165,14 +158,6 @@
       color: var(--color-text-primary);
     }
 
-    // A note is being dragged over the Trash button (after --active so it also wins while the Trash is open)
-    &--drag-over,
-    &--drag-over:hover {
-      background: var(--color-background-danger);
-      color: var(--color-text-danger);
-      box-shadow: inset 0 0 0 1px var(--color-border-danger);
-    }
-
     &:focus-visible {
       outline: 2px solid var(--color-text-info);
       outline-offset: -2px;
@@ -186,40 +171,79 @@
     color: var(--color-text-tertiary);
   }
 
+  // ── Footer: Trash and Settings ──────────────────────────────────────────
 
   &__footer {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 4px;
     padding: 4px 8px 8px;
     flex-shrink: 0;
+
+    // A note is being dragged: the row is one wide Trash target, so the gear steps aside
+    &--dragging .sidebar__icon-btn--footer {
+      display: none;
+    }
   }
 
-  // The theme button at the right end of the header: one click cycles system, light, dark
-  &__theme-btn {
-    flex-shrink: 0;
+  // Trash: a small button with its count at rest
+  &__trash {
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    color: var(--color-text-tertiary);
+    gap: 8px;
+    height: 32px;
+    padding: 0 10px;
+    box-sizing: border-box;
+    font-family: inherit;
+    color: var(--color-text-secondary);
     background: none;
-    border: none;
-    border-radius: var(--border-radius-md);
+    border: 1px solid transparent;
+    border-radius: var(--border-radius-row);
     cursor: pointer;
     transition: background var(--transition-fast), color var(--transition-fast);
+
+    svg {
+      flex-shrink: 0;
+    }
 
     &:hover {
       background: var(--color-background-hover);
       color: var(--color-text-primary);
     }
 
+    // The Trash view is open
+    &--active,
+    &--active:hover {
+      background: var(--color-background-active);
+      color: var(--color-text-primary);
+    }
+
+    // A note is being dragged: the button grows to the whole row, and tints when the note is over it
+    &--drop {
+      flex: 1;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--color-text-danger);
+      border: 1px dashed var(--color-border-danger);
+    }
+
+    &--drop:hover,
+    &--over,
+    &--over:hover {
+      background: var(--color-background-danger);
+      color: var(--color-text-danger);
+    }
+
     &:focus-visible {
       outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
+      outline-offset: -2px;
     }
+  }
+
+  &__trash-count {
+    font-size: 11px;
+    color: var(--color-text-tertiary);
   }
 
   // ── Folder section ──────────────────────────────────────────────────────
@@ -256,6 +280,7 @@
 
   &__folders-label {
     font-size: 11px;
+    font-variant-numeric: tabular-nums;
     font-weight: 600;
     color: var(--color-text-secondary);
   }
@@ -315,7 +340,7 @@
     }
   }
 
-  // The plug button in the footer, as tall as the Trash button beside it
+  // The settings button in the footer, as tall as the Trash button beside it
   &__icon-btn--footer {
     width: 32px;
     height: 32px;
@@ -444,14 +469,6 @@
 
   &--selected &__type-icon {
     color: var(--color-text-secondary);
-  }
-
-  // "2/5" on a to-do
-  &__progress {
-    flex-shrink: 0;
-    font-size: 10px;
-    font-variant-numeric: tabular-nums;
-    color: var(--color-text-tertiary);
   }
 
   // Inline rename, same look as the folder rename input

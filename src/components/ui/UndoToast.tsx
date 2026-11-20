@@ -1,17 +1,17 @@
 // src/components/ui/UndoToast.tsx
-import { useEffect } from "react";
+import { type ReactNode, useEffect } from "react";
 import { useLatest } from "../../hooks/useLatest";
 
 const SHOW_MS = 6000;
 
 interface UndoToastProps {
-  title: string;
+  message: ReactNode;
   onUndo: () => void;
   onClose: () => void;
 }
 
-/** "Moved "x" to trash" with an Undo button, at the bottom of the main panel. It goes by itself after a few seconds. */
-function UndoToast({ title, onUndo, onClose }: UndoToastProps) {
+/** A message with an Undo button, at the bottom of the main panel ("Moved "x" to trash"). It goes by itself after a few seconds. */
+function UndoToast({ message, onUndo, onClose }: UndoToastProps) {
   const close = useLatest(onClose);
   useEffect(() => {
     const t = setTimeout(() => close.current(), SHOW_MS);
@@ -20,10 +20,7 @@ function UndoToast({ title, onUndo, onClose }: UndoToastProps) {
 
   return (
     <div className="toast" role="status">
-      <span className="toast__text">
-        Moved &ldquo;<span className="toast__title">{title || "Untitled"}</span>
-        &rdquo; to trash
-      </span>
+      <span className="toast__text">{message}</span>
       <button type="button" className="toast__btn" onClick={onUndo}>
         Undo
       </button>

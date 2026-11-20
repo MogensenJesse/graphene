@@ -431,10 +431,9 @@ export function ClipboardCopyIcon(props: IconProps) {
   );
 }
 
-/** The icon of a note kind: note, code or to-do. */
+/** The icon of a note kind: note or code. */
 export function KindIcon({ kind, size }: IconProps & { kind: ItemKind }) {
   if (kind === "code") return <CodeIcon size={size} />;
-  if (kind === "todo") return <ListTodoIcon size={size} />;
   return <NoteIcon size={size} />;
 }
 
@@ -444,19 +443,6 @@ export function ListChecksIcon(props: IconProps) {
     <Svg {...props}>
       <path d="m3 17 2 2 4-4" />
       <path d="m3 7 2 2 4-4" />
-      <path d="M13 6h8" />
-      <path d="M13 12h8" />
-      <path d="M13 18h8" />
-    </Svg>
-  );
-}
-
-// lucide: list-todo
-export function ListTodoIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <rect x="3" y="5" width="6" height="6" rx="1" />
-      <path d="m3 17 2 2 4-4" />
       <path d="M13 6h8" />
       <path d="M13 12h8" />
       <path d="M13 18h8" />
@@ -546,14 +532,49 @@ export function MonitorIcon(props: IconProps) {
   );
 }
 
-// lucide: plug
-export function PlugIcon(props: IconProps) {
+// lucide: circle-check
+export function CircleCheckIcon(props: IconProps) {
   return (
     <Svg {...props}>
-      <path d="M12 22v-5" />
-      <path d="M15 8V2" />
-      <path d="M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z" />
-      <path d="M9 8V2" />
+      <circle cx="12" cy="12" r="10" />
+      <path d="m9 12 2 2 4-4" />
+    </Svg>
+  );
+}
+
+// lucide: calendar
+export function CalendarIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M8 2v4" />
+      <path d="M16 2v4" />
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M3 10h18" />
+    </Svg>
+  );
+}
+
+// lucide: star (filled for a task marked important)
+export function StarIcon({
+  filled = false,
+  ...props
+}: IconProps & { filled?: boolean }) {
+  return (
+    <Svg {...props}>
+      <path
+        fill={filled ? "currentColor" : "none"}
+        d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
+      />
+    </Svg>
+  );
+}
+
+// lucide: settings
+export function GearIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" />
+      <circle cx="12" cy="12" r="3" />
     </Svg>
   );
 }

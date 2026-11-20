@@ -3,14 +3,20 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ConnectAgentsDialog from "./components/dialogs/ConnectAgentsDialog";
 import SearchPalette from "./components/dialogs/SearchPalette";
+import SettingsDialog, {
+  type OpenSettings,
+  type SettingsTab,
+} from "./components/dialogs/SettingsDialog";
 import TrashView from "./components/dialogs/TrashView";
 import UpdateDialog from "./components/dialogs/UpdateDialog";
 import VaultPicker from "./components/dialogs/VaultPicker";
+import VaultUnavailable from "./components/dialogs/VaultUnavailable";
 import NoteDetail from "./components/note/NoteDetail";
 import NoteEditor from "./components/note/NoteEditor";
-import Sidebar from "./components/sidebar/Sidebar";
+import Sidebar, { type SidebarTab } from "./components/sidebar/Sidebar";
+import TaskLists from "./components/sidebar/TaskLists";
+import TasksPane from "./components/tasks/TasksPane";
 import type { MenuEntry } from "./components/ui/ContextMenu";
 import ContextMenuProvider, {
   useContextMenu,
@@ -18,6 +24,7 @@ import ContextMenuProvider, {
 import {
   CopyIcon,
   ExternalLinkIcon,
+  GearIcon,
   SearchIcon,
   TrashIcon,
 } from "./components/ui/Icon";
@@ -32,15 +39,18 @@ import type { AddItemFields, UpdateItemFields } from "./hooks/useItems";
 import { useItems } from "./hooks/useItems";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useMediaQuery } from "./hooks/useMediaQuery";
+import { useTaskDrag } from "./hooks/useTaskDrag";
+import { useTasks } from "./hooks/useTasks";
 import { useUpdater } from "./hooks/useUpdater";
 import { useVaultRefresh } from "./hooks/useVaultRefresh";
+import { useVaults, type Vaults } from "./hooks/useVaults";
 import { saveImage, VaultPathContext } from "./lib/attachmentStore";
 import { extOf } from "./lib/paths";
 import { readPref, writePref } from "./lib/prefs";
 import { folderAbsPath, itemFilePath, loadVault } from "./lib/storage";
-import { moveTask, toggleTaskAt } from "./lib/tasks";
+import { DEFAULT_LIST_ID, orderedLists, type Task } from "./lib/taskStore";
+import { toggleTaskAt } from "./lib/tasks";
 import { isTextField } from "./lib/textMenu";
-import { getVaultPath } from "./lib/vault";
 import type { Item, ItemKind, TypeFilter } from "./types";
 
 type Mode = "new" | "detail" | "edit" | "trash";
@@ -48,10 +58,31 @@ type Mode = "new" | "detail" | "edit" | "trash";
 // Below this window width the sidebar starts out hidden, and opens over the note instead of beside it
 const COMPACT_QUERY = "(max-width: 799px)";
 const SIDEBAR_HIDDEN_KEY = "graphene.sidebarHidden";
+const SIDEBAR_TAB_KEY = "graphene.sidebarTab";
+const TASK_VIEW_KEY = "graphene.taskView";
 
 const appWindow = getCurrentWindow();
 
-function MainApp({ vaultPath }: { vaultPath: string }) {
+interface MainAppProps {
+  vaultPath: string;
+  vaults: Vaults;
+  updateAvailable: boolean;
+  onShowUpdate: () => void;
+  /** Set by the open editor: save now if dirty. Owned by App, so the window close and the updater reach it too */
+  flushRef: React.RefObject<(() => void) | null>;
+  onOpenSettings: OpenSettings;
+}
+
+// Everything that belongs to one open vault. App gives it a `key`, so switching vaults starts it fresh:
+// lists, selection, drafts and effects all reset.
+function MainApp({
+  vaultPath,
+  vaults,
+  updateAvailable,
+  onShowUpdate,
+  flushRef,
+  onOpenSettings,
+}: MainAppProps) {
   const { open } = useContextMenu();
   const {
     items,
@@ -122,7 +153,11 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
       updateItem(id, id === movedId ? { folderId, order } : { order }, false);
   };
 
-  // Load all items + folders + trash from vault on mount
+  // Load all items + folders + trash from vault on mount. A folder that cannot be opened is shown as such (see
+  // renderMain), not as an empty vault: saving into it would create it again.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadTry, setLoadTry] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loadTry is the "try again" trigger
   useEffect(() => {
     loadVault(vaultPath)
       .then(
@@ -134,10 +169,14 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
           setItems(loadedItems);
           setFolders(loadedFolders);
           setTrashed(loadedTrash);
+          setLoadFailed(false);
         },
       )
-      .catch(console.error);
-  }, [vaultPath, setItems, setFolders, setTrashed]);
+      .catch((err) => {
+        console.error(err);
+        setLoadFailed(true);
+      });
+  }, [vaultPath, loadTry, setItems, setFolders, setTrashed]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -147,6 +186,26 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
   // Goes up on each Ctrl+F; the open note or editor shows its find bar when it changes
   const [findSignal, setFindSignal] = useState(0);
   const [mode, setMode] = useState<Mode>("new");
+
+  // The to-do half of the app: its own sidebar tab, lists and tasks, apart from the notes
+  const tasksApi = useTasks(vaultPath);
+  const taskDrag = useTaskDrag(tasksApi);
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>(() =>
+    readPref(SIDEBAR_TAB_KEY) === "tasks" ? "tasks" : "notes",
+  );
+  // "my-day", "important" or a list id; a list that is gone shows the default one (see TasksPane)
+  const [taskView, setTaskView] = useState(
+    () => readPref(TASK_VIEW_KEY) ?? DEFAULT_LIST_ID,
+  );
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  // Goes up when "Add a task" should take the focus
+  const [addTaskSignal, setAddTaskSignal] = useState(0);
+  // The task last deleted, for the Undo toast
+  const [taskToast, setTaskToast] = useState<{
+    key: number;
+    listId: string;
+    task: Task;
+  } | null>(null);
 
   // A wide window keeps the sidebar the way the user left it; a small one hides it, and the toggle opens it
   // for as long as the window stays small
@@ -192,8 +251,6 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
   const [isDirtyEdit, setIsDirtyEdit] = useState(false);
   // Item the open editor writes to; null = unsaved draft. A ref so a flush before re-render still sees it
   const editingIdRef = useRef<string | null>(null);
-  // Set by NoteEditor: save now if dirty
-  const flushRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (selectedId && !items.some((i) => i.id === selectedId)) {
@@ -222,6 +279,7 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
   };
 
   const handleSelect = (id: string) => {
+    showNotes();
     leaveEditor();
     setSelectedId(id);
     setSelectedFolderId(null);
@@ -236,6 +294,7 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
   // folderId omitted = wherever the selection is (folder, else the open item's folder); null = no folder
   const handleNew = (kind: ItemKind, folderId?: string | null) => {
     if (mode === "new" && isDirtyEdit) return; // keep a draft that has content
+    showNotes();
     leaveEditor();
     setDraft((d) => ({
       key: d.key + 1,
@@ -270,16 +329,86 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     setMode("detail");
   };
 
+  const showNotes = () => {
+    if (sidebarTab === "notes") return;
+    setSidebarTab("notes");
+    writePref(SIDEBAR_TAB_KEY, "notes");
+  };
+
+  const handleTab = (tab: SidebarTab) => {
+    if (tab === sidebarTab) return;
+    if (tab === "notes") {
+      showNotes();
+      return;
+    }
+    // Leaving the notes saves what is being typed. The note comes back in the reading view, a blank draft blank.
+    const savedId = leaveEditor();
+    setSelectedFolderId(null); // a picked folder would keep the Del key while its row is out of sight
+    if (mode === "edit" || mode === "new") {
+      if (savedId) {
+        setSelectedId(savedId);
+        setMode("detail");
+      } else {
+        setSelectedId(null);
+        setMode("new");
+        setDraft((d) => ({ ...d, key: d.key + 1 }));
+      }
+    }
+    setSidebarTab("tasks");
+    writePref(SIDEBAR_TAB_KEY, "tasks");
+  };
+
+  const handleSelectTaskView = (view: string) => {
+    setTaskView(view);
+    writePref(TASK_VIEW_KEY, view);
+    setOpenTaskId(null);
+    closeFloating();
+  };
+
+  const handleTaskDeleted = (listId: string, task: Task) => {
+    setTrashToast(null);
+    setTaskToast({ key: Date.now(), listId, task });
+  };
+
+  const handleUndoTask = () => {
+    const toast = taskToast;
+    setTaskToast(null);
+    if (toast) tasksApi.restoreTask(toast.listId, toast.task);
+  };
+
+  const inTasks = sidebarTab === "tasks";
+
+  // Every task with its list, for Ctrl+K
+  const taskEntries = useMemo(
+    () =>
+      orderedLists(tasksApi.index).flatMap((l) =>
+        (tasksApi.tasks[l.id] ?? []).map((task) => ({
+          listId: l.id,
+          listName: l.name,
+          task,
+        })),
+      ),
+    [tasksApi.index, tasksApi.tasks],
+  );
+
   useKeyboardShortcuts({
     mode,
-    hasSelection: !!selectedId,
-    onNew: handleNew,
+    hasSelection: !!selectedId && !inTasks,
+    // In the Tasks tab Ctrl+N goes to the "Add a task" box; there is no code task
+    onNew: (kind) =>
+      inTasks
+        ? kind === "note" && setAddTaskSignal((n) => n + 1)
+        : handleNew(kind),
     onEdit: handleEdit,
     onDone: handleDone,
     onOpenSearch: () => setSearchOpen(true),
-    // Find in the open note or editor; with neither on screen (trash), Ctrl+F is search
+    // Find in the open note or editor; with neither on screen (trash, tasks), Ctrl+F is search
     onFind: () =>
-      mode === "trash" ? setSearchOpen(true) : setFindSignal((n) => n + 1),
+      mode === "trash" || inTasks
+        ? setSearchOpen(true)
+        : setFindSignal((n) => n + 1),
+    onOpenSettings: () => onOpenSettings(),
+    onSwitchTab: () => handleTab(inTasks ? "notes" : "tasks"),
   });
 
   // First save of a draft creates the item; later saves update it. The mode flips new -> edit
@@ -304,21 +433,6 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     [saveFromEditor, addItem],
   );
 
-  // Save a pending edit before the window goes away (close, or the updater's installer)
-  const flushPendingSave = useCallback(async () => {
-    flushRef.current?.();
-    // ponytail: saves are fire-and-forget (not awaited), so a fixed delay lets the write land.
-    // Upgrade to awaiting tracked writes if saves ever get slow.
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }, []);
-
-  useEffect(() => {
-    const unlisten = appWindow.onCloseRequested(flushPendingSave);
-    return () => {
-      unlisten.then((fn) => fn()).catch(console.error);
-    };
-  }, [flushPendingSave]);
-
   // Notes changed outside Graphene show up when the window gets focus
   useVaultRefresh({
     vaultPath,
@@ -329,12 +443,6 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     isEditorDirty: isDirtyEdit,
     onReopenEditor: () => setDraft((d) => ({ ...d, key: d.key + 1 })),
   });
-
-  const updater = useUpdater(flushPendingSave);
-  const [updateOpen, setUpdateOpen] = useState(false);
-  const closeUpdate = useCallback(() => setUpdateOpen(false), []);
-  const [connectOpen, setConnectOpen] = useState(false);
-  const closeConnect = useCallback(() => setConnectOpen(false), []);
 
   // Pictures dropped on the window are copied into the vault's attachments folder and linked at the
   // cursor of the open editor; with no editor open there is nowhere to put them
@@ -377,6 +485,7 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     // missing item instead of creating one. Edits typed in the last moment go with the note.
     if (editingIdRef.current === id) editingIdRef.current = null;
     deleteItem(id);
+    setTaskToast(null);
     setTrashToast({ id, title: item.title });
   };
 
@@ -398,23 +507,13 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
     updateItem(id, { title });
   };
 
-  // A body edit made from the read view (ticking or moving a task). The offset says which task;
-  // `edit` re-checks it against the current text and returns null when it no longer fits.
-  const editBody = (id: string, edit: (body: string) => string | null) => {
+  // Ticks the checkbox whose marker starts at `offset` in the note. The offset comes from the page that
+  // was drawn, so it is re-checked against the current text: a stale one changes nothing.
+  const handleToggleTask = (id: string, offset: number) => {
     const item = itemsRef.current.find((i) => i.id === id);
-    const body = item && edit(item.body);
-    if (body !== null && body !== undefined) updateItem(id, { body });
+    const body = item && toggleTaskAt(item.body, offset);
+    if (body) updateItem(id, { body });
   };
-
-  const handleToggleTask = (id: string, offset: number) =>
-    editBody(id, (body) => toggleTaskAt(body, offset));
-
-  const handleMoveTask = (
-    id: string,
-    from: number,
-    to: number,
-    after: boolean,
-  ) => editBody(id, (body) => moveTask(body, from, to, after));
 
   // Open an item straight in the editor (sidebar menu). The editor may already be open on
   // something else, so bump the key to remount it on this item.
@@ -483,6 +582,31 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
   );
 
   const renderMain = () => {
+    if (loadFailed) {
+      return (
+        <VaultUnavailable
+          name={vaults.vaults.find((v) => v.path === vaultPath)?.name ?? ""}
+          path={vaultPath}
+          onRetry={() => setLoadTry((n) => n + 1)}
+          onManage={() => onOpenSettings("vaults")}
+        />
+      );
+    }
+
+    if (inTasks) {
+      return (
+        <TasksPane
+          view={taskView}
+          api={tasksApi}
+          openTaskId={openTaskId}
+          onOpenTask={setOpenTaskId}
+          onTaskDeleted={handleTaskDeleted}
+          addSignal={addTaskSignal}
+          onTaskPointerDown={taskDrag.startTask}
+        />
+      );
+    }
+
     if (mode === "trash") {
       return (
         <TrashView
@@ -504,7 +628,6 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
           onRename={handleRename}
           onMove={moveItem}
           onToggleTask={handleToggleTask}
-          onMoveTask={handleMoveTask}
           findSignal={findSignal}
           deleteKeyEnabled={selectedFolderId === null}
           moreEntries={moreEntries}
@@ -541,6 +664,11 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
       icon: <SearchIcon size={14} />,
       onSelect: () => setSearchOpen(true),
     },
+    {
+      label: "Settings",
+      icon: <GearIcon size={14} />,
+      onSelect: () => onOpenSettings(),
+    },
   ];
 
   return (
@@ -566,11 +694,22 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
             typeFilter={typeFilter}
             trashedCount={trashed.length}
             trashOpen={mode === "trash"}
-            version={updater.version}
-            updateStatus={updater.status}
-            updateAvailable={updater.update !== null}
-            onCheckUpdates={updater.checkNow}
-            onShowUpdate={() => setUpdateOpen(true)}
+            tab={sidebarTab}
+            onTabChange={handleTab}
+            tasksPanel={
+              <TaskLists
+                api={tasksApi}
+                selected={taskView}
+                onSelect={handleSelectTaskView}
+                onOpenSearch={() => setSearchOpen(true)}
+                onListPointerDown={taskDrag.startList}
+                onGroupPointerDown={taskDrag.startGroup}
+                dragOverId={taskDrag.dragOverId}
+              />
+            }
+            updateAvailable={updateAvailable}
+            vaults={vaults}
+            onShowUpdate={onShowUpdate}
             editingItemId={mode === "edit" ? selectedId : null}
             onSelect={(id) => {
               handleSelect(id);
@@ -585,7 +724,7 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
             onRevealItem={handleRevealItem}
             onRevealFolder={handleRevealFolder}
             onOpenTrash={handleOpenTrash}
-            onOpenConnect={() => setConnectOpen(true)}
+            onOpenSettings={onOpenSettings}
             onAddFolder={addFolder}
             onRenameFolder={updateFolder}
             onDeleteFolder={handleDeleteFolder}
@@ -612,36 +751,59 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
           {trashToast && (
             <UndoToast
               key={trashToast.id}
-              title={trashToast.title}
+              message={
+                <>
+                  Moved &ldquo;
+                  <span className="toast__title">
+                    {trashToast.title || "Untitled"}
+                  </span>
+                  &rdquo; to trash
+                </>
+              }
               onUndo={handleUndoDelete}
               onClose={closeTrashToast}
             />
           )}
+          {taskDrag.dragState && (
+            <div
+              className="drag-ghost"
+              style={{ left: taskDrag.dragState.x, top: taskDrag.dragState.y }}
+              aria-hidden="true"
+            >
+              {taskDrag.dragState.label}
+            </div>
+          )}
+          {taskToast && (
+            <UndoToast
+              key={taskToast.key}
+              message={
+                <>
+                  Deleted &ldquo;
+                  <span className="toast__title">{taskToast.task.title}</span>
+                  &rdquo;
+                </>
+              }
+              onUndo={handleUndoTask}
+              onClose={() => setTaskToast(null)}
+            />
+          )}
         </main>
       </div>
-      {updateOpen && updater.update && (
-        <UpdateDialog
-          current={updater.version}
-          update={updater.update}
-          notes={updater.notes}
-          status={updater.status}
-          progress={updater.progress}
-          error={updater.error}
-          canInstall={updater.canInstall}
-          onInstall={updater.install}
-          onClose={closeUpdate}
-        />
-      )}
-      {connectOpen && (
-        <ConnectAgentsDialog version={updater.version} onClose={closeConnect} />
-      )}
       {searchOpen && (
         <SearchPalette
           items={items}
           folders={folders}
+          tasks={taskEntries}
           onOpen={(id) => {
             setSearchOpen(false);
             handleSelect(id);
+          }}
+          onOpenTask={(listId, taskId) => {
+            setSearchOpen(false);
+            handleTab("tasks");
+            setTaskView(listId);
+            writePref(TASK_VIEW_KEY, listId);
+            setOpenTaskId(taskId);
           }}
           onClose={closeSearch}
         />
@@ -651,32 +813,95 @@ function MainApp({ vaultPath }: { vaultPath: string }) {
 }
 
 function App() {
-  const [vaultPath, setVaultPathState] = useState<string | null | undefined>(
-    undefined,
-  );
+  // Set by the open editor: save now if dirty
+  const flushRef = useRef<(() => void) | null>(null);
+  const flushNow = useCallback(() => flushRef.current?.(), []);
+  const vaults = useVaults(flushNow);
+  const vaultPath = vaults.active;
 
-  useEffect(() => {
-    getVaultPath()
-      .then(setVaultPathState)
-      .catch(() => setVaultPathState(null));
+  // Save a pending edit before the window goes away (close, or the updater's installer)
+  const flushPendingSave = useCallback(async () => {
+    flushRef.current?.();
+    // ponytail: saves are fire-and-forget (not awaited), so a fixed delay lets the write land.
+    // Upgrade to awaiting tracked writes if saves ever get slow.
+    await new Promise((resolve) => setTimeout(resolve, 200));
   }, []);
 
-  const handleVaultSet = (path: string) => {
-    setVaultPathState(path);
-  };
+  useEffect(() => {
+    const unlisten = appWindow.onCloseRequested(flushPendingSave);
+    return () => {
+      unlisten.then((fn) => fn()).catch(console.error);
+    };
+  }, [flushPendingSave]);
+
+  // Up here, not in MainApp: switching vaults remounts that, and the update check must not start over
+  const updater = useUpdater(flushPendingSave);
+
+  // Settings lives outside the vault's remount key, so it keeps its place while a vault is switched
+  const [settings, setSettings] = useState<{
+    tab: SettingsTab;
+    message: string | null;
+  } | null>(null);
+  const openSettings = useCallback<OpenSettings>(
+    (tab = "appearance", message) =>
+      setSettings({ tab, message: message ?? null }),
+    [],
+  );
+  const closeSettings = useCallback(() => setSettings(null), []);
+
+  // The update dialog opens from the header pill and from Settings > About (which closes first: one dialog at a time)
+  const [updateOpen, setUpdateOpen] = useState(false);
+  const showUpdate = useCallback(() => {
+    setSettings(null);
+    setUpdateOpen(true);
+  }, []);
+  const closeUpdate = useCallback(() => setUpdateOpen(false), []);
 
   // Still loading
-  if (vaultPath === undefined) return null;
+  if (!vaults.ready) return null;
 
   return (
     <ContextMenuProvider>
       {vaultPath === null ? (
-        // No vault chosen yet — show picker
-        <VaultPicker onVaultSet={handleVaultSet} />
+        // No vault yet (first run, or the last one was removed): choose one
+        <VaultPicker onChoose={vaults.add} unreadable={vaults.corrupt} />
       ) : (
-        <VaultPathContext.Provider value={vaultPath}>
-          <MainApp vaultPath={vaultPath} />
-        </VaultPathContext.Provider>
+        <>
+          <VaultPathContext.Provider value={vaultPath}>
+            <MainApp
+              key={vaultPath}
+              vaultPath={vaultPath}
+              vaults={vaults}
+              updateAvailable={updater.update !== null}
+              onShowUpdate={showUpdate}
+              flushRef={flushRef}
+              onOpenSettings={openSettings}
+            />
+          </VaultPathContext.Provider>
+          {settings && (
+            <SettingsDialog
+              initialTab={settings.tab}
+              initialMessage={settings.message}
+              updater={updater}
+              vaults={vaults}
+              onShowUpdate={showUpdate}
+              onClose={closeSettings}
+            />
+          )}
+          {updateOpen && updater.update && (
+            <UpdateDialog
+              current={updater.version}
+              update={updater.update}
+              notes={updater.notes}
+              status={updater.status}
+              progress={updater.progress}
+              error={updater.error}
+              canInstall={updater.canInstall}
+              onInstall={updater.install}
+              onClose={closeUpdate}
+            />
+          )}
+        </>
       )}
     </ContextMenuProvider>
   );

@@ -24,7 +24,7 @@ const manifest = {
   display_name: "Graphene notes",
   version,
   description:
-    "Lets Claude search, read and add to the notes in your Graphene vault.",
+    "Lets Claude search, read and add to the notes in your Graphene vaults.",
   author: { name: "MogensenJesse" },
   repository: { type: "git", url: "https://github.com/MogensenJesse/graphene" },
   icon: "icon.png",
@@ -43,7 +43,7 @@ const manifest = {
       type: "directory",
       title: "Notes folder",
       description:
-        "The folder your notes are in. Leave empty to use the vault Graphene has open.",
+        "Leave empty to use the vaults you share in Graphene (Settings, Vaults). A folder here uses only that one.",
       required: false,
     },
   },

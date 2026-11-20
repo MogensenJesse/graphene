@@ -1,6 +1,4 @@
 // src/components/sidebar/ItemRow.tsx
-import { useMemo } from "react";
-import { taskProgress } from "../../lib/tasks";
 import { itemKind } from "../../lib/utils";
 import type { Item } from "../../types";
 import { KindIcon } from "../ui/Icon";
@@ -30,10 +28,6 @@ function ItemRow({
   onRenameEnd,
 }: ItemRowProps) {
   const kind = itemKind(item);
-  const progress = useMemo(
-    () => (kind === "todo" ? taskProgress(item.body) : null),
-    [kind, item.body],
-  );
 
   return (
     // biome-ignore lint/a11y/useFocusableInteractive: the tree container is the single tab stop and takes the arrow keys, so rows are not focusable
@@ -69,11 +63,6 @@ function ItemRow({
         />
       ) : (
         <span className="item-row__title">{item.title}</span>
-      )}
-      {progress && progress.total > 0 && (
-        <span className="item-row__progress">
-          {progress.done}/{progress.total}
-        </span>
       )}
       {isUnsaved && (
         <Tooltip label="Unsaved changes">

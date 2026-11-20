@@ -13,10 +13,13 @@ interface ModalProps {
 
 // Backdrop + centred panel shared by the search palette and the update dialog
 function Modal({ label, onClose, className, children }: ModalProps) {
-  // A right-click menu over the dialog takes the first Escape; the next one closes the dialog
+  // A right-click menu over the dialog takes the first Escape; the next one closes the dialog. So does a field
+  // that has its own use for it: wrap it in [data-owns-escape] (a rename that Escape cancels)
   useEscape(onClose, {
     capture: true,
-    when: () => !document.querySelector(".context-menu"),
+    when: () =>
+      !document.querySelector(".context-menu") &&
+      !document.activeElement?.closest("[data-owns-escape]"),
   });
 
   // Hand focus back to whatever had it before the dialog opened

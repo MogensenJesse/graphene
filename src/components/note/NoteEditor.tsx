@@ -6,7 +6,11 @@ import { useImageInsert } from "../../hooks/useImageInsert";
 import type { AddItemFields } from "../../hooks/useItems";
 import { replaceText, useMarkdownFormat } from "../../hooks/useMarkdownFormat";
 import { findFenceAt, setFenceLang } from "../../lib/codeBlocks";
-import { activeFormats, continueTask } from "../../lib/markdownFormat";
+import {
+  activeFormats,
+  continueTask,
+  shiftTaskIndent,
+} from "../../lib/markdownFormat";
 import type { Folder, Item, ItemKind } from "../../types";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
@@ -18,7 +22,6 @@ import CopyNoteButton from "./CopyNoteButton";
 import FindBar from "./FindBar";
 import ItemHeader from "./ItemHeader";
 import MarkdownToolbar, { formatMenuEntry } from "./MarkdownToolbar";
-import TodoBadge from "./TodoBadge";
 import WordCount from "./WordCount";
 
 const AUTOSAVE_DELAY_MS = 800;
@@ -27,9 +30,6 @@ const AUTOSAVE_DELAY_MS = 800;
 // inserts) with the caret inside it. The word after the opening fence is the language.
 const CODE_SEED = "```\n\n```";
 const CODE_SEED_CARET = 4;
-
-// A new to-do draft starts with its first task, the caret after it
-const TODO_SEED = "- [ ] ";
 
 // Tab inserts spaces instead of leaving the field. execCommand is deprecated but is the only way
 // to insert text without wiping the textarea's undo history.
@@ -77,8 +77,7 @@ function NoteEditor({
   insertImagesRef,
   moreEntries,
 }: NoteEditorProps) {
-  const seedBody =
-    newKind === "code" ? CODE_SEED : newKind === "todo" ? TODO_SEED : "";
+  const seedBody = newKind === "code" ? CODE_SEED : "";
   const [title, setTitle] = useState(initialItem?.title ?? "");
   const [body, setBody] = useState(initialItem?.body ?? seedBody);
   // An existing root-level item has folderId null, so `??` chaining would wrongly pick the default
@@ -299,6 +298,21 @@ function NoteEditor({
         return;
       }
     }
+    // Tab / Shift+Tab on a task line moves the whole line in or out: a sub-task
+    if (e.key === "Tab" && !(e.ctrlKey || e.metaKey || e.altKey) && !block) {
+      const el = e.currentTarget;
+      const edit = shiftTaskIndent(
+        el.value,
+        el.selectionStart,
+        el.selectionEnd,
+        e.shiftKey,
+      );
+      if (edit) {
+        e.preventDefault();
+        replaceText(el, edit);
+        return;
+      }
+    }
     insertTabOnTab(e);
   };
 
@@ -317,7 +331,6 @@ function NoteEditor({
         folders={folders}
         folderId={folderId}
         onFolderChange={setFolderId}
-        badge={<TodoBadge body={body} />}
         isDirty={isDirty}
         actions={
           <div className="item-header__actions">

@@ -1,23 +1,13 @@
 // src/lib/utils.ts
 import type { Folder, Item, ItemKind } from "../types";
-import { isTodoBody } from "./tasks";
 
 /** A code body starts with a fenced block; its note gets the code icon, the "code" filter and a line count. */
 export function isCodeBody(body: string): boolean {
   return /^\s*```/.test(body);
 }
 
-function isCodeItem(item: Item): boolean {
-  return isCodeBody(item.body);
-}
-
-/** A to-do is a note that starts with a task (after any headings); a code item is never one. */
-export function isTodoItem(item: Item): boolean {
-  return !isCodeItem(item) && isTodoBody(item.body);
-}
-
 export function itemKind(item: Item): ItemKind {
-  return isCodeItem(item) ? "code" : isTodoItem(item) ? "todo" : "note";
+  return isCodeBody(item.body) ? "code" : "note";
 }
 
 const FENCE_LINE = /^\s*(```|~~~)/;

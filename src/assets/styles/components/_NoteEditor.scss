@@ -41,8 +41,8 @@
 
   &__textarea {
     flex: 1;
-    font-size: 13px;
-    font-family: var(--font-mono);
+    font-size: calc(13px * var(--text-scale));
+    font-family: var(--font-editor);
     line-height: 1.7;
     background: none;
     border: none;

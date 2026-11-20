@@ -12,7 +12,7 @@ interface Ranked {
   order?: number;
 }
 
-function manualBy<T extends { order?: number }>(name: (t: T) => string) {
+export function manualBy<T extends { order?: number }>(name: (t: T) => string) {
   return (a: T, b: T): number => {
     const ra = a.order ?? Number.POSITIVE_INFINITY;
     const rb = b.order ?? Number.POSITIVE_INFINITY;

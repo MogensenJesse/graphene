@@ -9,9 +9,9 @@ export interface Folder {
   order?: number;
 }
 
-// What an item is, derived from its text: "code" starts with a fenced block, "todo" starts with a
-// task (see lib/utils itemKind). All are plain markdown notes on disk.
-export type ItemKind = "note" | "code" | "todo";
+// What an item is, derived from its text: "code" starts with a fenced block (see lib/utils itemKind).
+// Both are plain markdown notes on disk.
+export type ItemKind = "note" | "code";
 export type TypeFilter = "all" | ItemKind;
 
 // One kind of item: a markdown note.

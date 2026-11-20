@@ -1,5 +1,6 @@
 // src/components/sidebar/FolderRow.tsx
-import { useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
+import { VaultPathContext } from "../../lib/attachmentStore";
 import { isFolderCollapsed, setFolderCollapsed } from "../../lib/prefs";
 import type { Folder, Item, ItemKind } from "../../types";
 import type { MenuEntry } from "../ui/ContextMenu";
@@ -81,9 +82,10 @@ function FolderRow({
   onItemContextMenu,
   onItemRenameEnd,
 }: FolderRowProps) {
-  // ponytail: collapsed state is keyed by folder path, so a renamed folder comes back expanded
+  // ponytail: collapsed state is keyed by vault and folder path, so a renamed folder comes back expanded
+  const vault = useContext(VaultPathContext) ?? "";
   const [isExpanded, setIsExpanded] = useState(
-    () => !isFolderCollapsed(folder.id),
+    () => !isFolderCollapsed(vault, folder.id),
   );
   const [isRenaming, setIsRenaming] = useState(false);
   const [showAddChild, setShowAddChild] = useState(false);
@@ -115,7 +117,7 @@ function FolderRow({
 
   const setExpanded = (value: boolean) => {
     setIsExpanded(value);
-    setFolderCollapsed(folder.id, !value);
+    setFolderCollapsed(vault, folder.id, !value);
   };
 
   const openMenu = (x: number, y: number) =>

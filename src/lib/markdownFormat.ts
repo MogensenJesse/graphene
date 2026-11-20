@@ -252,6 +252,35 @@ export function continueTask(
 }
 
 /**
+ * What Tab and Shift+Tab do on a task line: the whole line moves two spaces in or out (a sub-task), the
+ * caret keeps its place in the text. Null when the selection is not within one task line, so Tab keeps its
+ * normal meaning.
+ */
+export function shiftTaskIndent(
+  value: string,
+  ss: number,
+  se: number,
+  outdent: boolean,
+): TextEdit | null {
+  const lineStart = ss === 0 ? 0 : value.lastIndexOf("\n", ss - 1) + 1;
+  const eol = value.indexOf("\n", ss);
+  const lineEnd = eol === -1 ? value.length : eol;
+  if (se > lineEnd) return null;
+  const line = value.slice(lineStart, lineEnd);
+  if (!/^[ \t]*(?:[*+-]|\d{1,9}[.)])[ \t]+\[[ xX]\](?:\s|$)/.test(line))
+    return null;
+  const out = outdent ? Math.min(2, /^[ \t]*/.exec(line)?.[0].length ?? 0) : 0;
+  if (outdent && out === 0) return null;
+  const rest = outdent ? value.slice(lineStart + out) : value.slice(lineStart);
+  const delta = outdent ? -out : 2;
+  return {
+    value: value.slice(0, lineStart) + (outdent ? "" : "  ") + rest,
+    ss: Math.max(lineStart, ss + delta),
+    se: Math.max(lineStart, se + delta),
+  };
+}
+
+/**
  * The toggle formats that are on at the selection ss..se, i.e. the ones a press of their button
  * would take off: inline ones when the selection sits in their span, line ones when every line
  * of the selection has the prefix. Same rules as formatText, so the two always agree.

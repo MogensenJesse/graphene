@@ -1,5 +1,5 @@
 // src/lib/dragDrop.ts
-// Shared by the drags that reorder rows (notes and folders in the sidebar, tasks in a to-do note):
+// Shared by the drags that reorder rows (notes and folders in the sidebar, tasks, to-do lists and their groups):
 // the row a dragged one would land next to carries data-drop="before|after" (styles in _DragDrop.scss).
 
 export function clearDropMarks(): void {

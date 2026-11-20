@@ -1,0 +1,45 @@
+// src/assets/styles/components/_Segments.scss
+// A row of buttons of which one is pressed (see ui/Segmented.tsx)
+
+.segments {
+  display: flex;
+  gap: 2px;
+  min-width: 0; // it is a <fieldset>, which would not shrink below its content
+  padding: 2px;
+  border: none;
+  border-radius: calc(var(--border-radius-row) + 3px);
+  background: var(--color-background-hover);
+
+  &__item {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 5px 0;
+    font-size: 12px;
+    font-family: inherit;
+    border: none;
+    border-radius: var(--border-radius-row);
+    background: none;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+
+    &:hover {
+      color: var(--color-text-secondary);
+    }
+
+    &--active,
+    &--active:hover {
+      background: var(--color-background-active);
+      color: var(--color-text-primary);
+      font-weight: 500;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-text-info);
+      outline-offset: 1px;
+    }
+  }
+}

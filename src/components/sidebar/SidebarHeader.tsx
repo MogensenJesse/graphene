@@ -1,31 +1,24 @@
 // src/components/sidebar/SidebarHeader.tsx
-import type { UpdateStatus } from "../../hooks/useUpdater";
+import type { Vaults } from "../../hooks/useVaults";
+import type { OpenSettings } from "../dialogs/SettingsDialog";
 import { HexagonIcon } from "../ui/Icon";
 import Tooltip from "../ui/Tooltip";
-import ThemeButton from "./ThemeButton";
-
-// What the version button says while an update check is in flight or has just finished
-const VERSION_LABEL: Partial<Record<UpdateStatus, string>> = {
-  checking: "Checking…",
-  "up-to-date": "Up to date",
-  error: "Check failed",
-};
+import VaultSwitcher from "./VaultSwitcher";
 
 interface SidebarHeaderProps {
-  version: string;
-  updateStatus: UpdateStatus;
   updateAvailable: boolean;
-  onCheckUpdates: () => void;
+  vaults: Vaults;
   onShowUpdate: () => void;
+  onOpenSettings: OpenSettings;
 }
 
-// Brand, "Update" pill, version button and theme button (everything about the app itself); the strip also drags the window
+// Brand on the left; on the right the "Update" pill (only while a new version exists) and the vault switcher.
+// The version number and the update check live in Settings > About. The strip also drags the window.
 function SidebarHeader({
-  version,
-  updateStatus,
   updateAvailable,
-  onCheckUpdates,
+  vaults,
   onShowUpdate,
+  onOpenSettings,
 }: SidebarHeaderProps) {
   return (
     <div className="sidebar__header" data-tauri-drag-region>
@@ -33,7 +26,7 @@ function SidebarHeader({
         <HexagonIcon size={14} />
         <span>Graphene</span>
       </div>
-      <div className="sidebar__version-wrap">
+      <div className="sidebar__header-end">
         {updateAvailable && (
           <Tooltip label="A new version is available">
             <button
@@ -45,21 +38,7 @@ function SidebarHeader({
             </button>
           </Tooltip>
         )}
-        {version && (
-          <Tooltip label="Check for updates">
-            <button
-              type="button"
-              className="sidebar__version"
-              onClick={onCheckUpdates}
-              disabled={
-                updateStatus === "checking" || updateStatus === "installing"
-              }
-            >
-              {VERSION_LABEL[updateStatus] ?? `v${version}`}
-            </button>
-          </Tooltip>
-        )}
-        <ThemeButton />
+        <VaultSwitcher vaults={vaults} onOpenSettings={onOpenSettings} />
       </div>
     </div>
   );

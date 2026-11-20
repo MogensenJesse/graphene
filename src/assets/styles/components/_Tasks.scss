@@ -1,0 +1,544 @@
+// src/assets/styles/components/_Tasks.scss
+// The Tasks tab's main pane: heading, the box to add a task, the rows, and the details that open under one.
+// The header reuses .item-header (drag region, padding that clears the window controls).
+@use '../base/mixins' as mixins;
+
+.tasks-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+
+  &__title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    color: var(--color-text-primary);
+  }
+
+  // An own list's name is a button: a click renames it
+  &__title-btn {
+    padding: 0 6px;
+    margin: 0 -6px;
+    font: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: text;
+
+    &:hover {
+      background: var(--color-background-hover);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-text-info);
+      outline-offset: 1px;
+    }
+  }
+
+  &__rename {
+    min-width: 0;
+    width: 260px;
+    padding: 0 6px;
+    margin: 0 -6px;
+    font: inherit;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--color-text-primary);
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-primary);
+    border-radius: var(--border-radius-sm);
+    outline: none;
+  }
+
+  &__count {
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+  }
+
+  &__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px var(--pane-pad) 24px;
+
+    @include mixins.custom-scrollbar;
+  }
+
+  // The column of the notes' text
+  &__column {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  &__list {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    // The line where a dragged task lands sits on the row, there is no gap to centre it in
+    --drop-gap: 0px;
+  }
+
+  &__empty {
+    margin: 20px 2px;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+  }
+
+  &__done-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 16px 0 0;
+    padding: 4px 2px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    background: none;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+
+    span {
+      font-weight: 400;
+      color: var(--color-text-tertiary);
+    }
+
+    &:hover {
+      color: var(--color-text-primary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-text-info);
+      outline-offset: 1px;
+    }
+  }
+}
+
+// ── The box to add a task ──────────────────────────────────────────────────────
+
+.add-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 8px 0 12px;
+  color: var(--color-text-tertiary);
+  background: var(--color-background-hover);
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-row);
+
+  &:focus-within {
+    border-color: var(--color-border-primary);
+  }
+
+  &__input {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+    font-size: 13px;
+    color: var(--color-text-primary);
+    background: none;
+    border: none;
+    outline: none;
+
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  &__date {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    color: var(--color-text-tertiary);
+    background: none;
+    border: none;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--color-text-secondary);
+      background: var(--color-background-active);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-text-info);
+      outline-offset: 1px;
+    }
+  }
+}
+
+// A picked day, shown as a pill
+.due-chip {
+  padding: 2px 9px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--color-text-info);
+  background: var(--color-background-info);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+// The system's date picker opens next to its button: the date input stays invisible under it
+.date-pick {
+  position: relative;
+  display: inline-flex;
+
+  &__input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+// ── A task ─────────────────────────────────────────────────────────────────────
+
+.task-row {
+  list-style: none;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 40px;
+    padding: 4px 0;
+  }
+
+  // The round checkbox
+  &__check {
+    appearance: none;
+    flex-shrink: 0;
+    display: grid;
+    place-content: center;
+    width: 18px;
+    height: 18px;
+    margin: 0 8px 0 2px;
+    border: 1.5px solid var(--color-text-tertiary);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+
+    &:hover {
+      border-color: var(--color-text-secondary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-text-info);
+      outline-offset: 2px;
+    }
+
+    &:checked {
+      background: var(--color-text-info);
+      border-color: var(--color-text-info);
+
+      &::after {
+        content: '';
+        width: 4px;
+        height: 8px;
+        border: solid var(--color-background-secondary);
+        border-width: 0 1.5px 1.5px 0;
+        transform: translateY(-1px) rotate(45deg);
+      }
+    }
+  }
+
+  &__main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 0;
+    font: inherit;
+    text-align: left;
+    color: var(--color-text-primary);
+    background: none;
+    border: none;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--color-text-info);
+      outline-offset: 2px;
+      border-radius: var(--border-radius-sm);
+    }
+  }
+
+  &__title {
+    font-size: 13px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  &--done &__title {
+    color: var(--color-text-tertiary);
+    text-decoration: line-through;
+    text-decoration-color: var(--color-border-primary);
+  }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 10px;
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+  }
+
+  &__fact {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  &__due--overdue {
+    color: var(--color-text-danger);
+  }
+
+  &__due--today {
+    color: var(--color-text-info);
+  }
+
+  &__title-input {
+    flex: 1;
+    min-width: 0;
+    padding: 3px 6px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--color-text-primary);
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-sm);
+    outline: none;
+
+    &:focus {
+      border-color: var(--color-border-primary);
+    }
+  }
+
+  &__icon-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    color: var(--color-text-tertiary);
+    background: none;
+    border: none;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--color-text-secondary);
+      background: var(--color-background-hover);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-text-info);
+      outline-offset: 1px;
+    }
+  }
+
+  &__star--on {
+    color: var(--color-text-warning);
+  }
+}
+
+// ── What opens under a task ────────────────────────────────────────────────────
+
+.task-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px 0 14px 28px; // in line with the title, past the checkbox
+
+  &__steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__step,
+  &__add-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__add-step {
+    padding-left: 2px;
+    color: var(--color-text-tertiary);
+  }
+
+  // Steps are the smaller checkboxes
+  &__step .task-row__check {
+    width: 14px;
+    height: 14px;
+    margin: 0 4px 0 2px;
+
+    &:checked::after {
+      width: 3px;
+      height: 6px;
+    }
+  }
+
+  &__step-title {
+    flex: 1;
+    min-width: 0;
+    padding: 4px 2px;
+    font: inherit;
+    font-size: 12px;
+    color: var(--color-text-primary);
+    background: none;
+    border: none;
+    border-bottom: 0.5px solid transparent;
+    outline: none;
+
+    &:focus {
+      border-bottom-color: var(--color-border-primary);
+    }
+
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  &__step--done &__step-title {
+    color: var(--color-text-tertiary);
+    text-decoration: line-through;
+  }
+
+  &__chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__due {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 10px;
+    font: inherit;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    background: var(--color-background-hover);
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+
+    &:hover {
+      color: var(--color-text-primary);
+      background: var(--color-background-active);
+    }
+
+    &--on {
+      color: var(--color-text-info);
+      background: var(--color-background-info);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-text-info);
+      outline-offset: 1px;
+    }
+  }
+
+  &__list {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+
+    select {
+      max-width: 160px;
+      padding: 3px 6px;
+      font: inherit;
+      color: var(--color-text-secondary);
+      background: var(--color-background-hover);
+      border: 0.5px solid var(--color-border-secondary);
+      border-radius: var(--border-radius-md);
+    }
+  }
+
+  &__note {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 52px;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+    background: var(--color-background-hover);
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-row);
+    outline: none;
+    resize: none;
+    field-sizing: content;
+
+    &:focus {
+      border-color: var(--color-border-primary);
+    }
+
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  &__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+  }
+
+  &__delete {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 4px;
+    font: inherit;
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+    background: none;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--color-text-danger);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-text-info);
+      outline-offset: 1px;
+    }
+  }
+}

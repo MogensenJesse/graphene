@@ -1,7 +1,14 @@
 // src/lib/search.test.ts
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { filterByType, fuzzyMatch, parseQuery, searchItems } from "./search";
+import {
+  filterByType,
+  fuzzyMatch,
+  parseQuery,
+  searchItems,
+  searchTasks,
+} from "./search";
+import { makeTask } from "./taskStore";
 
 test("search", () => {
   const item = (
@@ -25,9 +32,9 @@ test("search", () => {
     { neg: false, key: null, value: "bar baz" },
     { neg: true, key: null, value: "qux" },
   ]);
-  assert.deepEqual(parseQuery('in:"my folder" type:todo -type:code title:Hi'), [
+  assert.deepEqual(parseQuery('in:"my folder" type:note -type:code title:Hi'), [
     { neg: false, key: "in", value: "my folder" },
-    { neg: false, key: "type", value: "todo" },
+    { neg: false, key: "type", value: "note" },
     { neg: true, key: "type", value: "code" },
     { neg: false, key: "title", value: "hi" },
   ]);
@@ -74,10 +81,10 @@ test("search", () => {
   assert.deepEqual(ids("milk in:home").sort(), ["1", "4"]);
   assert.deepEqual(ids('in:"dev/notes"'), ["2"]);
   // type:
-  assert.deepEqual(ids("type:todo"), ["1"]);
+  assert.deepEqual(ids("type:note").sort(), ["1", "3", "4", "5"]);
   assert.deepEqual(ids("type:code"), ["2"]);
-  assert.deepEqual(ids("milk -type:todo").sort(), ["3", "4", "5"]);
-  assert.deepEqual(ids("type:to-dos"), ["1"]);
+  assert.deepEqual(ids("milk -type:code").sort(), ["1", "3", "4", "5"]);
+  assert.deepEqual(ids("type:todo"), []); // there is no to-do kind any more
   assert.deepEqual(ids("type:nonsense"), []);
   // title:
   assert.deepEqual(ids("title:milk"), ["4"]);
@@ -112,9 +119,62 @@ test("search", () => {
 
   // ── filterByType ──
   assert.deepEqual(
-    filterByType(items, "todo").map((i) => i.id),
-    ["1"],
+    filterByType(items, "code").map((i) => i.id),
+    ["2"],
   );
   assert.equal(filterByType(items, "all").length, 5);
   assert.notEqual(filterByType(items, "all"), items); // a fresh array, safe to sort
+});
+
+test("searchTasks and the operators that tell tasks from notes", () => {
+  const at = "2026-06-01T10:00:00.000Z";
+  const task = (
+    id: string,
+    title: string,
+    note?: string,
+    listName = "Home",
+  ) => ({
+    listId: `l-${listName}`,
+    listName,
+    task: makeTask({ id, title, note, now: at }),
+  });
+  const entries = [
+    task("a", "Buy milk"),
+    task("b", "Call the plumber", "about the milk leak", "Work"),
+    {
+      ...task("c", "Plan trip"),
+      task: {
+        ...task("c", "Plan trip").task,
+        steps: [{ id: "s1", title: "book flights", done: false }],
+      },
+    },
+  ];
+  const ids = (q: string) =>
+    searchTasks(entries, q).map((h) => h.entry.task.id);
+
+  assert.deepEqual(ids("milk"), ["a", "b"]); // the title first, then the note
+  assert.deepEqual(ids("flights"), ["c"]); // a step
+  assert.deepEqual(ids("milk in:work"), ["b"]); // in: is the list's name
+  assert.deepEqual(ids("title:plan"), ["c"]);
+  assert.deepEqual(ids("type:task"), ["a", "b", "c"].sort());
+  assert.deepEqual(ids("type:note"), []); // a task is not a note
+  assert.deepEqual(ids("-type:note milk"), ["a", "b"]);
+  assert.deepEqual(ids("-type:task"), []);
+  assert.equal(searchTasks(entries, "pl")[0].titleMarks.length > 0, true);
+  assert.match(searchTasks(entries, "leak")[0].snippet?.match ?? "", /leak/);
+
+  // the same words find notes, and type:task keeps notes out
+  const notes = [
+    {
+      id: "n",
+      title: "Milk run",
+      body: "",
+      folderId: null,
+      createdAt: at,
+      updatedAt: at,
+    },
+  ];
+  assert.equal(searchItems(notes, "milk").length, 1);
+  assert.equal(searchItems(notes, "type:task").length, 0);
+  assert.equal(searchItems(notes, "-type:task").length, 1);
 });

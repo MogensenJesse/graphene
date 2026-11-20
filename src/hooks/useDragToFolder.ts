@@ -3,9 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { clearDropMarks, markDrop } from "../lib/dragDrop";
 import { useLatest } from "./useLatest";
 
-type DragKind = "item" | "folder";
+// Notes and tasks (and to-do lists) land next to any peer or as a whole on a container; folders and groups only among their siblings
+type DragKind = "item" | "folder" | "task" | "taskList" | "taskGroup";
+const siblingsOnly = (kind: DragKind) =>
+  kind === "folder" || kind === "taskGroup";
 
-/** What is dragged. A folder can only be put among its siblings: those whose parent id is `parent` ("" for the root). */
+/** What is dragged. A folder (or group) can only be put among its siblings: those whose parent id is `parent` ("" for the root). */
 interface DragSource {
   kind: DragKind;
   id: string;
@@ -67,9 +70,9 @@ function locate(
       id !== undefined &&
       id !== source.id &&
       el.dataset.sortKind === source.kind &&
-      (source.kind === "item" || el.dataset.sortParent === source.parent)
+      (!siblingsOnly(source.kind) || el.dataset.sortParent === source.parent)
     ) {
-      const row = source.kind === "folder" ? (el.firstElementChild ?? el) : el;
+      const row = siblingsOnly(source.kind) ? (el.firstElementChild ?? el) : el;
       const r = row.getBoundingClientRect();
       near = { id, after: y > r.top + r.height / 2 };
       mark = el;
@@ -134,7 +137,9 @@ export function useDragToFolder(onDrop: DropHandler): {
           setDragState((prev) => (prev ? { ...prev, x, y } : null));
           const { target, near, mark } = locate(x, y, source);
           markDrop(near ? mark : null, near?.after);
-          setDragOverId(source.kind === "item" && !near ? target : undefined);
+          setDragOverId(
+            !siblingsOnly(source.kind) && !near ? target : undefined,
+          );
         });
       };
 
@@ -154,7 +159,7 @@ export function useDragToFolder(onDrop: DropHandler): {
         }
         if (active) {
           const { target, near } = locate(ev.clientX, ev.clientY, source);
-          if (near || (source.kind === "item" && target !== undefined))
+          if (near || (!siblingsOnly(source.kind) && target !== undefined))
             onDropRef.current(source, target, near);
         }
         setDragState(null);

@@ -23,10 +23,8 @@ import {
   editNote,
   folderPath,
   listFolders,
-  listOpenTasks,
   readNote,
   searchNotes,
-  tickTask,
 } from "./tools";
 
 const at = "2026-01-02T00:00:00.000Z";
@@ -80,7 +78,7 @@ async function withVault(run: (vault: string) => Promise<void>) {
   }
 }
 
-test("reading: folders, search, a note, tasks", () =>
+test("reading: folders, search, a note", () =>
   withVault(async (vault) => {
     assert.deepEqual(await listFolders(vault), {
       notesWithoutFolder: 1,
@@ -90,9 +88,6 @@ test("reading: folders, search, a note, tasks", () =>
       ],
     });
 
-    const todos = await searchNotes(vault, { query: "type:todo" });
-    assert.deepEqual(todos.map((n) => n.id).sort(), ["t1", "t2"]);
-    assert.equal(todos.find((n) => n.id === "t1")?.tasks, "1/3 done");
     const found = await searchNotes(vault, { query: "plan in:prompts" });
     assert.equal(found.length, 1);
     assert.match(found[0].snippet ?? "", /plan first/);
@@ -103,33 +98,9 @@ test("reading: folders, search, a note, tasks", () =>
     assert.equal(read.folder, "Prompts");
     assert.equal(read.body, "Always plan first.\n");
     await assert.rejects(readNote(vault, { id: "nope" }), /No note with id/);
-
-    // ticked tasks and the fenced one are left out; soonest due first, no due date last
-    const open = await listOpenTasks(vault, {});
-    assert.deepEqual(
-      open.tasks.map((t) => [t.note, t.line, t.due]),
-      [
-        ["t1", 6, "2026-11-20"],
-        ["t1", 1, "2026-12-01"],
-        ["t2", 1, null],
-      ],
-    );
-    assert.equal((await listOpenTasks(vault, { include_done: true })).total, 4);
-    assert.deepEqual(
-      (await listOpenTasks(vault, { due_by: "2026-11-30" })).tasks.map(
-        (t) => t.line,
-      ),
-      [6],
-    );
-    assert.deepEqual(
-      (await listOpenTasks(vault, { folder: "To do lists" })).tasks.map(
-        (t) => t.note,
-      ),
-      ["t1", "t1"],
-    );
   }));
 
-test("writing: create, append and tick keep the note the way the app wrote it", () =>
+test("writing: create and append keep the note the way the app wrote it", () =>
   withVault(async (vault) => {
     const created = await createNote(vault, {
       title: "Saved from agent\nsecond line",
@@ -159,18 +130,6 @@ test("writing: create, append and tick keep the note the way the app wrote it", 
       p1,
       /^---\nid: p1\ntitle: Agent prompts\nfolderId: Prompts\ncreatedAt: 2026-01-01T00:00:00.000Z\nupdatedAt: (?!2026-01-02T)\S+\norder: 2048\n---\nAlways plan first.\nThen verify.$/,
     );
-
-    await tickTask(vault, { id: "t1", line: 1, done: true });
-    await tickTask(vault, { id: "t1", line: 2, done: false });
-    const body = (await readNote(vault, { id: "t1" })).body;
-    assert.equal(
-      body,
-      "- [x] ship mcp due:2026-12-01\n- [ ] audit ui\n```\n- [ ] fenced\n```\n- [ ] write docs due:2026-11-20\n",
-    );
-    await assert.rejects(
-      tickTask(vault, { id: "t1", line: 4, done: true }),
-      /not a task/,
-    ); // inside the fence
   }));
 
 test("editing replaces text and keeps the rest of the note as the app wrote it", () =>
@@ -243,14 +202,19 @@ test("the server lists its tools and answers a call", () =>
     assert.deepEqual(
       (await client.listTools()).tools.map((t) => t.name),
       [
+        "list_vaults",
         "list_folders",
         "search_notes",
         "read_note",
-        "list_tasks",
         "create_note",
         "append_to_note",
         "edit_note",
-        "set_task_done",
+        "list_task_lists",
+        "list_tasks",
+        "add_task",
+        "update_task",
+        "complete_task",
+        "create_task_list",
       ],
     );
     const result = await client.callTool({
@@ -258,7 +222,8 @@ test("the server lists its tools and answers a call", () =>
       arguments: { query: "milk" },
     });
     const [first] = result.content as { type: string; text: string }[];
-    assert.equal(JSON.parse(first.text)[0].id, "t2");
+    assert.equal(JSON.parse(first.text).notes[0].id, "t2");
+    assert.equal(JSON.parse(first.text).vault, vault.split("/").pop());
 
     // through the schema too: replace_all is left out and defaults to false
     const edit = await client.callTool({

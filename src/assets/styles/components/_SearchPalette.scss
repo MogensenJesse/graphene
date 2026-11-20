@@ -154,3 +154,19 @@
     color: var(--color-text-tertiary);
   }
 }
+
+// A task among the notes: a quiet "Task" tag, and a finished one is struck through
+.search-palette__tag {
+  flex-shrink: 0;
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--color-text-info);
+  background: var(--color-background-info);
+  border-radius: 999px;
+}
+
+.search-palette__row--done .search-palette__title {
+  color: var(--color-text-tertiary);
+  text-decoration: line-through;
+}

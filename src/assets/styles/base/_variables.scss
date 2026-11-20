@@ -8,6 +8,8 @@ $green:  #96dfa8;   // pastel sage
 $yellow: #e8cf82;   // pastel amber
 $red:    #e8909a;   // pastel rose
 $blue:   #89b8e8;   // pastel powder blue
+$orange: #e8b08a;   // pastel apricot
+$purple: #b9a3e8;   // pastel lavender
 
 // ─── Light theme: ink on paper. The pastels above are too pale to read on light, so the text
 // colours get deeper twins (each checked at 4.5:1 or better against the paper surfaces).
@@ -18,6 +20,8 @@ $green-d:   #14683a;
 $yellow-d:  #7a4e00;
 $red-d:     #b3261e;
 $blue-d:    #1d5fb0;
+$orange-d:  #a14a00;
+$purple-d:  #5b3fa8;
 
 // ─── Border radius ──────────────────────────────────────────────────────────
 $radius-sm: 3px;
@@ -26,7 +30,7 @@ $radius-lg: 12px;
 
 // ─── CSS Custom Properties (:root) ─────────────────────────────────────────
 // Dark is the default; :root[data-theme="light"] below overrides the colours.
-// useTheme sets data-theme on <html>, so popups outside .app follow it too.
+// initTheme (lib/theme.ts) sets data-theme on <html>, so popups outside .app follow it too.
 :root {
   color-scheme: dark;
 
@@ -75,6 +79,21 @@ $radius-lg: 12px;
   --font-sans: "Switzer", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "Cascadia Code", "Fira Code", Consolas, monospace;
 
+  // What the user can change in Settings (lib/fontPrefs.ts sets these on <html> and they win over the defaults here).
+  // The chrome (sidebar, menus, tooltips, dialogs) keeps --font-sans and --font-mono.
+  --font-note: var(--font-sans);   // the reading view
+  --font-code: var(--font-mono);   // code blocks and inline code
+  --font-editor: var(--font-code); // the editor: code font until a note font is chosen
+  --text-scale: 1;                 // note text and code
+
+  // The colours a to-do list can be given (names as stored in .tasks/index.json, see lib/taskStore.ts)
+  --accent-red:    #{$red};
+  --accent-orange: #{$orange};
+  --accent-yellow: #{$yellow};
+  --accent-green:  #{$green};
+  --accent-blue:   #{$blue};
+  --accent-purple: #{$purple};
+
   // Border radii
   --border-radius-sm: #{$radius-sm};
   --border-radius-md: #{$radius-md};
@@ -117,6 +136,13 @@ $radius-lg: 12px;
 
   --rgb-blue: 29, 95, 176;
   --rgb-danger: 179, 38, 30;
+
+  --accent-red:    #{$red-d};
+  --accent-orange: #{$orange-d};
+  --accent-yellow: #{$yellow-d};
+  --accent-green:  #{$green-d};
+  --accent-blue:   #{$blue-d};
+  --accent-purple: #{$purple-d};
 
   --shadow-popover: 0 6px 20px rgba(24, 28, 44, 0.16);
   --shadow-modal:   0 16px 48px rgba(24, 28, 44, 0.24);

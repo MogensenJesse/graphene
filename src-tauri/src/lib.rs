@@ -1,7 +1,34 @@
 // src-tauri/src/lib.rs
 
-#[cfg(all(desktop, not(debug_assertions)))]
 use tauri::Manager;
+use tauri_plugin_fs::FsExt;
+
+/// The fs permissions in capabilities/default.json cover the home folder. A vault anywhere else (another drive) is
+/// allowed here instead, at every start: the folder picker only grants it until the app closes.
+/// Reads the vault list the app saved (see src/lib/vaultList.ts); a missing or unreadable file allows nothing.
+fn allow_vault_folders(app: &tauri::App) {
+    let Ok(dir) = app.path().app_data_dir() else {
+        return;
+    };
+    let Ok(text) = std::fs::read_to_string(dir.join("graphene").join("config.json")) else {
+        return;
+    };
+    let Ok(config) = serde_json::from_str::<serde_json::Value>(&text) else {
+        return;
+    };
+    let listed = config["vaults"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|vault| vault["path"].as_str());
+    let old_style = config["vaultPath"].as_str();
+    let scope = app.fs_scope();
+    for path in listed.chain(old_style) {
+        if let Err(err) = scope.allow_directory(path, true) {
+            eprintln!("could not allow the vault folder {path}: {err}");
+        }
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -39,6 +66,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            allow_vault_folders(app);
             #[cfg(desktop)]
             app.handle()
                 .plugin(tauri_plugin_updater::Builder::new().build())?;

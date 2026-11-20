@@ -1,5 +1,6 @@
 // src/lib/search.ts
-import type { Item, ItemKind, TypeFilter } from "../types";
+import type { Item, TypeFilter } from "../types";
+import type { Task } from "./taskStore";
 import { itemKind } from "./utils";
 
 /** The items of one type; "all" keeps everything. Returns a fresh array. */
@@ -10,9 +11,9 @@ export function filterByType(items: Item[], typeFilter: TypeFilter): Item[] {
 }
 
 // ── Query language ────────────────────────────────────────────────────────────
-// Words and "quoted phrases" must all be found in a note's title or text. Operators narrow it down:
-//   in:folder     the note's folder path contains it (in:"my folder" for spaces)
-//   type:todo     note, code or todo
+// Words and "quoted phrases" must all be found in a note's (or task's) title or text. Operators narrow it down:
+//   in:folder     the note's folder path, or the task's list name, contains it (in:"my folder" for spaces)
+//   type:code     note, code or task
 //   title:word    the title contains it
 // A leading "-" turns any of them into an exclusion (-draft, -type:code).
 
@@ -36,14 +37,12 @@ export function parseQuery(query: string): Term[] {
   return terms;
 }
 
-const KIND_ALIAS: Record<string, ItemKind> = {
+const KIND_ALIAS: Record<string, string> = {
   note: "note",
   notes: "note",
   code: "code",
-  todo: "todo",
-  todos: "todo",
-  "to-do": "todo",
-  "to-dos": "todo",
+  task: "task",
+  tasks: "task",
 };
 
 /**
@@ -113,33 +112,113 @@ function termScore(term: Term, title: string, body: string): number {
   return body.includes(term.value) ? 1 : 0;
 }
 
-/** Whether a note passes one operator term (a "-" term passes when the note does NOT match it). */
-function passes(term: Term, item: Item, title: string, body: string): boolean {
+/** What a search looks at in a note or a task, lower-cased: its title, its text, where it is kept, and what it is. */
+interface Doc {
+  title: string;
+  body: string;
+  /** A note's folder path, a task's list name */
+  place: string;
+  /** "note", "code" or "task" */
+  kind: string;
+}
+
+/** Whether a note or task passes one operator term (a "-" term passes when it does NOT match it). */
+function passes(term: Term, doc: Doc): boolean {
   let found: boolean;
   if (term.key === "in") {
-    found = (item.folderId ?? "").toLowerCase().includes(term.value);
+    found = doc.place.includes(term.value);
   } else if (term.key === "type") {
-    found = itemKind(item) === KIND_ALIAS[term.value];
+    found = doc.kind === KIND_ALIAS[term.value];
   } else if (term.key === "title") {
-    found = title.includes(term.value);
+    found = doc.title.includes(term.value);
   } else {
-    found = title.includes(term.value) || body.includes(term.value);
+    found = doc.title.includes(term.value) || doc.body.includes(term.value);
   }
   return found !== term.neg;
 }
 
-// Lower-case title and text per note, so a keystroke does not lower-case every note again. Keyed by the
-// item object: an edit makes a new one, and a rescan keeps the old object for notes that did not change.
-const lowerCache = new WeakMap<Item, { title: string; body: string }>();
+// Lower-case title and text per note or task, so a keystroke does not lower-case every one again. Keyed by the
+// object: an edit makes a new one, and a rescan keeps the old object for those that did not change.
+const lowerCache = new WeakMap<object, { title: string; body: string }>();
 
-function lowered(item: Item): { title: string; body: string } {
-  let l = lowerCache.get(item);
+function lowered(
+  key: object,
+  title: string,
+  body: () => string,
+): { title: string; body: string } {
+  let l = lowerCache.get(key);
   if (!l) {
-    l = { title: item.title.toLowerCase(), body: item.body.toLowerCase() };
-    lowerCache.set(item, l);
+    l = { title: title.toLowerCase(), body: body().toLowerCase() };
+    lowerCache.set(key, l);
   }
   return l;
 }
+
+/** Everything that fits the query, best first (title matches, then text matches, newest within a score). */
+function rank<T>(
+  entries: T[],
+  terms: Term[],
+  docOf: (entry: T) => Doc,
+  updatedOf: (entry: T) => string,
+): { entry: T; score: number; doc: Doc }[] {
+  const scored: { entry: T; score: number; doc: Doc }[] = [];
+  for (const entry of entries) {
+    const doc = docOf(entry);
+    let score = 0;
+    let ok = true;
+    for (const term of terms) {
+      if (term.key === null && !term.neg) {
+        const s = termScore(term, doc.title, doc.body);
+        if (s === 0) {
+          ok = false;
+          break;
+        }
+        score += s;
+      } else if (!passes(term, doc)) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) scored.push({ entry, score, doc });
+  }
+  return scored.sort(
+    (a, b) =>
+      b.score - a.score || updatedOf(b.entry).localeCompare(updatedOf(a.entry)),
+  );
+}
+
+/** The title letters to highlight and the part of the text that matched, for one kept result. */
+function highlights(
+  terms: Term[],
+  doc: Doc,
+  rawBody: string,
+): { titleMarks: number[]; snippet: Snippet | null } {
+  const words = terms.filter((t) => t.key === null && !t.neg);
+  const marks = new Set<number>();
+  for (const { value } of words) {
+    const at = doc.title.indexOf(value);
+    if (at !== -1) {
+      for (let i = 0; i < value.length; i++) marks.add(at + i);
+    } else if (!value.includes(" ") && value.length >= 2) {
+      for (const i of fuzzyMatch(doc.title, value) ?? []) marks.add(i);
+    }
+  }
+  let snippet: Snippet | null = null;
+  for (const { value } of words) {
+    const at = doc.body.indexOf(value);
+    if (at !== -1) {
+      snippet = snippetAt(rawBody, at, value.length);
+      break;
+    }
+  }
+  return { titleMarks: [...marks].sort((a, b) => a - b), snippet };
+}
+
+const itemDoc = (item: Item): Doc => ({
+  ...lowered(item, item.title, () => item.body),
+  place: (item.folderId ?? "").toLowerCase(),
+  kind: itemKind(item),
+});
 
 /**
  * Notes that fit the query, best first (title matches, then text matches, newest within a score).
@@ -147,58 +226,52 @@ function lowered(item: Item): { title: string; body: string } {
  */
 export function searchItems(items: Item[], query: string, limit = 50): Hit[] {
   const terms = parseQuery(query);
-  const scored: { item: Item; score: number }[] = [];
-
-  for (const item of items) {
-    const { title, body } = lowered(item);
-    let score = 0;
-    let ok = true;
-    for (const term of terms) {
-      if (term.key === null && !term.neg) {
-        const s = termScore(term, title, body);
-        if (s === 0) {
-          ok = false;
-          break;
-        }
-        score += s;
-      } else if (!passes(term, item, title, body)) {
-        ok = false;
-        break;
-      }
-    }
-    if (ok) scored.push({ item, score });
-  }
-
-  scored.sort(
-    (a, b) =>
-      b.score - a.score || b.item.updatedAt.localeCompare(a.item.updatedAt),
-  );
-
-  const words = terms.filter((t) => t.key === null && !t.neg);
-  return scored.slice(0, limit).map(({ item, score }) => {
-    const { title, body } = lowered(item);
-    const marks = new Set<number>();
-    for (const { value } of words) {
-      const at = title.indexOf(value);
-      if (at !== -1) {
-        for (let i = 0; i < value.length; i++) marks.add(at + i);
-      } else if (!value.includes(" ") && value.length >= 2) {
-        for (const i of fuzzyMatch(title, value) ?? []) marks.add(i);
-      }
-    }
-    let snippet: Snippet | null = null;
-    for (const { value } of words) {
-      const at = body.indexOf(value);
-      if (at !== -1) {
-        snippet = snippetAt(item.body, at, value.length);
-        break;
-      }
-    }
-    return {
+  return rank(items, terms, itemDoc, (i) => i.updatedAt)
+    .slice(0, limit)
+    .map(({ entry: item, score, doc }) => ({
       item,
       score,
-      titleMarks: [...marks].sort((a, b) => a - b),
-      snippet,
-    };
+      ...highlights(terms, doc, item.body),
+    }));
+}
+
+// ── Tasks ─────────────────────────────────────────────────────────────────────
+
+/** A task with the list it is in (a task does not know its list's name). */
+export interface TaskEntry {
+  listId: string;
+  listName: string;
+  task: Task;
+}
+
+export interface TaskHit {
+  entry: TaskEntry;
+  score: number;
+  titleMarks: number[];
+  snippet: Snippet | null;
+}
+
+// What a task's "text" is: its note, then its steps
+const taskText = (task: Task) =>
+  [task.note ?? "", ...task.steps.map((s) => s.title)].join("\n");
+
+/** Tasks that fit the query, as notes do: the title, the note and the steps are searched; `in:` is the list's name. */
+export function searchTasks(
+  entries: TaskEntry[],
+  query: string,
+  limit = 50,
+): TaskHit[] {
+  const terms = parseQuery(query);
+  const docOf = ({ task, listName }: TaskEntry): Doc => ({
+    ...lowered(task, task.title, () => taskText(task)),
+    place: listName.toLowerCase(),
+    kind: "task",
   });
+  return rank(entries, terms, docOf, (e) => e.task.updatedAt)
+    .slice(0, limit)
+    .map(({ entry, score, doc }) => ({
+      entry,
+      score,
+      ...highlights(terms, doc, taskText(entry.task)),
+    }));
 }
