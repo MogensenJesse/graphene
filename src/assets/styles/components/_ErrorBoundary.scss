@@ -15,15 +15,13 @@
   color: var(--color-text-primary);
   font-family: var(--font-sans);
 
-  // The window has no title bar: this strip moves it, and the window buttons (.app__win-controls) sit above it
-  &__drag {
+  // The window has no title bar: the band across the top moves it and holds the window buttons
+  .app-band {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    height: var(--bar-height);
-    z-index: v.z('drag-strip');
-    -webkit-app-region: drag;
+    z-index: v.z('chrome');
   }
 
   &__card {

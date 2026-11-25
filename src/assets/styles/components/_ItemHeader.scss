@@ -22,9 +22,9 @@
     var(--chrome-left, var(--pane-pad)),
     calc((100cqw - var(--column-width)) / 2)
   );
-  // The right padding clears the window controls, which sit over this bar. The left one puts the title right
-  // above the text it names.
-  padding: 0 calc(var(--win-controls-width) + 24px) 0 var(--text-left);
+  // The left padding puts the title right above the text it names, and the right one ends the actions where the text does, or
+  // before the notch of the window buttons (see .app__main) when the panel is too narrow for that.
+  padding: 0 max(var(--text-left), calc(var(--notch-w) + 12px)) 0 var(--text-left);
   border-bottom: 0.5px solid var(--color-border-tertiary);
   flex-shrink: 0;
   container-type: inline-size;
@@ -257,4 +257,12 @@
       calc(var(--text-left) - var(--chrome-left, var(--pane-pad)) - 12px)
     ); // 12px before the title
   }
+}
+
+// A column dragged wider than the default leaves the gutter too little room: the chip stays beside the buttons (see lib/columnWidth)
+html[data-note-wide='true'] .item-header .folder-picker {
+  position: relative;
+  left: auto;
+  top: auto;
+  max-width: none;
 }

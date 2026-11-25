@@ -8,6 +8,8 @@ import { NEW_KINDS } from "./newKinds";
 import Tooltip from "./Tooltip";
 
 interface HeaderActionsProps {
+  /** The sidebar is hidden: these are then the only way to Search, New and Settings but the shortcuts */
+  shown: boolean;
   /** The Tasks tab starts a task where the Notes tab starts a note */
   inTasks: boolean;
   /** The vault cannot be opened: nothing can be started in it */
@@ -18,10 +20,12 @@ interface HeaderActionsProps {
 }
 
 /**
- * Search, New and Settings as icon buttons beside the sidebar toggle. The App shows them while the sidebar is hidden, when its own
- * Search, New and Settings are out of sight; the shortcuts are the same ones.
+ * Search, New and Settings as icon buttons beside the sidebar toggle, while the sidebar is hidden. With the sidebar open they
+ * would only repeat its own rows, so they fade out (and leave the tab order) with it; the shortcuts are the same ones as on
+ * those rows.
  */
 function HeaderActions({
+  shown,
   inTasks,
   newDisabled,
   onSearch,
@@ -31,7 +35,7 @@ function HeaderActions({
   const newLabel = inTasks ? "New task" : "New note";
   const NewIcon = inTasks ? PlusIcon : NEW_KINDS[0].Icon;
   return (
-    <div className="app__quick">
+    <div className={`app__quick${shown ? "" : " app__quick--off"}`}>
       <Tooltip label="Search" keys="Ctrl+K">
         <IconButton aria-label="Search" onClick={onSearch}>
           <SearchIcon size={16} />

@@ -6,11 +6,12 @@ import Tooltip from "./Tooltip";
 
 const appWindow = getCurrentWindow();
 
-interface WindowControlsProps {
-  className?: string;
-}
-
-function WindowControls({ className }: WindowControlsProps) {
+/**
+ * Minimize, maximize or restore, and close: the window has no title bar of its own. A maximised window looks like a normal
+ * one (same frame, same rounded panels); only the maximize icon changes. The hit areas reach the window's top and right edges:
+ * see _AppBand.
+ */
+function WindowControls() {
   const [maximized, setMaximized] = useState(false);
 
   // Keep the maximize icon honest, including when the user drags the window out of a snapped state
@@ -28,10 +29,7 @@ function WindowControls({ className }: WindowControlsProps) {
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: swallows the right-click so the app menu does not open over the window buttons
-    <div
-      className={`app__win-controls${className ? ` ${className}` : ""}`}
-      onContextMenu={(e) => e.stopPropagation()}
-    >
+    <div className="win-controls" onContextMenu={(e) => e.stopPropagation()}>
       <Tooltip label="Minimize">
         <IconButton onClick={() => appWindow.minimize()} aria-label="Minimize">
           <svg

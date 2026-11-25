@@ -154,6 +154,7 @@ function TaskDetail({
   onDelete,
 }: TaskDetailProps) {
   const [step, setStep] = useState("");
+  const dueRow = useRef<HTMLDivElement>(null); // the calendar opens as wide as this row, like the list's dropdown
   const inMyDay = task.myDay === today;
 
   const addStep = () => {
@@ -307,9 +308,11 @@ function TaskDetail({
             </Button>
           </div>
 
-          <div className="task-detail__option">
+          <div className="task-detail__option" ref={dueRow}>
             <DatePick
+              alignTo={dueRow}
               value={task.due ?? ""}
+              today={today}
               onChange={(due) => api.updateTask(listId, task.id, { due })}
               label="Due date"
               className={`btn btn--link task-detail__option-btn${task.due ? " task-detail__option-btn--on" : ""}`}

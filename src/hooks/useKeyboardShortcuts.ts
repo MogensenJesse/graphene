@@ -1,5 +1,6 @@
 // src/hooks/useKeyboardShortcuts.ts
 import { useEffect } from "react";
+import { toggleCodeWrap } from "../lib/codeWrap";
 import { modalOpen } from "../lib/focusTrap";
 import type { ItemKind } from "../types";
 
@@ -30,6 +31,18 @@ export function useKeyboardShortcuts({
 }: Shortcuts): void {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Alt+Z: long lines of code wrap, or scroll sideways (Settings > Appearance). By code, not key: Alt+Z types a
+      // character on some layouts
+      if (
+        e.altKey &&
+        e.code === "KeyZ" &&
+        !(e.ctrlKey || e.metaKey || e.shiftKey)
+      ) {
+        if (modalOpen()) return;
+        e.preventDefault();
+        toggleCodeWrap();
+        return;
+      }
       if (!(e.ctrlKey || e.metaKey)) return;
       // A dialog (search, update) owns the keyboard while it is open
       if (modalOpen()) return;

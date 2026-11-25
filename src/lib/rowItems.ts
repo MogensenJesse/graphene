@@ -1,5 +1,5 @@
 // src/lib/rowItems.ts
-// What the sidebar needs of the notes, kept the same object for as long as it is the same to look at (docs/plans/01-audit-fixes.md, P3).
+// What the sidebar needs of the notes, kept the same object for as long as it is the same to look at.
 // A batch of note texts replaces every note it fills, though a row shows none of a text; without this each batch would render every
 // row again (8 long frames at 20k notes, 10 at 50k). With it the batch changes nothing the sidebar is given.
 import type { Folder, Item } from "../types";

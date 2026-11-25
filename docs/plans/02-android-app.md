@@ -2,7 +2,7 @@
 
 Status: plan, nothing built yet. Written 2026-11-21.
 
-Related plans: [01-audit-fixes.md](01-audit-fixes.md), [03-cloud-sync-and-collaboration.md](03-cloud-sync-and-collaboration.md).
+Related plan: [03-cloud-sync-and-collaboration.md](03-cloud-sync-and-collaboration.md). The audit-fix plan that these plans used to point at is done and was removed from the tree; it is in commit `7df88a1` (`git show 7df88a1:docs/plans/01-audit-fixes.md`), and AGENTS.md keeps its startup numbers and open items.
 
 Evidence markers used below: **[V]** verified against a current source on 2026-11-20, **[M]** from memory or an estimate,
 **[C]** read in this repository.
@@ -104,9 +104,9 @@ The app is built for mouse and keyboard today, so these are real work, not polis
 
 - Create the vault in app-private storage on first run; skip the vault picker and `allow_vault_folders` on mobile.
 - A platform adapter for the few desktop-only calls above (focus and lifecycle, updater, window controls).
-- The Rust `scan_vault` command from [01-audit-fixes.md](01-audit-fixes.md) (WP5) works on Android unchanged: it uses plain paths in
+- The Rust `scan_vault` command (`src-tauri/src/vault_scan.rs`) works on Android unchanged: it uses plain paths in
   the private vault, so it avoids the SAF slowness entirely.
-- Order matters: the data-safety fixes in WP1 (write-new-then-delete-old, atomic writes) matter even more on a phone, where the app
+- The data-safety fixes (write-new-then-delete-old, atomic writes; done in the audit work) matter even more on a phone, where the app
   can be killed at any moment.
 
 ## Build, sign and sideload
@@ -140,10 +140,10 @@ organisation account is exempt [V]. F-Droid is plausible because the repository 
 
 - Fresh install: the default vault is created, a note and a task can be created, edited, moved and trashed with Undo.
 - Typing in a long note with the keyboard open: the caret stays visible, the toolbar sits above the keyboard, undo and redo work.
-- Kill the app mid-edit and reopen: no lost or duplicated notes (this exercises the WP1 data-safety fixes).
+- Kill the app mid-edit and reopen: no lost or duplicated notes (this exercises the data-safety fixes).
 - Open the drawer, use long-press menus, use "Move to...", and use Search.
 - Rotate, split-screen and switch apps: the layout holds and the state survives.
-- A 1,000-note vault: cold start and scrolling stay smooth (compare with the WP0 numbers).
+- A 1,000-note vault: cold start and scrolling stay smooth (compare with the startup numbers in AGENTS.md, "Open items and reference numbers").
 - Light and dark themes both read correctly.
 - Install a newer APK over an older one: data survives.
 

@@ -134,8 +134,9 @@ function scrollToOffset(el: HTMLTextAreaElement, offset: number): void {
   Object.assign(mirror.style, {
     position: "absolute",
     visibility: "hidden",
-    whiteSpace: "pre-wrap",
-    overflowWrap: "break-word",
+    // From the textarea, so a code note that does not wrap (lib/codeWrap) is measured as it is drawn
+    whiteSpace: style.whiteSpace,
+    overflowWrap: style.overflowWrap,
     boxSizing: "border-box",
     width: `${el.clientWidth}px`,
     padding: style.padding,

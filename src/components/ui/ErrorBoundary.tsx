@@ -1,8 +1,8 @@
 // src/components/ui/ErrorBoundary.tsx
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { showWindow } from "../../lib/windowShow";
+import AppBand from "./AppBand";
 import Button from "./Button";
-import WindowControls from "./WindowControls";
 
 interface ErrorBoundaryState {
   failed: boolean;
@@ -33,8 +33,7 @@ class ErrorBoundary extends Component<
     if (!this.state.failed) return this.props.children;
     return (
       <div className="error-boundary">
-        <div className="error-boundary__drag" data-tauri-drag-region />
-        <WindowControls />
+        <AppBand />
         <div className="error-boundary__card" role="alert">
           <h1 className="error-boundary__title">Something went wrong</h1>
           <p className="error-boundary__text">

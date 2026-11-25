@@ -71,6 +71,51 @@ export function setFenceLang(
   return text.slice(0, block.langStart) + lang + text.slice(block.langEnd);
 }
 
+/**
+ * The number each line of `text` gets in the line gutter: 1, 2, 3 ... for the lines inside a fenced block, counting from the
+ * line after its opening fence and starting again at 1 in the next block, and null for every other line (prose, and the fence
+ * lines themselves). One entry per line, split at "\n" like a textarea value (a "\r" at the end of a line does no harm). An
+ * unclosed block runs to the end, as in `findFenceAt`. The reading view numbers the same lines the same way (lib/rehypeCodeLines).
+ */
+export function fenceLineNumbers(text: string): (number | null)[] {
+  const numbers: (number | null)[] = [];
+  let open: { char: string; len: number } | null = null;
+  let n = 0;
+  for (let start = 0; start <= text.length; ) {
+    let end = text.indexOf("\n", start);
+    if (end === -1) end = text.length;
+    const line = text.slice(start, end);
+    start = end + 1;
+    if (!open) {
+      const m = OPENING_FENCE.exec(line);
+      if (m) {
+        open = { char: m[2][0], len: m[2].length };
+        n = 0;
+      }
+      numbers.push(null);
+    } else {
+      const m = CLOSING_FENCE.exec(line);
+      if (m && m[1][0] === open.char && m[1].length >= open.len) {
+        open = null;
+        numbers.push(null);
+      } else numbers.push(++n);
+    }
+  }
+  return numbers;
+}
+
+/** A note or a block with more lines than this gets no line numbers: the editor draws a copy of the text for them, and the view a span per line. */
+export const GUTTER_MAX_LINES = 5000;
+const GUTTER_MAX_CHARS = 400_000; // 5,000 lines of 80 characters
+
+/** `fenceLineNumbers` for the editor's gutter, or null when there is nothing to number or the note is too big to draw it. */
+export function gutterNumbers(text: string): (number | null)[] | null {
+  if (text.length > GUTTER_MAX_CHARS || !/```|~~~/.test(text)) return null;
+  const numbers = fenceLineNumbers(text);
+  if (numbers.length > GUTTER_MAX_LINES) return null;
+  return numbers.some((n) => n !== null) ? numbers : null;
+}
+
 /** The code between the first opening fence and its closing fence ("" when the text has no block). */
 export function firstCodeBlock(text: string): string {
   let open: { char: string; len: number } | null = null;

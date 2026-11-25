@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
   activeFormats,
-  continueTask,
+  continueList,
   formatText,
-  shiftTaskIndent,
+  shiftListIndent,
 } from "./markdownFormat";
 import { toggleTaskAt } from "./tasks";
 
@@ -27,16 +27,33 @@ test("toggleTaskAt flips a checkbox by offset", () => {
   assert.equal(toggleTaskAt("- [ ]", 0), "- [x]");
 });
 
-test("shiftTaskIndent is the editor Tab on a task line", () => {
-  let r = shiftTaskIndent("- [ ] a\n- [ ] b", 12, 12, false);
+test("shiftListIndent is the editor Tab on a list line", () => {
+  let r = shiftListIndent("- [ ] a\n- [ ] b", 12, 12, false);
   assert.equal(r?.value, "- [ ] a\n  - [ ] b");
   assert.equal(r?.ss, 14);
-  r = shiftTaskIndent("- [ ] a\n    - [ ] b", 19, 19, true);
+  r = shiftListIndent("- [ ] a\n    - [ ] b", 19, 19, true);
   assert.equal(r?.value, "- [ ] a\n  - [ ] b");
   assert.equal(r?.ss, 17);
-  assert.equal(shiftTaskIndent("- [ ] a", 3, 3, true), null); // nothing to take out
-  assert.equal(shiftTaskIndent("- a", 3, 3, false), null); // a plain bullet: normal Tab
-  assert.equal(shiftTaskIndent("- [ ] a\n- [ ] b", 3, 12, false), null); // several lines
+  assert.equal(shiftListIndent("- [ ] a", 3, 3, true), null); // nothing to take out
+  assert.equal(shiftListIndent("- [ ] a\n- [ ] b", 3, 12, false), null); // several lines
+
+  // a plain bullet nests by 2, and comes back out
+  r = shiftListIndent("- a\n- b", 7, 7, false);
+  assert.equal(r?.value, "- a\n  - b");
+  assert.equal(r?.ss, 9);
+  assert.equal(shiftListIndent("- a\n  - b", 9, 9, true)?.value, "- a\n- b");
+  // a number nests by the marker's width plus one (CommonMark: under `1. a` only from 3 spaces)
+  r = shiftListIndent("1. a\n2. b", 9, 9, false);
+  assert.equal(r?.value, "1. a\n   2. b");
+  assert.equal(r?.ss, 12);
+  r = shiftListIndent("1. a\n   2. b", 12, 12, true);
+  assert.equal(r?.value, "1. a\n2. b");
+  assert.equal(r?.ss, 9);
+  assert.equal(shiftListIndent("10. a", 5, 5, false)?.value, "    10. a");
+  // not a list line: normal Tab
+  assert.equal(shiftListIndent("abc", 3, 3, false), null);
+  assert.equal(shiftListIndent("- - -", 5, 5, false), null); // a rule
+  assert.equal(shiftListIndent("1.", 2, 2, false), null); // no text after the marker
 });
 
 test("the task button and ul format toggle between each other", () => {
@@ -53,28 +70,66 @@ test("the task button and ul format toggle between each other", () => {
   assert.ok(!activeFormats("- a", 2, 2).has("task"));
 });
 
-test("continueTask carries a task onto the next line", () => {
+test("continueList carries a task onto the next line", () => {
   let v = "- [ ] a";
-  let r = continueTask(v, v.length, v.length);
+  let r = continueList(v, v.length, v.length);
   assert.equal(r?.value, "- [ ] a\n- [ ] ");
   assert.equal(r?.ss, r?.value.length);
   v = "  - [x] done";
-  r = continueTask(v, v.length, v.length);
+  r = continueList(v, v.length, v.length);
   assert.equal(r?.value, "  - [x] done\n  - [ ] ");
   v = "1. [ ] one";
   assert.equal(
-    continueTask(v, v.length, v.length)?.value,
+    continueList(v, v.length, v.length)?.value,
     "1. [ ] one\n2. [ ] ",
   );
   v = "x\n- [ ] ";
-  r = continueTask(v, v.length, v.length);
+  r = continueList(v, v.length, v.length);
   assert.equal(r?.value, "x\n"); // empty task clears
   assert.equal(r?.ss, 2);
   v = "- [ ] foobar";
-  r = continueTask(v, 9, 9);
+  r = continueList(v, 9, 9);
   assert.equal(r?.value, "- [ ] foo\n- [ ] bar");
   assert.equal(r?.ss, "- [ ] foo\n- [ ] ".length);
-  assert.equal(continueTask("- [ ] a", 2, 2), null); // caret inside the marker
-  assert.equal(continueTask("- a", 3, 3), null); // plain bullet: normal Enter
-  assert.equal(continueTask("- [ ] abc", 4, 7), null); // selection
+  assert.equal(continueList("- [ ] a", 2, 2), null); // caret inside the marker
+  assert.equal(continueList("- [ ] abc", 4, 7), null); // selection
+});
+
+test("continueList carries a bullet or a number onto the next line", () => {
+  assert.equal(continueList("- a", 3, 3)?.value, "- a\n- ");
+  assert.equal(continueList("* a", 3, 3)?.value, "* a\n* ");
+  assert.equal(continueList("+ a", 3, 3)?.value, "+ a\n+ ");
+  assert.equal(continueList("1. a", 4, 4)?.value, "1. a\n2. ");
+  assert.equal(continueList("1) a", 4, 4)?.value, "1) a\n2) ");
+  assert.equal(continueList("9. a", 4, 4)?.value, "9. a\n10. ");
+  assert.equal(continueList("  - a", 5, 5)?.value, "  - a\n  - "); // the indent is kept
+  assert.equal(continueList("-   a", 5, 5)?.value, "-   a\n-   "); // so is the gap
+  let v = "x\n- a";
+  let r = continueList(v, v.length, v.length);
+  assert.equal(r?.value, "x\n- a\n- ");
+  assert.equal(r?.ss, r?.value.length); // the caret lands after the new marker
+
+  // text after the caret moves down with the new marker
+  r = continueList("- foobar", 5, 5);
+  assert.equal(r?.value, "- foo\n- bar");
+  assert.equal(r?.ss, "- foo\n- ".length);
+
+  // Enter on an empty item ends the list: the line is cleared, indent and all
+  v = "x\n- ";
+  r = continueList(v, v.length, v.length);
+  assert.equal(r?.value, "x\n");
+  assert.equal(r?.ss, 2);
+  v = "1. a\n2. ";
+  assert.equal(continueList(v, v.length, v.length)?.value, "1. a\n");
+  v = "- a\n  - ";
+  assert.equal(continueList(v, v.length, v.length)?.value, "- a\n");
+
+  // normal Enter: caret inside the marker, a selection, no list, a rule, a marker with no text
+  assert.equal(continueList("- a", 1, 1), null);
+  assert.equal(continueList("- abc", 3, 4), null);
+  assert.equal(continueList("abc", 3, 3), null);
+  assert.equal(continueList("- - -", 5, 5), null);
+  assert.equal(continueList("* * *", 5, 5), null);
+  assert.equal(continueList("1.", 2, 2), null);
+  assert.equal(continueList("-a", 2, 2), null);
 });

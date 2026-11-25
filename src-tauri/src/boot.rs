@@ -1,5 +1,5 @@
 // src-tauri/src/boot.rs
-// The first call the page makes at start (audit plan P7): `boot_config` gives in one IPC call what three file-plugin calls in a row gave
+// The first call the page makes at start: `boot_config` gives in one IPC call what three file-plugin calls in a row gave
 // (does config.json exist, what is in it, does each vault's folder exist). It only does I/O: parsing the text, the migration of the old
 // `{ "vaultPath" }` file, the `.bak` copy of a file that does not parse and every rule about vaults stay in src/lib/vaultList.ts and
 // src/lib/vault.ts, which the MCP server shares. The page's side of the contract is `loadVaultConfig` in src/lib/vault.ts.

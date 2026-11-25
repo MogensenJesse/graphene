@@ -23,7 +23,7 @@ function VaultSwitcher({ vaults, onOpenSettings }: VaultSwitcherProps) {
   const current = vaults.vaults.find((v) => v.path === vaults.active);
 
   const switchTo = async (path: string) => {
-    // The folder is gone: the Vaults tab says so and offers to remove it
+    // The folder is gone: the Vaults section says so and offers to remove it
     if ((await vaults.switchTo(path)) === "missing") onOpenSettings("vaults");
   };
 
@@ -32,7 +32,7 @@ function VaultSwitcher({ vaults, onOpenSettings }: VaultSwitcherProps) {
       const chosen = await pickVaultPath();
       if (!chosen) return;
       const problem = await vaults.add(chosen);
-      // Nowhere in the header to explain a refusal: the Vaults tab has room
+      // Nowhere in the header to explain a refusal: the Vaults section has room
       if (problem) onOpenSettings("vaults", vaultProblemText(problem));
     } catch (err) {
       console.error("[VaultSwitcher]", err);

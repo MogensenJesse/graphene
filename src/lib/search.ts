@@ -135,7 +135,7 @@ function passes(term: Term, doc: Doc): boolean {
 // ponytail: it holds a second copy of every searched text. Without it a search is about twice as slow at 20k notes (the
 // copies are made again on every keystroke), and a case-insensitive RegExp over the original text is about ten times slower.
 // So the copy lives only while the palette is open and for a while after it closes (releaseSearchCache); the next palette
-// makes it again on its first keystroke. A Rust-side index (01-audit-fixes.md, WP8) is what removes the copy.
+// makes it again on its first keystroke. A Rust-side index would remove the copy (not built: see AGENTS.md, Open items).
 let lowerCache = new WeakMap<object, { title: string; body: string }>();
 let releaseTimer: ReturnType<typeof setTimeout> | undefined;
 

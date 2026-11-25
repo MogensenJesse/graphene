@@ -9,7 +9,7 @@
 
   &__header {
     height: var(--bar-height); // the same bar as the item header, so the brand and the note title share a line
-    padding: 0 18px;
+    padding: 0 8px 0 18px; // the right end (the vault switcher) lines up with the right edge of the Notes | Tasks tabs below, which have an 8px margin
     display: flex;
     align-items: center;
     flex-shrink: 0;

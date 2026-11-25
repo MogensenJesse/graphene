@@ -2,6 +2,7 @@
 @use '../base/mixins' as mixins;
 
 .note-detail {
+  --column-width: var(--column-width-note); // the header and the text below follow the dragged width
   position: relative; // anchors the find bar
   display: flex;
   flex-direction: column;
@@ -28,6 +29,7 @@
   }
 
   &__markdown {
+    position: relative; // anchors the column's edges (ui/ColumnResizer)
     max-width: var(--column-width); // comfortable line length; the panel is much wider than that
     margin: 0 auto;
     font-family: var(--font-note);

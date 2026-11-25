@@ -1,0 +1,120 @@
+// src/assets/styles/components/_Select.scss
+@use '../base/variables' as v;
+@use '../base/mixins' as mixins;
+
+// The button of a Select (ui/Select.tsx): the chosen option and a chevron. It fills its box; the caller gives it a width.
+.select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+  height: 30px;
+  box-sizing: border-box;
+  text-align: left;
+  cursor: pointer;
+  @include mixins.inline-field(0 var(--space-5), var(--border-radius-md));
+  transition: border-color var(--transition-fast);
+
+  &:hover,
+  &--open {
+    border-color: var(--color-text-tertiary);
+  }
+
+  @include mixins.focus-ring;
+
+  &__value {
+    min-width: 0;
+    @include mixins.ellipsis;
+
+    &--placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  &__chevron {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+    transition: transform var(--anim-in);
+  }
+
+  &--open &__chevron {
+    transform: rotate(180deg);
+  }
+}
+
+// Its list, in a box over the page placed in window coordinates under the button. Opacity only for the animation: the box
+// is measured against the window before it is shown, and a transform would skew that.
+.select-pop {
+  position: fixed;
+  z-index: v.z('dialog-dropdown');
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  animation: var(--anim-fade);
+  @include mixins.popover-surface;
+  overflow: hidden;
+
+  &__input {
+    display: block;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 7px var(--space-5);
+    font-family: inherit;
+    font-size: var(--fs-md);
+    color: var(--color-text-primary);
+    background: none;
+    border: none;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    outline: none;
+
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  &__list {
+    flex: 1;
+    min-height: 0;
+    max-height: 240px;
+    padding: var(--space-2);
+    overflow-y: auto;
+    outline: none; // the list holds the focus while there is no search field; its lit row shows where the keys are
+    @include mixins.custom-scrollbar;
+  }
+
+  &__option {
+    @include mixins.menu-item;
+    display: block;
+    @include mixins.ellipsis;
+    // A list of hundreds (the fonts) draws only the rows near the view, so each row's own typeface is loaded when it is
+    // about to be seen and not all at once
+    content-visibility: auto;
+    contain-intrinsic-size: auto 28px;
+    line-height: 28px;
+
+    &--current {
+      font-weight: var(--fw-medium);
+      color: var(--color-text-primary);
+      background: var(--color-background-hover);
+    }
+
+    // The keyboard's row is lit like the pointer's
+    &:hover:not(:disabled),
+    &--active {
+      @include mixins.menu-item-lit;
+    }
+
+    // The list clips, so the ring sits within the row
+    @include mixins.focus-ring(-2px);
+  }
+
+  &__empty {
+    margin: 0;
+    padding: var(--space-4) var(--space-5);
+    font-size: var(--fs-md);
+    color: var(--color-text-tertiary);
+  }
+}

@@ -2,7 +2,18 @@
 @use '../base/variables' as v;
 @use '../base/mixins' as mixins;
 
+// The type of the text in the editor, shared by the textarea and the copy of it that carries the line numbers
+@mixin editor-text {
+  font-size: calc(13px * var(--text-scale));
+  font-family: var(--font-editor);
+  line-height: var(--lh-prose);
+  border: none;
+  border-top: 0.5px solid var(--color-border-tertiary);
+  padding: 12px 0;
+}
+
 .note-editor {
+  --column-width: var(--column-width-note); // the header and the text below follow the dragged width
   position: relative; // anchors the find bar
   display: flex;
   flex-direction: column;
@@ -67,16 +78,23 @@
 
   // ── Textarea ──────────────────────────────────────────────────────────────
 
+  // The box the textarea and the line numbers (CodeGutter) share. The numbers are drawn over the textarea, in a copy of
+  // its text, so the two must have the same width, font, padding and wrap.
+  &__text {
+    --gutter-gap: 20px; // between the numbers and the text (the reading view has 2.5ch)
+    --gutter-w: calc(var(--gutter-digits, 1) * 1ch + var(--gutter-gap)); // the numbers, then the gap
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
   &__textarea {
     flex: 1;
-    font-size: calc(13px * var(--text-scale));
-    font-family: var(--font-editor);
-    line-height: var(--lh-prose);
+    @include editor-text;
     background: none;
-    border: none;
-    border-top: 0.5px solid var(--color-border-tertiary);
     color: var(--color-text-primary);
-    padding: 12px 0;
     outline: none;
     resize: none;
     min-height: 0;
@@ -84,9 +102,52 @@
     @include mixins.custom-scrollbar;
     @include mixins.scroll-gutter;
 
+    &[data-gutter='true'] {
+      padding-left: var(--gutter-w);
+    }
+
     &::placeholder {
       color: var(--color-text-tertiary);
     }
+  }
+
+  // The copy of the text that carries the line numbers (see CodeGutter): drawn in no colour, taking no pointer, with a
+  // scroll bar's room kept like the textarea's so the text wraps at the same place
+  &__gutter {
+    @include editor-text;
+    border-top-color: transparent; // the textarea draws the line; this keeps its height
+    position: absolute;
+    inset: 0;
+    padding-left: var(--gutter-w);
+    overflow: hidden;
+    color: transparent;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    pointer-events: none;
+    user-select: none;
+    @include mixins.custom-scrollbar;
+    @include mixins.scroll-gutter;
+
+    > div {
+      position: relative;
+      min-height: 1lh; // an empty line is as tall as a line of text
+    }
+
+    > div[data-n]::before {
+      content: attr(data-n);
+      position: absolute;
+      left: calc(-1 * var(--gutter-w)); // back over the padding the numbers live in
+      width: calc(var(--gutter-w) - var(--gutter-gap));
+      text-align: right;
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  // A code note with wrapping off: the textarea scrolls sideways (its wrap="off"), and so must the copy
+  &__text[data-wrap='off'] &__gutter {
+    white-space: pre;
+    overflow-wrap: normal;
+    padding-bottom: calc(12px + 6px); // the sideways bar takes this much of the textarea's height
   }
 }
 

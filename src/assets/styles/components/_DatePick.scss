@@ -1,24 +1,108 @@
 // src/assets/styles/components/_DatePick.scss
+@use '../base/variables' as v;
+@use '../base/mixins' as mixins;
 
-// The system's date picker opens next to its button: the date input stays invisible under it
+// The button that opens the calendar. Its wrapper only keeps the button where it was
 .date-pick {
   position: relative;
   display: inline-flex;
+}
 
-  &__input {
-    position: absolute;
-    inset: 0;
+// The calendar (ui/Calendar.tsx) in its box over the page (ui/DatePick.tsx). Placed in window coordinates under its button
+.calendar-pop {
+  position: fixed;
+  z-index: v.z('dropdown');
+  width: 250px; // opened from a button, the box is as wide as it (inline, see CalendarPopover) but not narrower than the month needs
+  min-width: 250px;
+  padding: var(--space-4);
+  @include mixins.popover-surface;
+  // Opacity only: the box is measured against the window before it is shown, and a transform would skew that
+  animation: var(--anim-fade);
+}
+
+.calendar {
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-3);
+  }
+
+  &__title {
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    color: var(--color-text-primary);
+  }
+
+  // A real table: seven equal columns of days under their weekday names
+  &__grid {
     width: 100%;
-    height: 100%;
-    opacity: 0;
-    pointer-events: none;
+    border-collapse: collapse;
+    table-layout: fixed;
 
-    // Made by pickDate for a menu entry: a speck at the row it was chosen on, in the window's own coordinates
-    &--floating {
-      position: fixed;
-      inset: auto;
-      width: 1px;
-      height: 1px;
+    td {
+      padding: 0;
     }
+  }
+
+  &__name {
+    padding: var(--space-2) 0;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-regular);
+    text-align: center;
+    color: var(--color-text-tertiary);
+  }
+
+  &__day {
+    display: block;
+    width: 100%;
+    height: 30px;
+    padding: 0;
+    font-size: var(--fs-md);
+    color: var(--color-text-secondary);
+    background: none;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+
+    &:hover {
+      color: var(--color-text-primary);
+      background: var(--color-background-hover);
+    }
+
+    // The days of the months either side that fill the first and last week
+    &--outside {
+      color: var(--color-text-tertiary);
+    }
+
+    // Today wears a ring in the info colour, the picked day is filled with it
+    &--today {
+      font-weight: var(--fw-semibold);
+      color: var(--color-text-info);
+      box-shadow: inset 0 0 0 1px var(--color-border-info);
+    }
+
+    &--picked,
+    &--picked:hover {
+      font-weight: var(--fw-semibold);
+      color: var(--color-text-info);
+      background: var(--color-background-info-hover);
+    }
+
+    @include mixins.focus-ring;
+  }
+
+  &__foot {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 0.5px solid var(--color-border-tertiary);
+  }
+
+  // Clear is the one that undoes something: it goes to the far end
+  &__clear {
+    margin-left: auto;
   }
 }

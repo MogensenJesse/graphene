@@ -215,12 +215,21 @@ function wrapInFence(value: string, ss: number, se: number): TextEdit {
   };
 }
 
+// The start of a list item: indent, marker (a bullet, or a number with "." or ")"), the gap after it, and a task's checkbox
+const LIST_ITEM = /^([ \t]*)([*+-]|\d{1,9}[.)])([ \t]+)(\[[ xX]\][ \t]*)?/;
+// "* * *" and "- - -" are a horizontal rule, not a bullet
+const THEMATIC_BREAK = /^[ \t]*([*-])([ \t]*\1){2,}[ \t]*$/;
+
+const listItemAt = (line: string): RegExpExecArray | null =>
+  THEMATIC_BREAK.test(line) ? null : LIST_ITEM.exec(line);
+
 /**
- * What Enter does on a task line: a new unticked task below it, at the same indent (the text after
- * the caret moves down with it); on an empty task, it clears the line instead. Null when the caret
- * is not at the text of a task line, so Enter keeps its normal meaning.
+ * What Enter does on a list line (a bullet, a number, a task): a new item below it, at the same indent, numbered one
+ * higher in a numbered list and with an unticked box for a task (the text after the caret moves down with it); on an
+ * empty item, it clears the line instead, which ends the list. Null when the caret is not at the text of an item, so
+ * Enter keeps its normal meaning.
  */
-export function continueTask(
+export function continueList(
   value: string,
   ss: number,
   se: number,
@@ -230,7 +239,7 @@ export function continueTask(
   const eol = value.indexOf("\n", ss);
   const lineEnd = eol === -1 ? value.length : eol;
   const line = value.slice(lineStart, lineEnd);
-  const m = /^([ \t]*)([*+-]|\d{1,9}[.)])[ \t]+\[[ xX]\][ \t]*/.exec(line);
+  const m = listItemAt(line);
   if (!m || ss - lineStart < m[0].length) return null;
 
   if (!line.slice(m[0].length).trim()) {
@@ -242,7 +251,7 @@ export function continueTask(
   }
   const n = /^\d+/.exec(m[2]);
   const marker = n ? `${Number(n[0]) + 1}${m[2].slice(n[0].length)}` : m[2];
-  const insert = `\n${m[1]}${marker} [ ] `;
+  const insert = `\n${m[1]}${marker}${m[3]}${m[4] ? "[ ] " : ""}`;
   const caret = ss + insert.length;
   return {
     value: value.slice(0, ss) + insert + value.slice(ss),
@@ -252,11 +261,12 @@ export function continueTask(
 }
 
 /**
- * What Tab and Shift+Tab do on a task line: the whole line moves two spaces in or out (a sub-task), the
- * caret keeps its place in the text. Null when the selection is not within one task line, so Tab keeps its
- * normal meaning.
+ * What Tab and Shift+Tab do on a list line (a bullet, a number, a task): the whole line moves in or out one level (a
+ * sub-item), the caret keeps its place in the text. A level is 2 spaces for a bullet and the marker's width plus one
+ * for a number, since CommonMark nests under `1. a` only from 3 spaces. Null when the selection is not within one
+ * list line, so Tab keeps its normal meaning.
  */
-export function shiftTaskIndent(
+export function shiftListIndent(
   value: string,
   ss: number,
   se: number,
@@ -267,14 +277,15 @@ export function shiftTaskIndent(
   const lineEnd = eol === -1 ? value.length : eol;
   if (se > lineEnd) return null;
   const line = value.slice(lineStart, lineEnd);
-  if (!/^[ \t]*(?:[*+-]|\d{1,9}[.)])[ \t]+\[[ xX]\](?:\s|$)/.test(line))
-    return null;
-  const out = outdent ? Math.min(2, /^[ \t]*/.exec(line)?.[0].length ?? 0) : 0;
+  const m = listItemAt(line);
+  if (!m) return null;
+  const step = /^\d/.test(m[2]) ? m[2].length + 1 : 2;
+  const out = outdent ? Math.min(step, m[1].length) : 0;
   if (outdent && out === 0) return null;
   const rest = outdent ? value.slice(lineStart + out) : value.slice(lineStart);
-  const delta = outdent ? -out : 2;
+  const delta = outdent ? -out : step;
   return {
-    value: value.slice(0, lineStart) + (outdent ? "" : "  ") + rest,
+    value: value.slice(0, lineStart) + (outdent ? "" : " ".repeat(step)) + rest,
     ss: Math.max(lineStart, ss + delta),
     se: Math.max(lineStart, se + delta),
   };

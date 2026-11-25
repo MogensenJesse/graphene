@@ -1,10 +1,10 @@
 // src/lib/perf.ts
-// Startup and frame timing, so performance work is decided by numbers (docs/plans/01-audit-fixes.md, WP0).
+// Startup and frame timing, so performance work is decided by numbers.
 // Off unless localStorage["graphene.perf"] is "1", in a release build too; off, every call is a no-op. Nothing here
 // throws, whatever the webview lacks. Read the result with perfReport() in the inspector (a debug build has one).
 //
-// The startup marks, in the order they come since the Rust scan (WP5; docs/plans/00-baseline.md has the numbers from before it,
-// where `bodies-read` came BEFORE `items-set`):
+// The startup marks, in the order they come since the Rust scan (before it, `bodies-read` came BEFORE `items-set`; AGENTS.md has
+// the numbers from then):
 //   main, config-ready   the script ran; the vault config is known
 //   scan-done            scan_vault returned (loadVault): the list of notes, no text
 //   items-set            the list was committed to state (App, right after the scan)
@@ -87,7 +87,7 @@ export function observeLongFrames(): void {
 
 // IPC calls, counted from the requests the webview makes for them. Tauri defines `invoke` and `ipc` as read-only, so
 // they cannot be wrapped; its IPC is a fetch to http://ipc.localhost/<command> (ipc://localhost/ off Windows), which
-// the resource timeline lists. checked in a WebView2 release build (docs/plans/00-baseline.md): the observer
+// the resource timeline lists. checked in a WebView2 release build: the observer
 // sees every call, though the resource buffer itself keeps only 250 entries.
 const ipcCalls = new Map<string, number>();
 

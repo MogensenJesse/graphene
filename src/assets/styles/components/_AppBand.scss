@@ -1,0 +1,48 @@
+// src/assets/styles/components/_AppBand.scss
+@use '../base/variables' as v;
+
+// The strip across the top of the vault picker and the error screen (ui/AppBand): the window buttons at its right. It has no
+// background of its own, so the window's surface shows through, and an empty spot of it drags the window.
+.app-band {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: var(--band-height);
+  padding: 0 var(--space-5); // the window's 10px frame
+  box-sizing: border-box;
+}
+
+// Minimize, maximize and close (ui/WindowControls). They look the same in a maximised window as in a normal one. Each button's
+// hit area is bigger than the 24px it shows: it reaches the top and the bottom of the 44px they sit in and half the gap to its
+// neighbours, and the last one reaches the window's right edge, so the corner can be thrown at without aiming. The hover shape
+// stays the button's own.
+.win-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--band-gap);
+  margin-left: auto; // at the right even when nothing stands on its left
+
+  .icon-btn {
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: calc((var(--icon-btn-size) - var(--band-height)) / 2) calc(var(--band-gap) / -2);
+    }
+
+    &:last-child::after {
+      right: calc(-1 * var(--space-5)); // the window's 10px frame: the window's edge
+    }
+  }
+}
+
+// In the app they float over the top right of .app: in the notch of the main panel (see .app__main), level with its right edge,
+// 10px from the top of the window.
+.app > .win-controls {
+  position: absolute;
+  top: 0;
+  right: var(--space-5);
+  height: var(--band-height);
+  z-index: v.z('chrome');
+}

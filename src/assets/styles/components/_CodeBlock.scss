@@ -20,12 +20,43 @@
     @include mixins.custom-scrollbar;
   }
 
+  // Wrap code (Settings > Appearance, Alt+Z): lib/codeWrap puts the choice on <html>. Off, a long line scrolls sideways
+  :root[data-code-wrap='on'] & pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
   // Markdown renders <pre><code>; undo the inline-code chip look inside a block
   pre code {
     background: none;
     border: none;
     padding: 0;
     font-size: 1em;
+    counter-reset: code-line;
+  }
+
+  // Line numbers: rehypeCodeLines puts each line in a .code-line, and the number is a CSS counter, so it is not in what a
+  // selection, Copy or Find sees. Each line is a full-width box with the newline after it; a row that wraps hangs under
+  // the first row, past the number (--code-digits is the width of the widest number).
+  .code-line {
+    --code-gutter: calc(var(--code-digits, 1) * 1ch + 2.5ch); // the numbers, then a gap
+    display: inline-block;
+    width: 100%;
+    padding-left: var(--code-gutter);
+    text-indent: calc(-1 * var(--code-gutter));
+
+    &::before {
+      counter-increment: code-line;
+      content: counter(code-line);
+      display: inline-block;
+      box-sizing: border-box;
+      width: var(--code-gutter);
+      padding-right: 2.5ch;
+      text-align: right;
+      text-indent: 0;
+      color: var(--color-text-tertiary);
+      user-select: none;
+    }
   }
 
   // Language label and copy button, floating in the top-right corner

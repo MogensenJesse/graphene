@@ -41,12 +41,13 @@ $z: (
   'header-control': 6,  // header buttons and fields, above the drag strip so they stay clickable
   'pane-float': 8,      // the find bar, and the task details pane when it floats over the list
   'scrim': 9,           // dims the note behind a floating sidebar
-  'chrome': 10,         // the window buttons and the sidebar toggle
+  'chrome': 10,         // the band of the vault picker and the error screen, over what they show
   'toast': 20,
   'sidebar-float': 30,  // the floating sidebar: above the note and its scrim, below dialogs
   'dropdown': 200,      // the folder, language and list pickers
   'drop-overlay': 200,  // "Drop to import"
   'modal': 300,
+  'dialog-dropdown': 305, // a dropdown opened from inside a dialog (the Settings pickers), over the dialog's own panel
   'alert': 310,         // the error toast: over dialogs, below tooltips
   'tooltip': 350,       // above dialogs, below right-click menus
   'menu': 400,
@@ -62,8 +63,8 @@ $z: (
 // SCSS only: a custom property cannot sit inside a query. (The sidebar's own breakpoint, 799px, is in App.tsx.)
 $cq-header-compact: 470px;  // .item-header drops the words of its buttons
 $cq-folder-gutter: 1010px;  // the folder chip moves into the left gutter of the header
-$cq-details-float: 739px;   // the task details pane floats over the list instead of sitting beside it
 $cq-quick-settings: 640px;  // below this the header's quick buttons (the sidebar is hidden) leave out Settings
+$cq-details-float: 739px;   // the task details pane floats over the list instead of sitting beside it
 
 // ─── CSS Custom Properties (:root) ─────────────────────────────────────────
 // Dark is the default; :root[data-theme="light"] below overrides the colours.
@@ -186,8 +187,13 @@ $cq-quick-settings: 640px;  // below this the header's quick buttons (the sideba
 
   // Layout
   --modal-width: 580px;   // a dialog's width (the search palette is wider: 620px)
-  --bar-height: 52px;     // the header bars (item, sidebar, task details) and the search field row; a 24px button is centred in it at 14px
-  --column-width: 720px;  // the notes' text column, and the lists that line up with it
+  --band-height: 44px;    // the window buttons' row at the top of the window: a 24px button with 10px above and below, as at its right edge; the main panel's notch ends there
+  --notch-w: calc(3 * 24px + 2 * var(--band-gap) + 14px); // the notch in the main panel's top right corner: the window buttons and 14px before them
+  --notch-d: calc(var(--band-height) - 10px); // its depth from the panel's top (the window's frame is 10px)
+  --band-gap: var(--space-5);  // between the buttons of the band
+  --bar-height: 52px;     // the header bars (item, task details) and the search field row; a 24px button is centred in it at 14px
+  --column-width: 720px;  // the text column of the Tasks, the Trash and the like; a note's is its own, below
+  --column-width-note: var(--note-column, var(--column-width)); // a note's text column: the width its edge was dragged to (lib/columnWidth puts --note-column on <html>)
 
   --opacity-disabled: 0.45;
   --icon-md: 14px;  // the slot of a menu icon (the icons themselves take a size prop in Icon.tsx)

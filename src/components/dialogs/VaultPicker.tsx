@@ -1,9 +1,9 @@
 // src/components/dialogs/VaultPicker.tsx
 import { useState } from "react";
 import { pickVaultPath } from "../../lib/vault";
+import AppBand from "../ui/AppBand";
 import Button from "../ui/Button";
 import { HexagonIcon } from "../ui/Icon";
-import WindowControls from "../ui/WindowControls";
 
 interface VaultPickerProps {
   /** Adds the folder as a vault and opens it */
@@ -58,7 +58,7 @@ function VaultPicker({ onChoose, unreadable }: VaultPickerProps) {
           {picking ? "Choosing…" : "Choose vault folder"}
         </Button>
       </div>
-      <WindowControls className="vault-picker__win-controls" />
+      <AppBand />
     </div>
   );
 }

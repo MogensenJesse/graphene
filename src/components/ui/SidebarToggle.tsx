@@ -9,7 +9,7 @@ interface SidebarToggleProps {
   onToggle: () => void;
 }
 
-/** Shows or hides the sidebar. It sits in the top-left corner of the main panel, which is there either way. */
+/** Shows or hides the sidebar. It sits in the top-left corner of the main panel (so it moves with the sidebar), which is there either way. */
 function SidebarToggle({ hidden, onToggle }: SidebarToggleProps) {
   return (
     <Tooltip label={hidden ? "Show sidebar" : "Hide sidebar"}>

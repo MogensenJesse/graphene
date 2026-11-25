@@ -316,7 +316,7 @@ function TasksPane({
           {
             label: "Pick a date…",
             onSelect: () =>
-              pickDate(row, task.due ?? today, (due) =>
+              pickDate(row, task.due ?? "", today, (due) =>
                 api.updateTask(from, task.id, { due }),
               ),
           },

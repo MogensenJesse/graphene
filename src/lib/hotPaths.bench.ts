@@ -1,6 +1,6 @@
 // src/lib/hotPaths.bench.ts
 // `npm run bench`: the code that runs on every keystroke, on generated input (nothing is read from disk), so the
-// performance work of docs/plans/01-audit-fixes.md (P4, P9) is decided by numbers.
+// performance work on it is decided by numbers.
 import { afterAll, test } from "vitest";
 import type { Item } from "../types";
 import { findFenceAt } from "./codeBlocks";

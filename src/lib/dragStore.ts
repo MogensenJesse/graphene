@@ -1,5 +1,5 @@
 // src/lib/dragStore.ts
-// What a drag shows on screen, kept outside React state so that a drag frame renders nothing (docs/plans/01-audit-fixes.md, P3).
+// What a drag shows on screen, kept outside React state so that a drag frame renders nothing.
 // The pointer moves about 60 times a second, and each of those used to re-render the whole sidebar (or the whole app, for a task).
 // Now two things are kept apart:
 //   - the view (what is dragged, and which drop target the pointer is over) changes a few times per drag; components read the

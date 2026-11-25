@@ -50,6 +50,7 @@ function AddTask({ placeholder, today, onAdd, focusSignal }: AddTaskProps) {
       />
       <DatePick
         value={due ?? ""}
+        today={today}
         onChange={setDue}
         label="Due date"
         className={

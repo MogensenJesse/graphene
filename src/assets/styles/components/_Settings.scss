@@ -3,14 +3,45 @@
 
 // The header, body and footer are the Modal's (see _Modal.scss); this is what is Settings' own
 .settings {
+  --modal-width: 720px;
   // The modal starts 14vh from the top, so this leaves a margin below it even in the smallest window
   height: min(540px, calc(86vh - 20px));
 
-  // The title, with the section tabs under it
-  &__header {
+  // The list of sections on the left, the open one on the right; the footer with Close runs under both
+  &__layout {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
+
+  &__side {
     display: flex;
     flex-direction: column;
-    gap: var(--space-6);
+    flex-shrink: 0;
+    width: 176px;
+    background: var(--color-background-secondary);
+    border-right: 0.5px solid var(--color-border-secondary);
+  }
+
+  // The modal header's padding, so this title and the section's on the right share a line. Its left edge is the
+  // rows' icons: 8px of the list's padding and 10px of a row's
+  &__title {
+    padding: 18px 18px 14px;
+  }
+
+  // The rows are the sidebar's (`.sidebar__nav-item`)
+  &__nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 8px;
+  }
+
+  &__main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   &__body {
@@ -68,14 +99,9 @@
     }
   }
 
-  // The client picker inside the AI assistants tab is a Segmented that wraps, its items as wide as their words
-  &__clients {
-    flex-wrap: wrap;
-
-    .segments__item {
-      flex: 0 1 auto;
-      padding: var(--space-3) var(--space-5);
-    }
+  // A dropdown (ui/Select): as wide as the other pickers, the segmented rows
+  &__select {
+    max-width: 340px;
   }
 
   // Graphene was updated since the Claude extension was added
@@ -133,7 +159,7 @@
     }
   }
 
-  // ── Vaults tab ────────────────────────────────────────────────────────────
+  // ── Vaults section ────────────────────────────────────────────────────────────
 
   &__vaults {
     display: flex;

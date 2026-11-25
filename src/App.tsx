@@ -7,6 +7,7 @@ import {
   lazy,
   memo,
   Suspense,
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -118,7 +119,7 @@ interface MainAppProps {
 // Everything that belongs to one open vault. App gives it a `key`, so switching vaults starts it fresh:
 // lists, selection, drafts and effects all reset.
 //
-// Renders (docs/plans/01-audit-fixes.md, P3): this component renders for every change of the notes, a batch of texts included, so
+// Renders: this component renders for every change of the notes, a batch of texts included, so
 // what it hands to the big children (Sidebar, NoteDetail, NoteEditor, TasksPane, TaskLists) must be the same values while nothing in
 // them changed: data that keeps its identity (`useRowItems`, the memoised `tasksApi`, `vaults`) and functions made with `useStable`
 // (or `useCallback`), which keep theirs and run the newest code. The children are `memo`.
@@ -268,7 +269,12 @@ function MainApp({
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
-  const openSearch = useCallback(() => setSearchOpen(true), []);
+  // The palette is a script of its own that the first open waits for. In a transition the old screen stays until it is there; as a plain
+  // update React shows the (empty) Suspense fallback and then holds the content back for 300 ms (its fallback throttle).
+  const openSearch = useCallback(
+    () => startTransition(() => setSearchOpen(true)),
+    [],
+  );
   // Goes up on each Ctrl+F; the open note or editor shows its find bar when it changes
   const [findSignal, setFindSignal] = useState(0);
   const [mode, setMode] = useState<Mode>("new");
@@ -602,9 +608,7 @@ function MainApp({
     onOpenSearch: openSearch,
     // Find in the open note or editor; with neither on screen (trash, tasks), Ctrl+F is search
     onFind: () =>
-      mode === "trash" || inTasks
-        ? setSearchOpen(true)
-        : setFindSignal((n) => n + 1),
+      mode === "trash" || inTasks ? openSearch() : setFindSignal((n) => n + 1),
     onOpenSettings: () => onOpenSettings(),
     onSwitchTab: () => handleTab(inTasks ? "notes" : "tasks"),
   });
@@ -1085,7 +1089,7 @@ function MainApp({
       label: "Search…",
       icon: <SearchIcon size={14} />,
       keys: "Ctrl+K",
-      onSelect: () => setSearchOpen(true),
+      onSelect: openSearch,
     },
     {
       label: "Settings…",
@@ -1163,6 +1167,15 @@ function MainApp({
           className={`app__main${sidebarHidden ? " app__main--quick" : ""}`}
         >
           <div className="app__drag-strip" data-tauri-drag-region />
+          <SidebarToggle hidden={sidebarHidden} onToggle={toggleSidebar} />
+          <HeaderActions
+            shown={sidebarHidden}
+            inTasks={inTasks}
+            newDisabled={loadFailed}
+            onSearch={openSearch}
+            onNew={startNew}
+            onSettings={onOpenSettings}
+          />
           {compact && (
             // biome-ignore lint/a11y/noStaticElementInteractions: clicking the backdrop is a mouse shortcut for Escape, which useEscape above already covers
             <div
@@ -1171,18 +1184,6 @@ function MainApp({
               onClick={closeFloating}
             />
           )}
-          <SidebarToggle hidden={sidebarHidden} onToggle={toggleSidebar} />
-          {sidebarHidden && (
-            // The sidebar's own Search, New and Settings are out of sight: they are within reach beside its toggle
-            <HeaderActions
-              inTasks={inTasks}
-              newDisabled={loadFailed}
-              onSearch={openSearch}
-              onNew={startNew}
-              onSettings={onOpenSettings}
-            />
-          )}
-          <WindowControls />
           {renderMain()}
           {vaultMissing && !loadFailed && (
             <VaultMissingBar
@@ -1224,8 +1225,10 @@ function MainApp({
           )}
         </main>
       </div>
-      {searchOpen && (
-        <Suspense fallback={null}>
+      <WindowControls />
+      {/* The boundary stays mounted (only its content comes and goes), so the transition in openSearch can wait for the script */}
+      <Suspense fallback={null}>
+        {searchOpen && (
           <SearchPalette
             items={items}
             folders={folders}
@@ -1244,8 +1247,8 @@ function MainApp({
             }}
             onClose={closeSearch}
           />
-        </Suspense>
-      )}
+        )}
+      </Suspense>
     </div>
   );
 }
@@ -1334,7 +1337,8 @@ function App() {
   } | null>(null);
   const openSettings = useCallback<OpenSettings>(
     (tab = "appearance", message) =>
-      setSettings({ tab, message: message ?? null }),
+      // In a transition, like the palette: see openSearch
+      startTransition(() => setSettings({ tab, message: message ?? null })),
     [],
   );
   const closeSettings = useCallback(() => setSettings(null), []);
@@ -1342,8 +1346,11 @@ function App() {
   // The update dialog opens from the header pill and from Settings > About (which closes first: one dialog at a time)
   const [updateOpen, setUpdateOpen] = useState(false);
   const showUpdate = useCallback(() => {
-    setSettings(null);
-    setUpdateOpen(true);
+    // One transition, so Settings stays until the update dialog has loaded
+    startTransition(() => {
+      setSettings(null);
+      setUpdateOpen(true);
+    });
   }, []);
   const closeUpdate = useCallback(() => setUpdateOpen(false), []);
 

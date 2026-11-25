@@ -25,6 +25,7 @@ body {
   width: 100vw;
   background: var(--surface-app);
   overflow: hidden;
+  position: relative; // anchors the window buttons
   padding: 10px;
   box-sizing: border-box;
 }
@@ -33,6 +34,7 @@ body {
   position: relative; // anchors a floating sidebar
   display: flex;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   border-radius: var(--radius-lg); // the clip follows the panels' corners, so a floating sidebar's shadow is not left showing square
   gap: 10px;
@@ -71,7 +73,8 @@ body {
 // A small window: the open sidebar floats over the note (out of the flow, so the note keeps its width)
 .app__sidebar--float {
   position: absolute;
-  top: 0;
+  top: var(--bar-height); // below the toggle's line, so the toggle that closes it stays in reach
+  clip-path: inset(0 -40px 0 0); // the shadow shows on the right, over the note, and nowhere else
   bottom: 0;
   left: 0;
   z-index: v.z('sidebar-float'); // above the note and its scrim, below dialogs (300) and menus (400)
@@ -116,9 +119,25 @@ body {
   position: relative;
   // The header lines its title up with the text column from this panel's width (see .item-header)
   container: main / inline-size;
-  --win-controls-width: 84px; // three 24px buttons and two 6px gaps; the header bar clears it
   // The note's left gutter: wide enough to clear the sidebar toggle in the top left corner
   --pane-pad: 44px;
+  // The top right corner is cut out for the window buttons (.app > .win-controls), which sit in the notch on the window's own
+  // surface: the panel's outline, clockwise from the left end of its top-left corner. The header bars keep clear of the notch.
+  clip-path: shape(
+    from 0 var(--radius-lg),
+    arc to var(--radius-lg) 0 of var(--radius-lg) cw,
+    hline to calc(100% - var(--notch-w) - var(--radius-lg)),
+    arc to calc(100% - var(--notch-w)) var(--radius-lg) of var(--radius-lg) cw,
+    vline to calc(var(--notch-d) - var(--radius-lg)),
+    arc to calc(100% - var(--notch-w) + var(--radius-lg)) var(--notch-d) of var(--radius-lg) ccw,
+    hline to calc(100% - var(--radius-lg)),
+    arc to 100% calc(var(--notch-d) + var(--radius-lg)) of var(--radius-lg) cw,
+    vline to calc(100% - var(--radius-lg)),
+    arc to calc(100% - var(--radius-lg)) 100% of var(--radius-lg) cw,
+    hline to var(--radius-lg),
+    arc to 0 calc(100% - var(--radius-lg)) of var(--radius-lg) cw,
+    close
+  );
 }
 
 // A 24px icon button (ui/IconButton) in the header's left corner, so it keeps its place whether the sidebar is showing or not
@@ -129,30 +148,38 @@ body {
   z-index: v.z('chrome');
 }
 
-// Search, New and Settings beside the toggle, while the sidebar is hidden (its own are out of sight then)
+// Search, New and Settings beside the toggle, while the sidebar is hidden (its own are out of sight then). They fade with the
+// sidebar (its own transition) and leave the tab order.
 .app__quick {
   position: absolute;
   top: calc((var(--bar-height) - 24px) / 2);
-  left: 38px; // the toggle's 10px and 24px, and 4px
+  left: calc(10px + 24px + var(--band-gap)); // after the toggle
   z-index: v.z('chrome');
   display: flex;
-  gap: 2px;
-  animation: var(--anim-fade);
+  gap: var(--band-gap);
+  transition:
+    opacity v.$panel-anim,
+    visibility v.$panel-anim;
+
+  &--off {
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 
-// The header's title starts right of them: three buttons and the toggle, and 10px (two buttons and the toggle when the panel
-// is too narrow for Settings)
+// The header's title starts right of them: the toggle and three buttons, and 12px
 .app__main--quick {
-  --chrome-left: 124px;
+  --chrome-left: calc(10px + 4 * 24px + 3 * var(--band-gap) + 12px);
 }
 
+// Too narrow for Settings as well: it leaves, and the title comes closer
 @container main (max-width: #{v.$cq-quick-settings}) {
-  .app__quick-settings {
-    display: none;
+  .app__quick .app__quick-settings {
+    display: none; // (a class more than .icon-btn, which sets its own display)
   }
 
   .app__main--quick .item-header {
-    --chrome-left: 98px;
+    --chrome-left: calc(10px + 3 * 24px + 2 * var(--band-gap) + 12px);
   }
 }
 
@@ -166,15 +193,6 @@ body {
   -webkit-app-region: drag;
 }
 
-.app__win-controls {
-  position: absolute;
-  top: calc((var(--bar-height) - 24px) / 2); // centred in the header bar
-  right: 14px;
-  z-index: v.z('chrome');
-  display: flex;
-  gap: 6px;
-}
-
 // ─── Vault Picker (first-launch fullscreen) ─────────────────────────────────
 
 .vault-picker {
@@ -186,10 +204,13 @@ body {
   background: var(--surface-backdrop);
 }
 
-.vault-picker__win-controls {
-  position: fixed;
-  top: 12px;
-  right: 14px;
+// The band (ui/AppBand) has the window buttons and moves the window, over the card
+.vault-picker .app-band {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: v.z('chrome');
 }
 
 .vault-picker__card {

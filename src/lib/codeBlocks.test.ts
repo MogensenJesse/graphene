@@ -1,7 +1,14 @@
 // src/lib/codeBlocks.test.ts
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { findFenceAt, firstCodeBlock, setFenceLang } from "./codeBlocks";
+import {
+  fenceLineNumbers,
+  findFenceAt,
+  firstCodeBlock,
+  GUTTER_MAX_LINES,
+  gutterNumbers,
+  setFenceLang,
+} from "./codeBlocks";
 
 const F = "```";
 
@@ -218,4 +225,87 @@ test("firstCodeBlock is the code of the first block, CRLF or not", () => {
   assert.equal(firstCodeBlock(`${F}\r\na\r\nb\r\n${F}`), "a\nb");
   assert.equal(firstCodeBlock("no block"), "");
   assert.equal(firstCodeBlock(`${F}\nunclosed\ncode`), "unclosed\ncode");
+});
+
+test("fenceLineNumbers numbers the lines inside a block from 1 and leaves the rest", () => {
+  assert.deepEqual(fenceLineNumbers(""), [null]);
+  assert.deepEqual(fenceLineNumbers("just\ntext"), [null, null]);
+  assert.deepEqual(fenceLineNumbers(`a\n${F}js\nx\ny\n${F}\nb`), [
+    null,
+    null,
+    1,
+    2,
+    null,
+    null,
+  ]);
+  // an empty line inside a block counts; the text's trailing newline is an empty line of its own
+  assert.deepEqual(fenceLineNumbers(`${F}\nx\n\ny\n${F}\n`), [
+    null,
+    1,
+    2,
+    3,
+    null,
+    null,
+  ]);
+});
+
+test("every block starts again at 1, and an unclosed one runs to the end", () => {
+  assert.deepEqual(fenceLineNumbers(`${F}\na\n${F}\n${F}\nb\nc\n${F}`), [
+    null,
+    1,
+    null,
+    null,
+    1,
+    2,
+    null,
+  ]);
+  assert.deepEqual(fenceLineNumbers(`${F}\na\nb`), [null, 1, 2]);
+});
+
+test("fenceLineNumbers follows the closing rules of findFenceAt", () => {
+  // a shorter fence, or another character, does not close; it is a line of the code
+  assert.deepEqual(fenceLineNumbers("````\na\n```\nb\n````"), [
+    null,
+    1,
+    2,
+    3,
+    null,
+  ]);
+  assert.deepEqual(fenceLineNumbers("~~~\na\n```\nb\n~~~"), [
+    null,
+    1,
+    2,
+    3,
+    null,
+  ]);
+  // a fence with a tag does not close a block
+  assert.deepEqual(fenceLineNumbers(`${F}\na\n${F}js\nb\n${F}`), [
+    null,
+    1,
+    2,
+    3,
+    null,
+  ]);
+  // a fence indented four spaces is code, not a fence
+  assert.deepEqual(fenceLineNumbers(`    ${F}\na`), [null, null]);
+  // a Windows file: the carriage returns do not change what a line is
+  assert.deepEqual(fenceLineNumbers(`${F}\r\na\r\n${F}\r\nb`), [
+    null,
+    1,
+    null,
+    null,
+  ]);
+});
+
+test("gutterNumbers is null when there is nothing to number", () => {
+  assert.equal(gutterNumbers("just text"), null);
+  assert.equal(gutterNumbers(`${F}\n${F}`), null); // a block with no lines in it
+  assert.deepEqual(gutterNumbers(`a\n${F}\nx\n${F}`), [null, null, 1, null]);
+});
+
+test("gutterNumbers leaves a note that is too big to draw", () => {
+  const lines = "x\n".repeat(GUTTER_MAX_LINES);
+  assert.notEqual(gutterNumbers(`${F}\n${lines.slice(0, 200)}${F}`), null);
+  assert.equal(gutterNumbers(`${F}\n${lines}${F}`), null); // one line too many
+  assert.equal(gutterNumbers(`${F}\n${"x".repeat(500_000)}\n${F}`), null); // too many characters
 });

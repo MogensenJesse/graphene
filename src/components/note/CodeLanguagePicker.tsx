@@ -25,9 +25,10 @@ interface Option {
   value: string; // "" = no tag (plain)
 }
 
+// "plain" first: a block with no tag opens the list at the top, on it, instead of at the far end
 const OPTIONS: Option[] = [
-  ...LANGUAGES.map((l) => ({ label: l, value: l })),
   { label: "plain", value: "" },
+  ...LANGUAGES.map((l) => ({ label: l, value: l })),
 ];
 
 interface CodeLanguagePickerProps {
@@ -74,9 +75,11 @@ function CodeLanguagePicker({
     inputRef.current?.focus();
   }, [open]);
 
+  // Also when it opens: the dropdown is made again each time, so an unchanged index still needs its row brought into view
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `open` only re-runs it when the list is drawn again
   useEffect(() => {
     listRef.current?.children[index]?.scrollIntoView({ block: "nearest" });
-  }, [index]);
+  }, [index, open]);
 
   useClickOutside(wrapRef, open, () => onOpenChange(false));
 

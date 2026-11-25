@@ -17,6 +17,8 @@
 @use 'components/ItemHeader';
 @use 'components/CodeBlock';
 @use 'components/Highlight';
+@use 'components/AppBand';
+@use 'components/ColumnResizer';
 @use 'components/NoteEditor';
 @use 'components/FolderRow';
 @use 'components/NoteDetail';
@@ -41,6 +43,7 @@
 @use 'components/WordCount';
 @use 'components/UpdateDialog';
 @use 'components/Segments';
+@use 'components/Select';
 @use 'components/InlineInput';
 @use 'components/Settings';
 @use 'components/VaultUnavailable';

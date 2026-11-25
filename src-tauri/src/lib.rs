@@ -4,6 +4,7 @@ use tauri::Manager;
 use tauri_plugin_fs::FsExt;
 
 pub mod boot;
+pub mod fonts;
 pub mod vault_scan;
 
 /// The fs permissions in capabilities/default.json cover the home folder. A vault anywhere else (another drive) is
@@ -80,6 +81,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             boot::boot_config,
+            fonts::list_fonts,
             vault_scan::scan_vault,
             vault_scan::read_notes,
             vault_scan::scan_trash

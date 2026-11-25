@@ -1,6 +1,6 @@
 // scripts/gen-synthetic-vault.mjs
 // Writes a synthetic Graphene vault (notes in a folder tree, a trash, a few huge notes, tasks) so startup and the hot
-// paths can be measured on a known size (docs/plans/01-audit-fixes.md, WP0). Plain Node, no dependencies, the same output
+// paths can be measured on a known size. Plain Node, no dependencies, the same output
 // on every run (a seeded generator), except that task due dates and My Day are relative to the day it is run.
 //
 //   node scripts/gen-synthetic-vault.mjs --out <dir> --preset 1k|5k|20k|50k

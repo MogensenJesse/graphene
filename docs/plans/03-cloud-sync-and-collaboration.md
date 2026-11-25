@@ -2,7 +2,7 @@
 
 Status: plan, nothing built yet. Written 2026-11-21.
 
-Related plans: [01-audit-fixes.md](01-audit-fixes.md), [02-android-app.md](02-android-app.md).
+Related plan: [02-android-app.md](02-android-app.md). The audit-fix plan that these plans used to point at is done and was removed from the tree; it is in commit `7df88a1` (`git show 7df88a1:docs/plans/01-audit-fixes.md`), and AGENTS.md keeps its startup numbers and open items.
 
 Evidence markers used below: **[V]** verified against a current source on 2026-11-20 or 2026-11-21 (URLs at the end), **[M]** from
 memory or my own estimate, **[C]** read in this repository.
@@ -153,7 +153,7 @@ disagree on a file name.
 
 ## Prerequisite refactors (do these before the engine)
 
-Items 1 and 2 are already scheduled in [01-audit-fixes.md](01-audit-fixes.md) (WP1) because they fix data-loss risks on their own.
+Items 1 and 2 are already done (in the audit work, commit `7df88a1`) because they fix data-loss risks on their own.
 
 1. **Atomic note writes:** write a dot temp file and rename, with one helper shared by the app and the MCP server. Today `saveItem`
    uses a plain `writeTextFile` [C].
@@ -177,7 +177,7 @@ Items 1 and 2 are already scheduled in [01-audit-fixes.md](01-audit-fixes.md) (W
     Android, Node (MCP) and tests share one implementation.
 13. **Rename `vaults[].shared`** to `assistantAccess`, still reading the old key.
 
-The Rust `scan_vault` command from WP5 is the natural place to compute hashes and modified times for the sync manifest.
+The Rust `scan_vault` command (`src-tauri/src/vault_scan.rs`) is the natural place to compute hashes and modified times for the sync manifest.
 
 ## Collaboration (editing only)
 
@@ -215,8 +215,7 @@ server. It is a large piece of work (L to XL) [M].
 
 Sizes: S up to 1 week, M 2 to 4 weeks, L 1 to 3 months, XL more than 3 months (rough, for one developer) [M].
 
-0. **Audit work packages first** ([01-audit-fixes.md](01-audit-fixes.md)), including the two data-safety fixes and the Rust
-   `scan_vault`.
+0. **The audit work packages**, including the two data-safety fixes and the Rust `scan_vault`: done (commit `7df88a1`).
 1. **Android app, local only** (L), see [02-android-app.md](02-android-app.md). Needs no account.
 2. **Paid tier: backend, accounts and sync** (L):
    - Start with a short spike: Data API with RLS, the "push if revision is X" function, presigned URLs from a Neon Function, email-code

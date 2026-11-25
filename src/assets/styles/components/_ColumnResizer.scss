@@ -1,0 +1,58 @@
+// src/assets/styles/components/_ColumnResizer.scss
+@use '../base/variables' as v;
+
+// The two edges of a note's text column that can be dragged to change its width (ui/ColumnResizer). The layer fills the box of
+// the note's text (it goes inside `.note-detail__markdown`, which is positioned, and inside the editor's `.note-editor__text`), so
+// it is as wide as the column is drawn and as tall as the note, and takes no pointer; only the strips on the column's edges do.
+.column-resizer {
+  position: absolute;
+  inset: 0;
+  min-height: 96px; // a one-line note still has an edge to grab
+  z-index: v.z('raised');
+  pointer-events: none;
+
+  &__edge {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: col-resize;
+    touch-action: none;
+    pointer-events: auto;
+    outline: none;
+
+    // Each strip sits a gap outside the text (--space-6), so the line that shows when it is pointed at is not touching it
+    &--left {
+      left: calc(-4px - var(--space-6));
+    }
+
+    &--right {
+      right: calc(-4px - var(--space-6));
+    }
+
+    // A thin line shows where the edge is when it is pointed at, focused or dragged
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 2px;
+      margin-left: -1px;
+      border-radius: 1px;
+      background: var(--color-border-secondary);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+
+    &:hover::after,
+    &:focus-visible::after {
+      opacity: 1;
+    }
+
+    &--drag::after {
+      opacity: 1;
+      background: var(--color-text-info);
+    }
+  }
+}

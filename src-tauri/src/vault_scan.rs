@@ -1,5 +1,5 @@
 // src-tauri/src/vault_scan.rs
-// The startup path in Rust (audit plan WP5): `scan_vault` lists a vault's notes, metadata only, in one call, and `read_notes` reads
+// The startup path in Rust: `scan_vault` lists a vault's notes, metadata only, in one call, and `read_notes` reads
 // note bodies in batches. The TypeScript side is src/lib/vaultScan.ts, which documents the result shapes for the app.
 //
 // The rules are those of `scanVaultRecursive` + `readItemFile` (src/lib/storage.ts) and of mcp/vault.ts, and the frontmatter is the

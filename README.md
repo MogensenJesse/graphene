@@ -24,7 +24,7 @@ A to-do app of its own, apart from your notes: switch between **Notes** and **Ta
 
 ### Code
 - **Ctrl+Shift+N** starts a note with an empty code block; the word after the opening fence is the language (**Ctrl+L** changes it)
-- Syntax highlighting (JS, TS, CSS, SCSS, HTML, shell, JSON, Python, SQL and more) and a copy button. **Ctrl+C** with nothing selected copies the code when the note has exactly one block
+- Syntax highlighting (JS, TS, CSS, SCSS, HTML, shell, JSON, Python, SQL and more) and a copy button. **Ctrl+C** with nothing selected copies the code when the note has exactly one block. Code lines wrap and are numbered from 1 in each block; **Alt+Z** (or **Settings**) switches between wrapping and scrolling sideways
 - A note that starts with a code block counts as code in the sidebar
 
 ### Organization and search
@@ -63,6 +63,7 @@ A to-do app of its own, apart from your notes: switch between **Notes** and **Ta
 | Ctrl+B / Ctrl+I | Bold / italic |
 | Ctrl+L | Set the language of the code block at the cursor |
 | Ctrl+C | Copy the code of the open note (nothing selected, one code block) |
+| Alt+Z | Wrap long lines of code, or scroll them sideways |
 | F2 | Rename the open item |
 | Shift+F10 | Context menu of the selected item |
 | Del | Move the item to the trash, or delete the selected folder (asks first) |

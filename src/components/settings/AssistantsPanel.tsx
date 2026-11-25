@@ -10,7 +10,7 @@ import {
   rememberExtensionAdded,
 } from "../../lib/mcpExtension";
 import Button from "../ui/Button";
-import Segmented from "../ui/Segmented";
+import Select from "../ui/Select";
 
 type Tab = "claude" | ClientId;
 const TABS: { value: Tab; label: string }[] = [
@@ -75,13 +75,16 @@ function AssistantsPanel({ version }: AssistantsPanelProps) {
         Let an assistant search, read and add to your notes.
       </p>
 
-      <Segmented
-        label="AI assistant"
-        className="settings__clients"
-        value={tab}
-        options={TABS}
-        onChange={setTab}
-      />
+      <section className="settings__field">
+        <h3 className="settings__label">Assistant</h3>
+        <Select
+          label="Assistant"
+          className="settings__select"
+          value={tab}
+          options={TABS}
+          onChange={setTab}
+        />
+      </section>
 
       {files === "error" && (
         <p className="settings__error" role="alert">

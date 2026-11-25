@@ -5,6 +5,7 @@ import { useDomFind, useFindState } from "../../hooks/useFind";
 import { openLink } from "../../lib/openLink";
 import { perfRender } from "../../lib/perf";
 import type { Folder, Item } from "../../types";
+import ColumnResizer from "../ui/ColumnResizer";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
 import {
@@ -193,6 +194,8 @@ function NoteDetail({
               />
             </Suspense>
           </div>
+          {/* Inside the column, so its edges are as tall as the text and scroll with it */}
+          <ColumnResizer />
         </div>
       </div>
 

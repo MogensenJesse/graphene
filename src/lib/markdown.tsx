@@ -7,12 +7,14 @@ import remarkGfm from "remark-gfm";
 import CodeBlock from "../components/note/CodeBlock";
 import { useClipboard } from "../hooks/useClipboard";
 import { openLink } from "./openLink";
+import rehypeCodeLines from "./rehypeCodeLines";
 
 // No `as const` — it makes the array readonly and triggers TS4104 on remarkPlugins
 export const REMARK_PLUGINS = [remarkGfm, remarkBreaks];
 
-// Colours fenced code by its language tag (```js). Untagged or unknown tags stay plain.
-export const REHYPE_PLUGINS = [rehypeHighlight];
+// Colours fenced code by its language tag (```js), untagged or unknown tags stay plain, then puts each line in a span for
+// the line numbers (rehypeCodeLines).
+export const REHYPE_PLUGINS = [rehypeHighlight, rehypeCodeLines];
 
 // The <code> inside <pre> carries the fence's language as the class "language-js"
 function languageOf(children: ReactNode): string {

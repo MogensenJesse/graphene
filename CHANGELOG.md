@@ -3,65 +3,27 @@
 ## Unreleased
 
 ### New
-- Press Escape while dragging a note, folder, task, list or group to cancel the drag. Nothing moves
-- Right-click a task for a menu of its own: open details, rename, mark done, mark important, add to My Day, set the due date (today, tomorrow or a date you pick), move to a list, copy the title or delete it
-- Deleting a folder, a to-do list or a group now shows an Undo bar (or press Ctrl+Z). A folder comes back with its subfolders and every note where it was, a list with all its tasks, ticked ones too
-- Right-click a folder and choose Move to to put it under another folder or at the top level; the pictures in its notes keep working. A note's or folder's menu also has Copy path
-- Right-click menus show the keyboard shortcut of an entry where there is one (Ctrl+K, F2, Del, Ctrl+E and so on), and notes, folders, tasks, lists and groups have Move up and Move down in theirs, so they can be put in order without dragging
-- Ctrl+Z undoes a "moved to trash" or "deleted" message when you are not typing in a text box (a new note you have not typed in yet counts), and the message stays while you point at it
-- Arrow keys walk through the folders and notes in the sidebar: Right opens a folder, Left closes it (or goes to the folder a note sits in), Home and End jump to the first and last
-- A folder's + button offers a new note, new code or subfolder. A to-do list's heading has a … menu, and a note in the sidebar shows a … when you point at it, with the same menu as a right-click
-- With the sidebar hidden, Search, New and Settings stay next to its toggle button
-- Each note in the Trash has Delete forever (it asks first), restoring a note says where it went and why when its folder was gone, and Escape leaves the Trash and goes back to the note you had open. The Trash now says notes, not items
-- If another program (an AI assistant, a sync tool) changes the note you are typing in, Graphene asks "Keep mine" or "Load theirs" instead of quietly saving over it. If you leave the note with the question open, what you typed is kept as a copy called "(conflict copy)"
+- A task's details open in a side pane next to the list, and right-clicking a task gives a full menu: details, rename, due date, move to a list and more
+- Dates are picked in Graphene's own calendar, which opens as wide as the button you pressed
+- Drag the edge of a note's text to make it wider or narrower (double-click an edge to reset it)
+- Code blocks show line numbers and wrap long lines; Alt+Z switches wrapping on and off
+- Enter continues a bulleted or numbered list, and Tab and Shift+Tab move an item in and out
+- Deleting a folder, a list or a group shows an Undo bar (or press Ctrl+Z), and Escape cancels a drag
+- Right-click menus show keyboard shortcuts and have Move up, Move down and Move to, and the arrow keys walk through the sidebar
+- Pick any font installed on your computer for notes and code
+- If another program changes the note you are typing in, Graphene asks whether to keep yours or load theirs
 
 ### Changed
-- The window now says what a drop does while you drag files over it; files Graphene cannot import are named in a message, and dropping files in the Tasks tab no longer imports notes and jumps to the Notes tab
-- The same thing is called the same everywhere: New folder and New subfolder (not Add), Show in Explorer (not Reveal in Explorer or Show file), Mark as not important, and menu entries that open a dialog end in …
-- In the Notes tab, Search is the first item in the sidebar, as in the Tasks tab, and the All / Notes / Code filter is gone (search still understands `type:`)
-- The text in the interface is a little bigger
-- The right-click menu on an empty spot of the window now fits the tab you are in: "New task" in Tasks, the new note and code entries in Notes
-- Things ease in and out instead of snapping: menus and dialogs, dropdowns, folder and list arrows, the Undo bar, a task you add, and a task you tick or delete, which folds away
-- A task's details (title, steps, My Day, due date, list and note) now open in a side pane next to the list, which slides in and out, instead of under the task. Escape or the close button closes it
-- Folder names are checked as you type them (no slashes, no dot at the start, no Windows reserved names, no duplicates), and the delete messages for folders and to-do lists say exactly what is moved or removed
-- Text now uses the Regular and SemiBold weights where they were meant, so body text is a little lighter and selected items stand out
-- Scrollbars are thin, faint and always visible, grow smoothly when you point at them, are easy to grab, and the text no longer shifts when one appears. Keyboard focus now shows on the update pill, the due-date chip, the folder-delete buttons and the dropdown lists, and the dim behind the floating sidebar follows the theme
-- Buttons, checkboxes and the "are you sure" bars look and behave the same everywhere (every button, the window buttons and the formatting bar included, sinks a little when pressed and shows the same focus ring), the dropdown rows match the right-click menu, all dialogs share one width, and the AI assistant picker in Settings is a row of buttons like the theme picker
-- Escape in a task's details first drops what you were typing in a field, and a second Escape closes the pane. "Open details" in a task's right-click menu puts the cursor in its title
-- The window now appears once Graphene is ready to use, instead of first showing an empty see-through rectangle, and a maximised window no longer flashes at its normal size when it opens
-- Graphene starts a little faster: it reads its list of vaults in one step, and Settings, Search, the update window and the note view's formatting are loaded only when they are needed
-- Big vaults open much sooner: the list of notes appears as soon as it is read and the text of the notes fills in behind it. Searching by title works at once; Ctrl+K says "Indexing…" until every note's text is in, and text matches appear as they load
-- Coming back to the window only reads the notes that changed on disk, so it is quick in a big vault, and the trash is read when you open it instead of at start (the number by the trash icon is still there)
-- Typing in a very large note stays smooth: the word count under it catches up a moment after you stop typing instead of on every key. Ctrl+K and Find in a note are quicker in a big vault or a large note
-- With a big vault, the sidebar no longer redraws every note when one note changes in the background, when you pick a note, or while you drag, so dragging a note, folder, task or list is smoother, and ticking a task redraws only that task
-- Coming back to the window re-reads the to-do lists at most every few seconds instead of every time, and saving a change to a list now takes three file operations instead of five, so tasks stay quick on a slow disk
-- Pictures in a note load only when they are near the view and are kept for next time, and a picture you paste or drop is scaled down to at most 2000 pixels wide or tall (GIF and SVG are left as they are), so notes with many pictures open lighter
-- The menu key on a highlighted folder opens that folder's menu
+- Big vaults open much faster, and typing in large notes and dragging things stay smooth
+- Settings has its sections down the left, and the AI assistant picker is a dropdown
+- Things ease in and out, the text is a little bigger, scrollbars are thinner, and buttons and menus look the same everywhere
+- Search is the first item in the Notes sidebar, and the window buttons sit in a notch in the top right corner instead of floating over the note
 
 ### Fixes
-- Switching between Notes and Tasks keeps the sidebar scrolled where it was, and a note opened from Search inside a closed folder opens the folders around it and scrolls into view
-- The dropdown lists (a note's folder, a code block's language, a task's list) now light up the row you point at, in both themes
-- When a note, task or folder cannot be saved you now get a message with a Retry button, and the unsaved dot stays until it is saved
-- While a vault is being read the sidebar says "Loading…" instead of "Nothing here yet"
-- If the vault you had open cannot be found when Graphene starts, it opens another one and tells you which one it could not open
-- A vault whose folder was renamed, deleted or unplugged is no longer quietly created again as an empty folder when something is saved: you get a message that says the vault folder is not there instead, and while a vault cannot be opened the sidebar's New note, New code, New folder and to-do lists are switched off
-- Saving a note can no longer lose it if the disk write fails: the old file stays until the new one is safely written. Notes written by an AI assistant are saved the same way
-- Text typed in a task field is no longer lost when you switch tabs or close the window
-- If a note cannot be saved when you close the window, the window stays open once so you can retry, and a note that could not be saved is no longer overwritten when you come back to the window
-- A failed move to the trash no longer shows an Undo message, and deleting a group of to-do lists now asks first
-- Holding the Del key can no longer delete a folder, and Del on a note works again after you click a folder
-- After an error the window shows a panel with a Reload button instead of going blank
-- Dialogs (Search, Settings, the update) now take the keyboard: the focus starts inside, Tab stays in the dialog, the window behind ignores keys and clicks until it closes, and the focus goes back to where you were
-- F2 renames the highlighted folder, and no longer renames the open note as well when a folder is highlighted
-- Screen readers now hear which task a checkbox or star belongs to, the item a checkbox in a note belongs to, and which menu choice is checked
-- A long stretch of typing with no pause is now saved every few seconds, instead of only once you stop
-- Delete forever on a note in the Trash also removes the pictures only that note used, and the Trash opens faster in a big vault (a note's text is read when you restore it)
-- A change made to the open note by another program is noticed within a few seconds, not only when you come back to the window
-- If the vault's folder is renamed, deleted or unplugged while Graphene is open, it says so: a message replaces the notes, or, if you have unsaved text, a bar above the note keeps that text and retries every few seconds until the folder is back. It no longer says "0 notes" for a vault it cannot open
-- Closing the window waits for a task that is still being saved, and warns once if it could not be. An update no longer installs while a note or task is unsaved, and switching, adding or removing a vault waits for the last save and is held back once if it failed
-
-### Other
-- The assistant connection (MCP) no longer creates a vault folder that is missing
+- A button's tip no longer stays on screen after you click it
+- Saving is safer: a note can no longer be lost halfway, a failed save shows a Retry button, and closing, updating or switching vaults waits for saves to finish
+- If a vault's folder is renamed, deleted or unplugged, Graphene says so instead of quietly creating it again empty
+- Dialogs take the keyboard properly, and Del and F2 act on the right thing
 
 ## v1.6.0
 

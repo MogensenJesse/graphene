@@ -1,27 +1,40 @@
 // src/components/note/NoteEditor.tsx
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  memo,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useClipboard } from "../../hooks/useClipboard";
+import { useCodeWrap } from "../../hooks/useCodeWrap";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useFindState, useTextareaFind } from "../../hooks/useFind";
 import { useImageInsert } from "../../hooks/useImageInsert";
 import type { AddItemFields } from "../../hooks/useItems";
 import { replaceText, useMarkdownFormat } from "../../hooks/useMarkdownFormat";
 import { autosaveDelay } from "../../lib/autosave";
-import { findFenceAt, setFenceLang } from "../../lib/codeBlocks";
+import { findFenceAt, gutterNumbers, setFenceLang } from "../../lib/codeBlocks";
 import { leaveAction } from "../../lib/editConflict";
 import {
   activeFormats,
-  continueTask,
-  shiftTaskIndent,
+  continueList,
+  shiftListIndent,
 } from "../../lib/markdownFormat";
 import { perfRender } from "../../lib/perf";
+import { isCodeBody } from "../../lib/utils";
 import type { Folder, Item, ItemKind } from "../../types";
 import Button from "../ui/Button";
+import ColumnResizer from "../ui/ColumnResizer";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
 import { CheckIcon, ClipboardIcon } from "../ui/Icon";
 import MoreButton from "../ui/MoreButton";
 import Tooltip from "../ui/Tooltip";
+import CodeGutter from "./CodeGutter";
 import CodeLanguagePicker from "./CodeLanguagePicker";
 import CopyNoteButton from "./CopyNoteButton";
 import FindBar from "./FindBar";
@@ -134,6 +147,20 @@ function NoteEditor({
 
   // The code block the caret is in, if any
   const block = useMemo(() => findFenceAt(text, caret), [text, caret]);
+
+  // Long lines of code wrap or scroll (Alt+Z). One textarea holds the whole note, so only a note that is code (it starts
+  // with a fence) can scroll sideways; the text of any other note always wraps.
+  const wrap = useCodeWrap();
+  const wraps = wrap === "on" || !isCodeBody(text);
+
+  // Line numbers beside the code. They follow the text a little behind a key (a deferred value), so typing never waits
+  // for a note of thousands of lines; null when no line is in a code block, or the note is too big to draw them for.
+  const gutterText = useDeferredValue(text);
+  const numbers = useMemo(() => gutterNumbers(gutterText), [gutterText]);
+  const gutterDigits = useMemo(
+    () => String(Math.max(1, ...(numbers ?? []).map((n) => n ?? 0))).length,
+    [numbers],
+  );
 
   // The toolbar buttons that are on at the caret or selection light up
   const active = useMemo(
@@ -347,7 +374,7 @@ function NoteEditor({
         return;
       }
     }
-    // Enter on a task line starts the next task (not while composing text, with a modifier, or inside a code block)
+    // Enter on a list line (bullet, number or task) starts the next item (not while composing text, with a modifier, or inside a code block)
     if (
       e.key === "Enter" &&
       !(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) &&
@@ -355,17 +382,17 @@ function NoteEditor({
       !block
     ) {
       const el = e.currentTarget;
-      const edit = continueTask(el.value, el.selectionStart, el.selectionEnd);
+      const edit = continueList(el.value, el.selectionStart, el.selectionEnd);
       if (edit) {
         e.preventDefault();
         replaceText(el, edit);
         return;
       }
     }
-    // Tab / Shift+Tab on a task line moves the whole line in or out: a sub-task
+    // Tab / Shift+Tab on a list line moves the whole line in or out: a sub-item
     if (e.key === "Tab" && !(e.ctrlKey || e.metaKey || e.altKey) && !block) {
       const el = e.currentTarget;
-      const edit = shiftTaskIndent(
+      const edit = shiftListIndent(
         el.value,
         el.selectionStart,
         el.selectionEnd,
@@ -455,27 +482,44 @@ function NoteEditor({
               />
             )}
           </MarkdownToolbar>
-          <textarea
-            ref={textareaRef}
-            className="note-editor__textarea"
-            data-pristine={!initialItem && body === seedBody}
-            data-scrollbar
-            placeholder="Start writing…"
-            value={body}
-            onChange={(e) => {
-              setBody(e.target.value);
-              trackSelection(e.target);
-            }}
-            onSelect={(e) => trackSelection(e.currentTarget)}
-            onKeyDown={handleBodyKeyDown}
-            onPaste={handlePaste}
-            onContextMenu={(e) =>
-              openText(
-                e,
-                block ? [] : ["separator", formatMenuEntry(applyFormat)],
-              )
-            }
-          />
+          <div
+            className="note-editor__text"
+            data-wrap={wraps ? "on" : "off"}
+            style={{ "--gutter-digits": gutterDigits } as CSSProperties}
+          >
+            <textarea
+              ref={textareaRef}
+              className="note-editor__textarea"
+              data-pristine={!initialItem && body === seedBody}
+              data-gutter={numbers !== null}
+              data-scrollbar
+              wrap={wraps ? undefined : "off"}
+              placeholder="Start writing…"
+              value={body}
+              onChange={(e) => {
+                setBody(e.target.value);
+                trackSelection(e.target);
+              }}
+              onSelect={(e) => trackSelection(e.currentTarget)}
+              onKeyDown={handleBodyKeyDown}
+              onPaste={handlePaste}
+              onContextMenu={(e) =>
+                openText(
+                  e,
+                  block ? [] : ["separator", formatMenuEntry(applyFormat)],
+                )
+              }
+            />
+            {numbers && (
+              <CodeGutter
+                text={gutterText}
+                numbers={numbers}
+                textareaRef={textareaRef}
+              />
+            )}
+            {/* The edges run beside the writing box, not past the toolbar and the word count */}
+            <ColumnResizer />
+          </div>
           <WordCount body={countedBody} updatedAt={initialItem?.updatedAt} />
         </div>
       </div>

@@ -70,7 +70,8 @@ function Bubble({
 /**
  * Styled tooltip for a button that has no visible name of its own, or a shortcut worth showing: name,
  * shortcut and, for the formatting buttons, the markdown it writes. Shows after a short hover or at once
- * on keyboard focus. The tip is portalled to the body, so no overflow in the editor clips it.
+ * on keyboard focus (not on the focus a mouse click gives), and goes away on a click. The tip is
+ * portalled to the body, so no overflow in the editor clips it.
  */
 function Tooltip({ label, keys, hint, children }: TooltipProps) {
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
@@ -88,16 +89,21 @@ function Tooltip({ label, keys, hint, children }: TooltipProps) {
     );
   };
 
-  // Clicking, typing or scrolling dismisses it
+  // Clicking, typing or scrolling dismisses it, and so does anything that moves the button out from
+  // under a tip that stays put: the window resizing (maximise) or losing focus (minimise, alt-tab)
   useEffect(() => {
     if (!anchor) return;
     document.addEventListener("pointerdown", hide, true);
     document.addEventListener("keydown", hide, true);
     document.addEventListener("scroll", hide, true);
+    window.addEventListener("resize", hide);
+    window.addEventListener("blur", hide);
     return () => {
       document.removeEventListener("pointerdown", hide, true);
       document.removeEventListener("keydown", hide, true);
       document.removeEventListener("scroll", hide, true);
+      window.removeEventListener("resize", hide);
+      window.removeEventListener("blur", hide);
     };
   }, [anchor, hide]);
 
@@ -114,9 +120,18 @@ function Tooltip({ label, keys, hint, children }: TooltipProps) {
           children.props.onMouseLeave?.(e);
           hide();
         },
+        // A click cancels a tip still waiting for its delay. The document listener above only
+        // exists once the tip is up
+        onPointerDown: (e) => {
+          children.props.onPointerDown?.(e);
+          hide();
+        },
+        // Only keyboard focus shows it. A click focuses the button too, which would bring the tip
+        // straight back after the click and leave it there
         onFocus: (e) => {
           children.props.onFocus?.(e);
-          show(e.currentTarget, 0);
+          if (e.currentTarget.matches(":focus-visible"))
+            show(e.currentTarget, 0);
         },
         onBlur: (e) => {
           children.props.onBlur?.(e);
