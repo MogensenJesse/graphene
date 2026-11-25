@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.7.0
+
 ### New
 - A task's details open in a side pane next to the list, and right-clicking a task gives a full menu: details, rename, due date, move to a list and more
 - Dates are picked in Graphene's own calendar, which opens as wide as the button you pressed
