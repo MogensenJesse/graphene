@@ -9,11 +9,13 @@ import {
   extensionIsOld,
   rememberExtensionAdded,
 } from "../../lib/mcpExtension";
+import Button from "../ui/Button";
+import Segmented from "../ui/Segmented";
 
 type Tab = "claude" | ClientId;
-const TABS: { id: Tab; label: string }[] = [
-  { id: "claude", label: "Claude app" },
-  ...CLIENTS,
+const TABS: { value: Tab; label: string }[] = [
+  { value: "claude", label: "Claude app" },
+  ...CLIENTS.map(({ id, label }) => ({ value: id, label })),
 ];
 
 interface Files {
@@ -73,19 +75,13 @@ function AssistantsPanel({ version }: AssistantsPanelProps) {
         Let an assistant search, read and add to your notes.
       </p>
 
-      <div className="settings__chips">
-        {TABS.map(({ id, label }) => (
-          <button
-            key={id}
-            type="button"
-            className="settings__chip"
-            aria-pressed={tab === id}
-            onClick={() => setTab(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        label="AI assistant"
+        className="settings__clients"
+        value={tab}
+        options={TABS}
+        onChange={setTab}
+      />
 
       {files === "error" && (
         <p className="settings__error" role="alert">
@@ -110,17 +106,10 @@ function AssistantsPanel({ version }: AssistantsPanelProps) {
             one.
           </p>
           <div className="settings__row">
-            <button
-              type="button"
-              className="settings__btn settings__btn--primary"
-              disabled={!ready}
-              onClick={addToClaude}
-            >
+            <Button variant="primary" disabled={!ready} onClick={addToClaude}>
               Add to Claude
-            </button>
-            <button
-              type="button"
-              className="settings__btn"
+            </Button>
+            <Button
               disabled={!ready}
               onClick={() => {
                 if (!ready) return;
@@ -128,13 +117,13 @@ function AssistantsPanel({ version }: AssistantsPanelProps) {
                 revealItemInDir(ready.extension).catch(console.error);
               }}
             >
-              Show file
-            </button>
+              Show in Explorer
+            </Button>
           </div>
           <p className="settings__muted">
             {openFailed
-              ? "Claude did not open it. Use Show file, then double-click graphene.mcpb, or drag it into Claude's Settings, Extensions."
-              : "If nothing opens, use Show file, then double-click graphene.mcpb."}
+              ? "Claude did not open it. Use Show in Explorer, then double-click graphene.mcpb, or drag it into Claude's Settings, Extensions."
+              : "If nothing opens, use Show in Explorer, then double-click graphene.mcpb."}
           </p>
         </>
       ) : (
@@ -150,13 +139,9 @@ function AssistantsPanel({ version }: AssistantsPanelProps) {
               <>
                 <pre className="settings__code">{snippet.text}</pre>
                 <div className="settings__row">
-                  <button
-                    type="button"
-                    className="settings__btn settings__btn--primary"
-                    onClick={() => copy(snippet.text)}
-                  >
+                  <Button variant="primary" onClick={() => copy(snippet.text)}>
                     {copied ? "Copied" : "Copy"}
-                  </button>
+                  </Button>
                 </div>
               </>
             )}

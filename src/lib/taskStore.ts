@@ -460,6 +460,61 @@ export function removeGroup(index: TaskIndex, id: string): TaskIndex {
   };
 }
 
+// ── Undoing a delete ──────────────────────────────────────────────────────────
+// What the app keeps for a few seconds after a list or a group is deleted, and the reducers that put it back.
+
+/** A deleted list as it was: its entry (name, colour, group, rank) and every task in it, ticked ones too. */
+export interface ListSnapshot {
+  list: TaskList;
+  tasks: Task[];
+}
+
+/** A deleted group as it was, with the ids of the lists that sat in it (they stayed, outside any group). */
+export interface GroupSnapshot {
+  group: TaskGroup;
+  listIds: string[];
+}
+
+/**
+ * Puts a deleted list's entry back as it was. A list whose group is gone since comes back outside any group;
+ * one that exists again (back already, or made anew under the same id) is left alone.
+ */
+export function restoreList(index: TaskIndex, list: TaskList): TaskIndex {
+  if (index.lists.some((l) => l.id === list.id)) return index;
+  const back =
+    list.groupId !== undefined &&
+    !index.groups.some((g) => g.id === list.groupId)
+      ? (withoutKey(list, "groupId") as TaskList)
+      : list;
+  return { ...index, lists: [...index.lists, back] };
+}
+
+/** The tasks of a restored list: the snapshot's, each with its own rank, added to what the file holds now (none twice). */
+export function restoreTasks(tasks: Task[], snapshot: Task[]): Task[] {
+  const missing = snapshot.filter((s) => !tasks.some((t) => t.id === s.id));
+  return missing.length > 0 ? [...tasks, ...missing] : tasks;
+}
+
+/**
+ * Puts a deleted group back, with its rank, and takes the lists that were in it back in: only those that still exist
+ * and are outside every group now (one moved to another group since stays there).
+ */
+export function restoreGroup(
+  index: TaskIndex,
+  group: TaskGroup,
+  listIds: string[],
+): TaskIndex {
+  if (index.groups.some((g) => g.id === group.id)) return index;
+  return {
+    groups: [...index.groups, group],
+    lists: index.lists.map((l) =>
+      listIds.includes(l.id) && l.groupId === undefined
+        ? { ...l, groupId: group.id }
+        : l,
+    ),
+  };
+}
+
 // ── Looking at them ───────────────────────────────────────────────────────────
 
 /** A list's own view: the chosen order first, then the rest, newest first. */

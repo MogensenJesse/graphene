@@ -1,0 +1,106 @@
+// src/assets/styles/components/_TaskRow.scss
+@use '../base/mixins' as mixins;
+
+// ── A task ─────────────────────────────────────────────────────────────────────
+
+.task-row {
+  list-style: none;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 40px;
+    padding: 4px 0;
+  }
+
+  &__main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 0;
+    font: inherit;
+    text-align: left;
+    color: var(--color-text-primary);
+    background: none;
+    border: none;
+    cursor: pointer;
+
+    @include mixins.focus-ring(2px) {
+      border-radius: var(--border-radius-sm);
+    }
+  }
+
+  &__title {
+    font-size: var(--fs-lg);
+    line-height: var(--lh-snug);
+    overflow-wrap: anywhere;
+  }
+
+  &--done &__title {
+    color: var(--color-text-tertiary);
+    text-decoration: line-through;
+    text-decoration-color: var(--color-border-primary);
+  }
+
+  // A task you just added eases in
+  &--enter {
+    animation: var(--anim-pop);
+  }
+
+  // A task that left the list (done, deleted, moved) folds away for a moment before TasksPane lets go of it
+  // (row-out in _motion.scss). It is a grid so that its one row can shrink to nothing, and it is inert
+  &--leaving {
+    display: grid;
+    grid-template-rows: 1fr;
+    overflow: hidden;
+    pointer-events: none;
+    animation: row-out var(--anim-out) forwards;
+  }
+
+  &--leaving > &__head {
+    overflow: hidden;
+    animation: row-head-out var(--anim-out) forwards;
+  }
+
+  // The task whose details are open: the highlight reaches past the text without moving it
+  &--selected &__head {
+    margin: 0 -8px;
+    padding: 4px 8px;
+    background: var(--color-background-hover);
+    border-radius: var(--border-radius-row);
+  }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 10px;
+    font-size: var(--fs-sm);
+    color: var(--color-text-tertiary);
+  }
+
+  &__fact {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  &__due--overdue {
+    color: var(--color-text-danger);
+  }
+
+  &__due--today {
+    color: var(--color-text-info);
+  }
+
+  // The star of an important task (an IconButton): lit, and it stays lit under the pointer
+  &__star--on,
+  &__star--on:hover:not(:disabled) {
+    color: var(--color-text-warning);
+  }
+}

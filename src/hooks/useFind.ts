@@ -157,13 +157,20 @@ export function useTextareaFind(
 ): Finder {
   const [matches, setMatches] = useState<number[]>([]);
   const { index, next, prev } = useCursor(matches.length, query);
+  // The text lower-cased, for as long as the text is the same: typing a longer search word does not copy a big note again
+  const lowered = useRef({ text: "", lower: "" });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: content is the trigger: the text changed
   useEffect(() => {
     const el = ref.current;
     const found: number[] = [];
+    if (!query && lowered.current.text)
+      lowered.current = { text: "", lower: "" }; // the bar is closed or empty: keep no copy of the note
     if (el && query) {
-      const text = el.value.toLowerCase();
+      const value = el.value;
+      if (lowered.current.text !== value)
+        lowered.current = { text: value, lower: value.toLowerCase() };
+      const text = lowered.current.lower;
       const q = query.toLowerCase();
       for (
         let at = text.indexOf(q);
@@ -172,7 +179,10 @@ export function useTextareaFind(
       )
         found.push(at);
     }
-    setMatches(found);
+    // With the bar closed this runs on every keystroke: no matches before and none now is no change, so no second render
+    setMatches((prev) =>
+      prev.length === 0 && found.length === 0 ? prev : found,
+    );
   }, [ref, query, content]);
 
   useEffect(() => {

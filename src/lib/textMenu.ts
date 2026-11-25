@@ -24,11 +24,22 @@ export function textFieldEntries(el: TextField): MenuEntry[] {
   };
 
   return [
-    { label: "Undo", disabled: locked, onSelect: () => run("undo") },
-    { label: "Redo", disabled: locked, onSelect: () => run("redo") },
+    {
+      label: "Undo",
+      keys: "Ctrl+Z",
+      disabled: locked,
+      onSelect: () => run("undo"),
+    },
+    {
+      label: "Redo",
+      keys: "Ctrl+Y",
+      disabled: locked,
+      onSelect: () => run("redo"),
+    },
     "separator",
     {
       label: "Cut",
+      keys: "Ctrl+X",
       disabled: locked || noSelection,
       // Delete only once the clipboard has the text
       onSelect: () =>
@@ -38,11 +49,13 @@ export function textFieldEntries(el: TextField): MenuEntry[] {
     },
     {
       label: "Copy",
+      keys: "Ctrl+C",
       disabled: noSelection,
       onSelect: () => writeText(selected()).catch(console.error),
     },
     {
       label: "Paste",
+      keys: "Ctrl+V",
       disabled: locked,
       onSelect: () =>
         readText()
@@ -59,6 +72,7 @@ export function textFieldEntries(el: TextField): MenuEntry[] {
     "separator",
     {
       label: "Select all",
+      keys: "Ctrl+A",
       onSelect: () => {
         el.focus();
         el.select();

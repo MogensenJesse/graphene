@@ -109,7 +109,7 @@ export async function createNote(
     updatedAt: now,
   };
   if (!item.title) throw new Error("A note needs a title.");
-  await writeNote(itemFilePath(vault, item), item);
+  await writeNote(vault, itemFilePath(vault, item), item);
   return summary(item);
 }
 
@@ -124,7 +124,7 @@ export async function appendToNote(
     body: item.body + gap + text,
     updatedAt: new Date().toISOString(),
   };
-  await writeNote(path, updated);
+  await writeNote(vault, path, updated);
   return { id, title: item.title, updated: updated.updatedAt };
 }
 
@@ -159,6 +159,6 @@ export async function editNote(
   const body = parts.join(new_text.replace(/\r\n/g, "\n"));
   const changed = body !== item.body;
   const updatedAt = changed ? new Date().toISOString() : item.updatedAt;
-  if (changed) await writeNote(path, { ...item, body, updatedAt });
+  if (changed) await writeNote(vault, path, { ...item, body, updatedAt });
   return { id, title: item.title, replaced: found, updated: updatedAt };
 }

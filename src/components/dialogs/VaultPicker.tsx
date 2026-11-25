@@ -1,6 +1,7 @@
 // src/components/dialogs/VaultPicker.tsx
 import { useState } from "react";
 import { pickVaultPath } from "../../lib/vault";
+import Button from "../ui/Button";
 import { HexagonIcon } from "../ui/Icon";
 import WindowControls from "../ui/WindowControls";
 
@@ -48,14 +49,14 @@ function VaultPicker({ onChoose, unreadable }: VaultPickerProps) {
           </p>
         )}
         {error && <p className="vault-picker__error">{error}</p>}
-        <button
-          type="button"
-          className="vault-picker__btn"
+        <Button
+          variant="solid"
+          size="lg"
           onClick={handleChoose}
           disabled={picking}
         >
           {picking ? "Choosing…" : "Choose vault folder"}
-        </button>
+        </Button>
       </div>
       <WindowControls className="vault-picker__win-controls" />
     </div>

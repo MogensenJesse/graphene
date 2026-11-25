@@ -1483,6 +1483,7 @@ dependencies = [
 name = "graphene"
 version = "1.6.0"
 dependencies = [
+ "serde",
  "serde_json",
  "tauri",
  "tauri-build",

@@ -226,3 +226,20 @@ test("my day is today's tasks only", () =>
     await updateTaskIn(vault, { id: t.id, my_day: true });
     assert.equal(json(vault, "tasks.json").tasks[0].myDay, localDate());
   }));
+
+test("a task is not written into a vault folder that is not there, and the folder is not made again", () =>
+  withVault(async (vault) => {
+    const gone = joinPath(vault, "renamed-away");
+    await assert.rejects(
+      addTaskTo(gone, { title: "milk" }),
+      /the vault folder is not there/,
+    );
+    await assert.rejects(
+      createTaskList(gone, { name: "Home" }),
+      /the vault folder is not there/,
+    );
+    assert.equal(existsSync(gone), false);
+    // The vault that is there takes its first task, and the `.tasks` folder is made below it
+    await addTaskTo(vault, { title: "milk" });
+    assert.equal(existsSync(file(vault, "tasks.json")), true);
+  }));

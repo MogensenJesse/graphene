@@ -14,6 +14,7 @@ import {
   makeTask,
   parseTasks,
   removeTask,
+  serializeIndex,
   serializeTasks,
   setDone,
 } from "./taskStore";
@@ -148,4 +149,52 @@ test("dropping a list removes its file", async () => {
   await changeTasks(fs, V, "l1", (t) => addTask(t, task("a")));
   await dropTasks(fs, V, "l1");
   assert.deepEqual(files, {});
+});
+
+test("a full read touches each file once, and a change reads its file once and writes it once", async () => {
+  const { fs, files } = memoryFs();
+  const calls: string[] = [];
+  const counted: TaskFs = {
+    read: async (p) => {
+      calls.push(`read ${p}`);
+      return fs.read(p);
+    },
+    write: async (p, t) => {
+      calls.push(`write ${p}`);
+      return fs.write(p, t);
+    },
+    remove: async (p) => {
+      calls.push(`remove ${p}`);
+      return fs.remove(p);
+    },
+  };
+  files["C:/vault/.tasks/index.json"] = serializeIndex({
+    groups: [],
+    lists: [
+      { id: "tasks", name: "Tasks" },
+      { id: "l1", name: "Home" },
+    ],
+  });
+  files["C:/vault/.tasks/tasks.json"] = serializeTasks([task("a")]);
+
+  await readAll(counted, V);
+  assert.deepEqual(calls.sort(), [
+    "read C:/vault/.tasks/index.json",
+    "read C:/vault/.tasks/l1.json",
+    "read C:/vault/.tasks/tasks.json",
+  ]);
+
+  calls.length = 0;
+  await changeTasks(counted, V, "tasks", (t) => addTask(t, task("b")));
+  assert.deepEqual(calls, [
+    "read C:/vault/.tasks/tasks.json",
+    "write C:/vault/.tasks/tasks.json",
+  ]);
+
+  calls.length = 0;
+  await changeIndex(counted, V, (i) => addList(i, { id: "l2", name: "Work" }));
+  assert.deepEqual(calls, [
+    "read C:/vault/.tasks/index.json",
+    "write C:/vault/.tasks/index.json",
+  ]);
 });

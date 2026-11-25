@@ -1,7 +1,12 @@
 // src/components/dialogs/TrashView.tsx
+import { useState } from "react";
 import { useDeleteConfirm } from "../../hooks/useDeleteConfirm";
+import { useEscape } from "../../hooks/useEscape";
+import { isTextField } from "../../lib/textMenu";
 import { formatDate, getFolderPath } from "../../lib/utils";
 import type { Folder, Item } from "../../types";
+import Button from "../ui/Button";
+import ConfirmBar from "../ui/ConfirmBar";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
 import { TrashIcon, UndoIcon } from "../ui/Icon";
@@ -11,19 +16,45 @@ interface TrashViewProps {
   trashed: Item[];
   folders: Folder[];
   onRestore: (id: string) => void;
+  /** Removes this one note's file from the trash for good (the question was asked here). */
+  onDeleteForever: (id: string) => void;
   onEmpty: () => void;
+  /** Escape: back to what was open before the Trash. */
+  onLeave: () => void;
 }
 
-function TrashView({ trashed, folders, onRestore, onEmpty }: TrashViewProps) {
-  // The key is the count: restoring an item while the question is up asks again with the new count
+function TrashView({
+  trashed,
+  folders,
+  onRestore,
+  onDeleteForever,
+  onEmpty,
+  onLeave,
+}: TrashViewProps) {
+  // The key is the count: restoring a note while the question is up asks again with the new count
   const { confirming, arm, requestDelete, cancelConfirm } = useDeleteConfirm(
     String(trashed.length),
     onEmpty,
     false,
   );
+  // The note whose "Delete forever" is waiting for a yes. One that has left the list (restored meanwhile) asks nothing.
+  const [askId, setAskId] = useState<string | null>(null);
+  const asking = trashed.find((item) => item.id === askId) ?? null;
   const { open } = useContextMenu();
 
-  const count = `${trashed.length} ${trashed.length === 1 ? "item" : "items"}`;
+  // Escape closes the question that is up first; with none, it leaves the view. A menu or a dialog (their own Escape runs first, in
+  // the capture phase and stops the key), a field and anything that owns Escape keep it.
+  useEscape(() => setAskId(null), { active: asking !== null });
+  useEscape(onLeave, {
+    when: () =>
+      !confirming &&
+      asking === null &&
+      !isTextField(document.activeElement) &&
+      !document.activeElement?.closest("[data-owns-escape]") &&
+      !document.querySelector('[role="menu"], [aria-modal="true"]'),
+  });
+
+  const count = `${trashed.length} ${trashed.length === 1 ? "note" : "notes"}`;
 
   // Emptying only asks for the confirmation, like the button does
   const emptyEntries: MenuEntry[] = [
@@ -51,37 +82,29 @@ function TrashView({ trashed, folders, onRestore, onEmpty }: TrashViewProps) {
           <div className="item-header__actions">
             {confirming ? (
               <>
-                <button
-                  type="button"
-                  className="item-header__btn item-header__btn--danger"
-                  onClick={requestDelete}
-                >
+                <Button variant="danger" size="sm" onClick={requestDelete}>
                   Delete {count} and unused images forever?
-                </button>
-                <button
-                  type="button"
-                  className="item-header__btn item-header__btn--quiet"
-                  onClick={cancelConfirm}
-                >
+                </Button>
+                <Button variant="quiet" size="sm" onClick={cancelConfirm}>
                   Cancel
-                </button>
+                </Button>
               </>
             ) : (
-              <button
-                type="button"
-                className="item-header__btn item-header__btn--danger"
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={requestDelete}
                 aria-label="Empty trash"
               >
                 <TrashIcon />
                 <span className="item-header__btn-label">Empty trash</span>
-              </button>
+              </Button>
             )}
           </div>
         )}
       </div>
 
-      <div className="trash-view__body">
+      <div className="trash-view__body" data-scrollbar>
         {trashed.length === 0 ? (
           <p className="trash-view__empty">Trash is empty</p>
         ) : (
@@ -98,29 +121,53 @@ function TrashView({ trashed, folders, onRestore, onEmpty }: TrashViewProps) {
                       onSelect: () => onRestore(item.id),
                     },
                     "separator",
+                    {
+                      label: "Delete forever…",
+                      icon: <TrashIcon size={14} />,
+                      danger: true,
+                      onSelect: () => setAskId(item.id),
+                    },
                     ...emptyEntries,
                   ])
                 }
               >
-                <div className="trash-view__info">
-                  <span className="trash-view__row-title">
-                    {item.title || "Untitled"}
-                  </span>
-                  <span className="trash-view__row-meta">
-                    {getFolderPath(folders, item.folderId).join(" / ") ||
-                      "No folder"}
-                    {" · "}edited {formatDate(item.updatedAt)}
-                  </span>
+                <div className="trash-view__row-main">
+                  <div className="trash-view__info">
+                    <span className="trash-view__row-title">
+                      {item.title || "Untitled"}
+                    </span>
+                    <span className="trash-view__row-meta">
+                      {getFolderPath(folders, item.folderId).join(" / ") ||
+                        "No folder"}
+                      {" · "}edited {formatDate(item.updatedAt)}
+                    </span>
+                  </div>
+                  <Tooltip label="Remove it from the trash for good">
+                    <Button
+                      variant="quiet"
+                      size="sm"
+                      onClick={() => setAskId(item.id)}
+                    >
+                      Delete forever
+                    </Button>
+                  </Tooltip>
+                  <Tooltip label="Put it back where it was">
+                    <Button size="sm" onClick={() => onRestore(item.id)}>
+                      Restore
+                    </Button>
+                  </Tooltip>
                 </div>
-                <Tooltip label="Put it back where it was">
-                  <button
-                    type="button"
-                    className="item-header__btn"
-                    onClick={() => onRestore(item.id)}
-                  >
-                    Restore
-                  </button>
-                </Tooltip>
+                {asking?.id === item.id && (
+                  <ConfirmBar
+                    question={`Delete "${item.title || "Untitled"}" forever? It cannot be brought back.`}
+                    confirmLabel="Delete forever"
+                    onConfirm={() => {
+                      setAskId(null);
+                      onDeleteForever(item.id);
+                    }}
+                    onCancel={() => setAskId(null)}
+                  />
+                )}
               </li>
             ))}
           </ul>

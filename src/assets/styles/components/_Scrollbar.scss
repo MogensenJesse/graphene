@@ -1,0 +1,47 @@
+// src/assets/styles/components/_Scrollbar.scss
+@use '../base/variables' as v;
+
+// The thumb that lib/scrollbars.ts draws over a pane marked data-scrollbar (the native bar underneath is invisible, it
+// only keeps the gutter and pages when the track is clicked). 3px and faint at rest; under the pointer, or while it is
+// dragged, it grows to the full 6px of the bar and brightens. The grab area is the whole 6px, so it is easy to hit.
+
+.sbar {
+  position: absolute;
+  z-index: v.z('raised');
+  pointer-events: none; // a click on the track reaches the native bar, which pages
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.sbar__thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  pointer-events: auto;
+  user-select: none;
+  touch-action: none;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--color-scrollbar-thumb);
+    transform: translateX(-50%);
+    transition:
+      width 0.18s var(--ease-out),
+      background-color 0.18s var(--ease-out);
+  }
+
+  &:hover::before,
+  &[data-active]::before {
+    width: 6px;
+    background: var(--color-scrollbar-thumb-hover);
+  }
+}

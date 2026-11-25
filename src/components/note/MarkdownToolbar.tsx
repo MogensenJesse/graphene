@@ -18,6 +18,7 @@ import {
   QuoteIcon,
   StrikethroughIcon,
 } from "../ui/Icon";
+import IconButton from "../ui/IconButton";
 import Tooltip from "../ui/Tooltip";
 
 interface MarkdownToolbarProps {
@@ -112,9 +113,10 @@ export const formatMenuEntry = (
   label: "Format",
   submenu: GROUPS.flatMap((group, i) => [
     ...(i > 0 ? ["separator" as const] : []),
-    ...group.map(({ type, label, Icon }) => ({
+    ...group.map(({ type, label, Icon, keys }) => ({
       label,
       icon: <Icon size={14} />,
+      keys,
       onSelect: () => onFormat(type),
     })),
   ]),
@@ -137,9 +139,8 @@ function MarkdownToolbar({
             const on = active?.has(type) ?? false;
             return (
               <Tooltip key={type} label={label} keys={keys} hint={hint}>
-                <button
-                  type="button"
-                  className={`markdown-toolbar__btn${on ? " markdown-toolbar__btn--active" : ""}`}
+                <IconButton
+                  variant="tool"
                   // Keep focus and the highlighted text in the editor while clicking
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => !disabled && onFormat(type)}
@@ -149,7 +150,7 @@ function MarkdownToolbar({
                   aria-disabled={disabled || undefined}
                 >
                   <Icon size={15} />
-                </button>
+                </IconButton>
               </Tooltip>
             );
           })}

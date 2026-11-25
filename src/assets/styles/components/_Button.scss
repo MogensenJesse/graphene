@@ -1,0 +1,216 @@
+// src/assets/styles/components/_Button.scss
+@use '../base/mixins' as mixins;
+
+// The one look of a button (ui/Button.tsx) and of an icon-only one (ui/IconButton.tsx). A partial that restyles one
+// of them (the first-run card, a toast) comes after this one in main.scss, so its rule wins at equal specificity.
+// Variants come after sizes for the same reason.
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  font-family: inherit;
+  font-size: var(--fs-md);
+  color: var(--color-text-secondary);
+  background: none;
+  border: 0.5px solid var(--color-border-primary);
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    color: var(--color-text-primary);
+    background: var(--color-background-hover);
+  }
+
+  // A press: one pixel down
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  @include mixins.focus-ring;
+
+  &:disabled {
+    opacity: var(--opacity-disabled);
+    cursor: default;
+  }
+}
+
+// Sizes: md is a dialog's button, sm the 24px one of a header, a bar or a toast, lg the first-run call to action
+.btn--md {
+  padding: var(--space-3) 14px;
+}
+
+.btn--sm {
+  height: 24px;
+  padding: 0 var(--space-4);
+  font-size: var(--fs-sm);
+}
+
+.btn--lg {
+  padding: var(--space-4) 22px;
+  font-size: var(--fs-lg);
+}
+
+// A square with just an icon, at sm size
+.btn--icon {
+  width: 24px;
+  padding: 0;
+}
+
+// Variants. The small default is quiet: a hairline that firms up when pointed at
+.btn--default.btn--sm {
+  border-color: var(--color-border-secondary);
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-border-primary);
+  }
+}
+
+// The action a dialog or a toast is asking for
+.btn--primary {
+  color: var(--color-text-info);
+  background: var(--color-background-info);
+  border-color: var(--color-border-info);
+
+  &:hover:not(:disabled) {
+    color: var(--color-text-info);
+    background: var(--color-background-info-hover);
+  }
+}
+
+// The main action where the blue would shout: the Done of the editor, the first-run button
+.btn--solid {
+  color: var(--color-text-primary);
+  font-weight: var(--fw-medium);
+  background: var(--color-background-active);
+
+  &:hover:not(:disabled) {
+    background: var(--color-background-hover-strong);
+  }
+}
+
+.btn--danger {
+  color: var(--color-text-danger);
+  border-color: var(--color-border-danger);
+
+  &:hover:not(:disabled) {
+    color: var(--color-text-danger);
+    background: var(--color-background-danger);
+  }
+}
+
+// A small danger button is quiet too, until it is pointed at
+.btn--danger.btn--sm {
+  border-color: transparent;
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-border-danger);
+  }
+}
+
+// No hairline until it is pointed at (Cancel next to a confirm)
+.btn--quiet {
+  border-color: transparent;
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-border-primary);
+  }
+}
+
+// A pill: the due date picked in the Add box
+.btn--pill {
+  border-radius: var(--radius-pill);
+}
+
+// Text only, for the small actions on a row and a link inside a sentence
+.btn--link {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+
+  &:hover:not(:disabled) {
+    background: none;
+    text-decoration: underline;
+  }
+
+  @include mixins.focus-ring(2px);
+}
+
+// ── IconButton ─────────────────────────────────────────────────────────────────
+
+.icon-btn {
+  --icon-btn-size: 24px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-btn-size);
+  height: var(--icon-btn-size);
+  padding: 0;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+
+  // aria-disabled is a button that is off but stays focusable (a tooltip still shows): it reacts to nothing, as a disabled one
+  &:hover:not(:disabled, [aria-disabled='true']) {
+    color: var(--color-text-secondary);
+    background: var(--color-background-hover);
+  }
+
+  &:active:not(:disabled, [aria-disabled='true']) {
+    transform: translateY(1px);
+  }
+
+  @include mixins.focus-ring;
+
+  &:disabled,
+  &[aria-disabled='true'] {
+    opacity: var(--opacity-disabled);
+    cursor: default;
+  }
+}
+
+// Three sizes: 22 for the actions on a row, 24 for a bar, 32 for the sidebar footer
+.icon-btn--sm {
+  --icon-btn-size: 22px;
+}
+
+.icon-btn--lg {
+  --icon-btn-size: 32px;
+}
+
+// Variants. They come after the sizes, so a variant that sets a size wins.
+
+// A toggle of a toolbar (the editor's formats): a hairline shows under the pointer and while it is on (aria-pressed)
+.icon-btn--tool {
+  --icon-btn-size: 26px;
+  color: var(--color-text-secondary);
+  border: 0.5px solid transparent;
+  border-radius: var(--border-radius-sm);
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+
+  &:hover:not(:disabled, [aria-disabled='true']) {
+    color: var(--color-text-primary);
+    border-color: var(--color-border-secondary);
+  }
+
+  // The format is on where the caret is; pressing the button takes it off
+  &[aria-pressed='true']:not(:disabled, [aria-disabled='true']) {
+    color: var(--color-text-primary);
+    border-color: var(--color-border-primary);
+    background: var(--color-background-active);
+  }
+}
+
+// Goes red when pointed at: the window's Close
+.icon-btn--danger:hover:not(:disabled, [aria-disabled='true']) {
+  color: var(--color-text-danger);
+  background: var(--color-background-danger-hover);
+}

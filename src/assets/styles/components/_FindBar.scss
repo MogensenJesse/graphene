@@ -1,26 +1,25 @@
 // src/assets/styles/components/_FindBar.scss
+@use '../base/variables' as v;
+@use '../base/mixins' as mixins;
 
 .find-bar {
   position: absolute;
-  top: 58px; // just under the item header
+  top: calc(var(--bar-height) + 6px); // just under the item header
   right: 20px;
-  z-index: 8;
+  z-index: v.z('pane-float');
   display: flex;
   align-items: center;
   gap: 2px;
   padding: 4px 4px 4px 10px;
-  background: var(--color-background-primary);
-  border: 0.5px solid var(--color-border-primary);
-  border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-popover);
-  animation: pop-in 0.12s var(--ease-out);
+  @include mixins.popover-surface;
+  animation: var(--anim-pop);
 
   &__input {
     width: 150px;
     background: none;
     border: none;
     outline: none;
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-family: inherit;
     color: var(--color-text-primary);
 
@@ -32,46 +31,18 @@
   &__count {
     min-width: 34px;
     text-align: right;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     font-variant-numeric: tabular-nums;
     color: var(--color-text-tertiary);
-  }
-
-  &__btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    padding: 0;
-    background: none;
-    border: none;
-    border-radius: var(--border-radius-sm);
-    color: var(--color-text-tertiary);
-    cursor: pointer;
-
-    &:hover:not(:disabled) {
-      background: var(--color-background-hover);
-      color: var(--color-text-primary);
-    }
-
-    &:disabled {
-      opacity: 0.4;
-      cursor: default;
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-    }
   }
 }
 
 // Matches in the read view (painted by the CSS Custom Highlight API, see hooks/useFind)
 ::highlight(find) {
-  background-color: rgba(var(--rgb-blue), 0.3);
+  background-color: var(--color-mark);
 }
 
 ::highlight(find-current) {
-  background-color: rgba(var(--rgb-blue), 0.75);
+  background-color: var(--color-mark-current);
   color: var(--color-background-secondary);
 }

@@ -1,6 +1,7 @@
 // src/components/ui/WindowControls.tsx
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState } from "react";
+import IconButton from "./IconButton";
 import Tooltip from "./Tooltip";
 
 const appWindow = getCurrentWindow();
@@ -32,12 +33,7 @@ function WindowControls({ className }: WindowControlsProps) {
       onContextMenu={(e) => e.stopPropagation()}
     >
       <Tooltip label="Minimize">
-        <button
-          type="button"
-          className="app__win-btn"
-          onClick={() => appWindow.minimize()}
-          aria-label="Minimize"
-        >
+        <IconButton onClick={() => appWindow.minimize()} aria-label="Minimize">
           <svg
             width="10"
             height="1"
@@ -47,12 +43,10 @@ function WindowControls({ className }: WindowControlsProps) {
           >
             <rect width="10" height="1" rx="0.5" fill="currentColor" />
           </svg>
-        </button>
+        </IconButton>
       </Tooltip>
       <Tooltip label={maximizeLabel}>
-        <button
-          type="button"
-          className="app__win-btn"
+        <IconButton
           onClick={() => appWindow.toggleMaximize()}
           aria-label={maximizeLabel}
         >
@@ -84,12 +78,11 @@ function WindowControls({ className }: WindowControlsProps) {
               <rect x="0.6" y="0.6" width="8.8" height="8.8" rx="1" />
             </svg>
           )}
-        </button>
+        </IconButton>
       </Tooltip>
       <Tooltip label="Close">
-        <button
-          type="button"
-          className="app__win-btn app__win-btn--close"
+        <IconButton
+          variant="danger"
           onClick={() => appWindow.close()}
           aria-label="Close"
         >
@@ -107,7 +100,7 @@ function WindowControls({ className }: WindowControlsProps) {
               strokeLinecap="round"
             />
           </svg>
-        </button>
+        </IconButton>
       </Tooltip>
     </div>
   );

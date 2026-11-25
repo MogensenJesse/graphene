@@ -11,15 +11,15 @@
 
   &__title {
     margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    line-height: 1.3;
+    font-size: var(--fs-title);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-tight);
     letter-spacing: -0.02em;
     color: var(--color-text-primary);
   }
 
   &__count {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--color-text-tertiary);
   }
 
@@ -27,30 +27,38 @@
     flex: 1;
     overflow-y: auto;
     padding: 12px var(--pane-pad) 24px;
-
     @include mixins.custom-scrollbar;
+    @include mixins.scroll-gutter(true);
   }
 
   &__empty {
-    max-width: 720px;
+    max-width: var(--column-width);
     margin: 24px auto;
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--color-text-tertiary);
   }
 
   &__list {
-    max-width: 720px;
+    max-width: var(--column-width);
     margin: 0 auto; // the column of the notes' text
     padding: 0;
     list-style: none;
   }
 
+  // The row holds the note and, under it, the question "Delete forever?" (a ConfirmBar) while one is asked
   &__row {
+    padding: 10px 0;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+
+  &__row-main {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 0;
-    border-bottom: 0.5px solid var(--color-border-tertiary);
+
+    .btn {
+      flex-shrink: 0;
+    }
   }
 
   &__info {
@@ -62,15 +70,13 @@
   }
 
   &__row-title {
-    font-size: 14px;
+    font-size: var(--fs-lg);
     color: var(--color-text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include mixins.ellipsis;
   }
 
   &__row-meta {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--color-text-tertiary);
   }
 }

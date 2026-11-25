@@ -1,9 +1,18 @@
 // mcp/vault.ts
 // The vault as the MCP server sees it: scan, read and write notes on disk with node:fs. The app does the same through
 // Tauri's fs plugin in src/lib/storage.ts; keep the scan rules (what is skipped, where a note's folder comes from) in step.
-import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, dirname } from "node:path";
+import { dirname } from "node:path";
+import { type AtomicFs, writeAtomic } from "../src/lib/atomicWrite";
 import { ATTACH_DIR } from "../src/lib/attachments";
 import { parseNoteFile, serializeItem } from "../src/lib/fileFormat";
 import { joinPath, relativePath } from "../src/lib/paths";
@@ -77,13 +86,44 @@ export async function scanVault(
   return { notes: [...notes.values()], folders };
 }
 
-/** Writes a temp file next to the note and renames it over, so a crash never leaves half a note (the scan skips dot files). */
-export async function writeNote(path: string, item: Item): Promise<void> {
-  const dir = dirname(path);
-  await mkdir(dir, { recursive: true });
-  const tmp = joinPath(dir, `.${basename(path)}.tmp`);
-  await writeFile(tmp, serializeItem(item));
-  await rename(tmp, path);
+const nodeFs: AtomicFs = {
+  writeText: (path, text) => writeFile(path, text),
+  rename,
+  remove: (path) => rm(path, { force: true }),
+};
+
+/**
+ * The error of a write into a vault whose folder is not there (renamed, deleted, a drive disconnected). A recursive `mkdir` would make
+ * the folder again, as an empty vault with the note in it, so the writes check first (src/lib/vaultRoot.ts does the same in the app).
+ */
+export const vaultMissingError = (vault: string): Error =>
+  new Error(
+    `Nothing was written: the vault folder is not there ("${vault}"). Check that it was not renamed and that its drive is connected.`,
+  );
+
+/** Rejects with `vaultMissingError` unless the vault folder itself exists. */
+export async function requireVault(vault: string): Promise<void> {
+  let there = false;
+  try {
+    there = (await stat(vault)).isDirectory();
+  } catch {
+    // a folder that cannot be looked at counts as missing
+  }
+  if (!there) throw vaultMissingError(vault);
+}
+
+/**
+ * Writes the note through a temp file next to it (src/lib/atomicWrite, the same helper as the app), so a crash never leaves half a note; the scan skips dot files.
+ * The folders below the vault that it sits in are made as needed; the vault's own folder is never made (`requireVault`).
+ */
+export async function writeNote(
+  vault: string,
+  path: string,
+  item: Item,
+): Promise<void> {
+  await requireVault(vault);
+  await mkdir(dirname(path), { recursive: true });
+  await writeAtomic(nodeFs, path, serializeItem(item));
 }
 
 function appDataDir(env: NodeJS.ProcessEnv): string {

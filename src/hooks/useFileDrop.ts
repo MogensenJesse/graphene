@@ -2,9 +2,10 @@
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { readTextFile } from "@tauri-apps/plugin-fs";
 import { useEffect, useState } from "react";
-import { isImagePath } from "../lib/attachments";
+import { DROP_HINT_TASKS, dropKind, dropNotice } from "../lib/fileDrop";
 import { CODE_EXTS, fence, parseNoteFile } from "../lib/fileFormat";
 import { extOf, fileName, joinPath } from "../lib/paths";
+import { reportNotice } from "../lib/reportError";
 import type { AddItemFields } from "./useItems";
 import { useLatest } from "./useLatest";
 
@@ -12,6 +13,8 @@ interface FileDropOptions {
   addItem: (fields: AddItemFields) => string;
   /** Folder the files are imported into (null = vault root). */
   getFolderId: () => string | null;
+  /** Whether notes can be imported now. False in the Tasks tab: the user is told to switch, and nothing is imported. */
+  canImport: () => boolean;
   /** Called with the id of an imported item so the app can open it. */
   onImported: (id: string) => void;
   /** Called with the image files of a drop; returns false when nothing can take them (no editor open). */
@@ -37,20 +40,35 @@ export function useFileDrop(options: FileDropOptions): {
           setIsDraggingOver(false);
         } else if (payload.type === "drop") {
           setIsDraggingOver(false);
-          const { addItem, getFolderId, onImported, onImages } = latest.current;
+          const { addItem, getFolderId, canImport, onImported, onImages } =
+            latest.current;
+          if (!canImport()) {
+            reportNotice(DROP_HINT_TASKS);
+            return;
+          }
           const folderId = getFolderId();
           const importedIds: string[] = [];
-          // Pictures go into the note being edited; with no editor open they are ignored, as other files are
-          const images = payload.paths.filter(isImagePath);
+          // What is left out is said afterwards: the files that are not notes or code, and pictures with no editor open
+          const skipped: string[] = [];
+          let strandedPictures = 0;
+          // Pictures go into the note being edited
+          const images = payload.paths.filter((p) => dropKind(p) === "image");
           if (images.length > 0) {
-            await onImages(images).catch(console.error);
+            const taken = await onImages(images).catch((err) => {
+              console.error(err);
+              return true; // it was tried: the failure is the editor's to report
+            });
+            if (!taken) strandedPictures = images.length;
           }
           await Promise.allSettled(
             payload.paths.map(async (rawPath) => {
               const filePath = joinPath(rawPath);
               const name = fileName(filePath);
               const ext = extOf(name);
-              if (ext !== "md" && !CODE_EXTS.has(ext)) return;
+              if (ext !== "md" && !CODE_EXTS.has(ext)) {
+                if (dropKind(filePath) === "other") skipped.push(name);
+                return;
+              }
               const baseName = ext ? name.slice(0, -(ext.length + 1)) : name;
 
               try {
@@ -82,6 +100,8 @@ export function useFileDrop(options: FileDropOptions): {
           );
           const lastId = importedIds[importedIds.length - 1];
           if (lastId && !aborted) onImported(lastId);
+          const notice = dropNotice(skipped, strandedPictures);
+          if (notice && !aborted) reportNotice(notice);
         }
       },
     );

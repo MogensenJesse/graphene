@@ -16,8 +16,11 @@ interface ActionEntry {
   indent?: number;
   danger?: boolean;
   disabled?: boolean;
-  /** Shows a check in the icon slot */
+  /** Marks a choice among several (the sort order, the folder a note is in): a check in the icon slot. Set for every
+   * choice, true for the current one */
   checked?: boolean;
+  /** The shortcut that does the same, shown at the right edge: "Ctrl+K", "F2". Only a shortcut that exists */
+  keys?: string;
   onSelect: () => void;
 }
 
@@ -30,7 +33,7 @@ interface SubmenuEntry {
 export type MenuEntry = ActionEntry | SubmenuEntry | "separator";
 
 // Focusable rows of one list only (a submenu's rows sit deeper in the DOM)
-const ROWS = ':scope > .context-menu__slot > [role="menuitem"]:not(:disabled)';
+const ROWS = ':scope > .context-menu__slot > [role^="menuitem"]:not(:disabled)';
 const EDGE = 6; // keep this far from the window edge
 
 interface MenuListProps {
@@ -147,9 +150,14 @@ function MenuList({
             key={i}
             className="context-menu__slot"
           >
+            {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: the role is menuitemradio whenever checked is set */}
             <button
               type="button"
-              role="menuitem"
+              role={
+                action?.checked === undefined ? "menuitem" : "menuitemradio"
+              }
+              aria-checked={action?.checked}
+              aria-keyshortcuts={action?.keys}
               data-index={i}
               onMouseEnter={(e) => {
                 setOpenSub(sub ? { index: i, focus: false } : null);
@@ -178,6 +186,11 @@ function MenuList({
                 {action?.checked ? <CheckIcon size={14} /> : entry.icon}
               </span>
               <span className="context-menu__label">{entry.label}</span>
+              {action?.keys && (
+                <span className="context-menu__keys" aria-hidden="true">
+                  {action.keys}
+                </span>
+              )}
               {sub && (
                 <span className="context-menu__chevron" aria-hidden="true">
                   <ChevronRightIcon size={12} />
@@ -255,11 +268,15 @@ function ContextMenu({ x, y, entries, keepFocus, onClose }: ContextMenuProps) {
     };
   }, [onClose, keepFocus]);
 
-  // Hand focus back to the tree (or whatever had it) once the menu is gone
+  // Hand focus back to the tree (or whatever had it) once the menu is gone, unless the choice already put it somewhere (Rename
+  // on a task focuses the title in the details pane): then it stays there
   useEffect(() => {
     const el = previous.current;
     return () => {
-      if (el instanceof HTMLElement) el.focus({ preventScroll: true });
+      const now = document.activeElement;
+      const taken = now && now !== document.body && !insideMenu(now);
+      if (el instanceof HTMLElement && !taken)
+        el.focus({ preventScroll: true });
     };
   }, []);
 

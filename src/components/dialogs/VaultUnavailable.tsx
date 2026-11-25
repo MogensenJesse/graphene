@@ -1,4 +1,5 @@
 // src/components/dialogs/VaultUnavailable.tsx
+import Button from "../ui/Button";
 
 interface VaultUnavailableProps {
   name: string;
@@ -25,20 +26,10 @@ function VaultUnavailable({
         touched.
       </p>
       <div className="vault-unavailable__row">
-        <button
-          type="button"
-          className="vault-unavailable__btn vault-unavailable__btn--primary"
-          onClick={onRetry}
-        >
+        <Button variant="primary" onClick={onRetry}>
           Try again
-        </button>
-        <button
-          type="button"
-          className="vault-unavailable__btn"
-          onClick={onManage}
-        >
-          Manage vaults
-        </button>
+        </Button>
+        <Button onClick={onManage}>Manage vaults</Button>
       </div>
     </div>
   );

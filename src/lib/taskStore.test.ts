@@ -18,6 +18,9 @@ import {
   removeStep,
   removeTask,
   renameGroup,
+  restoreGroup,
+  restoreList,
+  restoreTasks,
   serializeIndex,
   serializeTasks,
   setDone,
@@ -336,4 +339,92 @@ test("dueStatus", () => {
   assert.equal(dueStatus("2026-01-01", "2026-06-01"), "overdue");
   assert.equal(dueStatus("2026-06-01", "2026-06-01"), "today");
   assert.equal(dueStatus("2026-12-01", "2026-06-01"), "later");
+});
+
+test("a deleted list comes back with its name, colour, rank, group and every task, ticked ones too", () => {
+  const index: TaskIndex = parseIndex({
+    groups: [{ id: "g1", name: "Work" }],
+    lists: [
+      { id: "l1", name: "Plan", color: "blue", groupId: "g1", order: 2048 },
+      { id: "l2", name: "Other" },
+    ],
+  });
+  const tasks = [
+    { ...mk("a"), order: 5 },
+    { ...mk("b"), done: true, doneAt: T1 },
+  ];
+  const list = index.lists.find((l) => l.id === "l1");
+  assert.ok(list);
+  const gone = removeList(index, "l1");
+  assert.deepEqual(restoreList(gone, list), {
+    ...gone,
+    lists: [...gone.lists, list],
+  });
+  // the same entry, not a rebuilt one: nothing is lost on the way
+  const back = restoreList(gone, list);
+  assert.equal(back.lists[back.lists.length - 1], list);
+  // the tasks are written back whole, ranks and done state included
+  assert.deepEqual(restoreTasks([], tasks), tasks);
+});
+
+test("restoring a list that exists again does nothing, and a list whose group went lands outside any group", () => {
+  const index = parseIndex({
+    groups: [{ id: "g1", name: "Work" }],
+    lists: [{ id: "l1", name: "Plan", groupId: "g1" }],
+  });
+  const list = index.lists.find((l) => l.id === "l1");
+  assert.ok(list);
+  assert.equal(restoreList(index, list), index);
+  const noGroup = removeList(removeGroup(index, "g1"), "l1");
+  const back = restoreList(noGroup, list);
+  assert.equal(back.lists[back.lists.length - 1]?.groupId, undefined);
+  assert.equal(back.lists[back.lists.length - 1]?.name, "Plan");
+});
+
+test("restored tasks are merged with what the file holds: none twice, none dropped", () => {
+  const snapshot = [mk("a"), mk("b")];
+  const now = [mk("b", "b edited"), mk("c")];
+  assert.deepEqual(
+    restoreTasks(now, snapshot).map((t) => t.id),
+    ["b", "c", "a"],
+  );
+  assert.equal(restoreTasks(now, snapshot)[0].title, "b edited");
+  // nothing to add: the same array comes back, so nothing is written
+  assert.equal(restoreTasks(snapshot, snapshot), snapshot);
+  assert.equal(restoreTasks(now, []), now);
+});
+
+test("a deleted group comes back with its rank and takes its lists back, unless they went elsewhere", () => {
+  const index = parseIndex({
+    groups: [
+      { id: "g1", name: "Work", order: 1024 },
+      { id: "g2", name: "Home" },
+    ],
+    lists: [
+      { id: "l1", name: "A", groupId: "g1", order: 1 },
+      { id: "l2", name: "B", groupId: "g1" },
+      { id: "l3", name: "C", groupId: "g1" },
+    ],
+  });
+  const group = index.groups.find((g) => g.id === "g1");
+  assert.ok(group);
+  const listIds = index.lists
+    .filter((l) => l.groupId === "g1")
+    .map((l) => l.id);
+  let gone = removeGroup(index, "g1");
+  assert.ok(gone.lists.every((l) => l.groupId === undefined));
+  // meanwhile: l2 is moved to another group and l3 is deleted
+  gone = updateList(gone, "l2", { groupId: "g2" });
+  gone = removeList(gone, "l3");
+  const back = restoreGroup(gone, group, listIds);
+  assert.equal(back.groups.find((g) => g.id === "g1")?.order, 1024);
+  assert.equal(back.lists.find((l) => l.id === "l1")?.groupId, "g1");
+  assert.equal(back.lists.find((l) => l.id === "l1")?.order, 1);
+  assert.equal(back.lists.find((l) => l.id === "l2")?.groupId, "g2");
+  assert.equal(
+    back.lists.some((l) => l.id === "l3"),
+    false,
+  );
+  // a group that is there again is left alone
+  assert.equal(restoreGroup(back, group, listIds), back);
 });

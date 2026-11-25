@@ -1,5 +1,6 @@
 // src/hooks/useKeyboardShortcuts.ts
 import { useEffect } from "react";
+import { modalOpen } from "../lib/focusTrap";
 import type { ItemKind } from "../types";
 
 interface Shortcuts {
@@ -31,7 +32,7 @@ export function useKeyboardShortcuts({
     const onKeyDown = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
       // A dialog (search, update) owns the keyboard while it is open
-      if (document.querySelector('[aria-modal="true"]')) return;
+      if (modalOpen()) return;
 
       // Also while editing: starting a new item saves the open edit first.
       // Shift is held, so the key arrives upper-case. Ctrl+N note, Ctrl+Shift+N code.

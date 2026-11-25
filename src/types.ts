@@ -23,4 +23,10 @@ export interface Item {
   updatedAt: string;
   /** Rank in a chosen order among the notes of its folder (see lib/order); none until it is put somewhere. */
   order?: number;
+  /**
+   * Set while the text has not been read yet (the startup scan lists notes without it): `body` is "" and `kind` is
+   * what the scan saw. Such a note must never be written, or its file would become an empty note: storage refuses
+   * it, and the hooks read the text first. Absent means `body` is the text of the note.
+   */
+  unloaded?: { kind: ItemKind };
 }

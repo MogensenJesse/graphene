@@ -1,5 +1,7 @@
 // src/components/sidebar/SidebarHeader.tsx
+import { memo } from "react";
 import type { Vaults } from "../../hooks/useVaults";
+import { perfRender } from "../../lib/perf";
 import type { OpenSettings } from "../dialogs/SettingsDialog";
 import { HexagonIcon } from "../ui/Icon";
 import Tooltip from "../ui/Tooltip";
@@ -20,6 +22,7 @@ function SidebarHeader({
   onShowUpdate,
   onOpenSettings,
 }: SidebarHeaderProps) {
+  perfRender("SidebarHeader");
   return (
     <div className="sidebar__header" data-tauri-drag-region>
       <div className="sidebar__brand" data-tauri-drag-region>
@@ -44,4 +47,4 @@ function SidebarHeader({
   );
 }
 
-export default SidebarHeader;
+export default memo(SidebarHeader);

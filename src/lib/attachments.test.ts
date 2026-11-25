@@ -4,9 +4,12 @@ import { test } from "vitest";
 import {
   attachmentLink,
   extForMime,
+  fitWithin,
   isImagePath,
   isReservedFolderName,
   mimeOf,
+  ownImagesIn,
+  reencodeMime,
   relinkAttachments,
   resolveAttachment,
   unusedImages,
@@ -122,4 +125,51 @@ test("unused images", () => {
   assert.deepEqual(unusedImages(["aBcDeFgHiJ.png", "diagram final.png"], ""), [
     "aBcDeFgHiJ.png",
   ]);
+});
+
+test("ownImagesIn lists the pictures a note leaves behind, once each", () => {
+  const text = [
+    "![a](../attachments/aBcDeFgHiJ.png) and again ![](attachments/aBcDeFgHiJ.png)",
+    '![t](../../attachments/u_n-u_s-ed.webp "a title")',
+    "[ref]: ../attachments/ZZZZZZZZZZ.svg",
+    "![no](https://example.com/attachments/photo.png)",
+    "![hand](../attachments/diagram final.png)",
+    "![odd](../attachments/%E9%.png)",
+    "![not a picture](../attachments/aBcDeFgHiJ.pdf)",
+  ].join("\n");
+  assert.deepEqual(ownImagesIn(text), [
+    "aBcDeFgHiJ.png",
+    "u_n-u_s-ed.webp",
+    "ZZZZZZZZZZ.svg",
+  ]);
+  assert.deepEqual(ownImagesIn("no pictures here"), []);
+  // A picture another note still links is not unused: what the sweep does with the candidates
+  const mine = ownImagesIn(
+    "![](attachments/aBcDeFgHiJ.png) ![](attachments/kLmNoPqRsT.png)",
+  );
+  assert.deepEqual(unusedImages(mine, "see attachments/aBcDeFgHiJ.png"), [
+    "kLmNoPqRsT.png",
+  ]);
+});
+
+test("scaling a picture down", () => {
+  // longer side over the limit: scaled to it, aspect kept
+  assert.deepEqual(fitWithin(4000, 3000, 2000), { width: 2000, height: 1500 });
+  assert.deepEqual(fitWithin(3000, 4000, 2000), { width: 1500, height: 2000 });
+  assert.deepEqual(fitWithin(2001, 2001, 2000), { width: 2000, height: 2000 });
+  assert.deepEqual(fitWithin(3840, 2160, 2000), { width: 2000, height: 1125 });
+  // at or under the limit: never enlarged, never touched
+  assert.deepEqual(fitWithin(2000, 1000, 2000), { width: 2000, height: 1000 });
+  assert.deepEqual(fitWithin(640, 480, 2000), { width: 640, height: 480 });
+  // a very thin strip keeps at least one pixel
+  assert.deepEqual(fitWithin(20000, 3, 2000), { width: 2000, height: 1 });
+
+  // only the stills are re-encoded, in their own type
+  assert.equal(reencodeMime("png"), "image/png");
+  assert.equal(reencodeMime("jpg"), "image/jpeg");
+  assert.equal(reencodeMime("JPEG"), "image/jpeg");
+  assert.equal(reencodeMime("webp"), "image/webp");
+  assert.equal(reencodeMime("gif"), null);
+  assert.equal(reencodeMime("svg"), null);
+  assert.equal(reencodeMime("bmp"), null);
 });

@@ -2,6 +2,7 @@
 import { type ComponentProps, createContext, useContext } from "react";
 import type { Components, ExtraProps } from "react-markdown";
 import { MARKDOWN_COMPONENTS } from "../../lib/markdown";
+import Checkbox from "../ui/Checkbox";
 import VaultImage from "./VaultImage";
 
 /** What the checkboxes of a rendered note can do. */
@@ -11,8 +12,27 @@ export interface TaskActions {
 
 export const TaskActionsContext = createContext<TaskActions | null>(null);
 
-// Where the task whose <li> we are inside starts in the note's text (react-markdown's own position)
-const TaskOffsetContext = createContext<number | null>(null);
+// The task whose <li> we are inside: where it starts in the note's text (react-markdown's own position) and its
+// words, which name the checkbox
+const TaskOffsetContext = createContext<{
+  offset: number;
+  text: string;
+} | null>(null);
+
+interface HastNode {
+  type: string;
+  value?: string;
+  tagName?: string;
+  children?: HastNode[];
+}
+
+// The words of a list item, without the lists nested under it
+const wordsOf = (node: HastNode): string =>
+  node.type === "text"
+    ? (node.value ?? "")
+    : node.tagName === "ul" || node.tagName === "ol"
+      ? ""
+      : (node.children ?? []).map(wordsOf).join("");
 
 function TaskItem({
   node,
@@ -21,7 +41,7 @@ function TaskItem({
   ...rest
 }: ComponentProps<"li"> & ExtraProps) {
   const offset = node?.position?.start.offset;
-  if (offset === undefined || !className?.includes("task-list-item")) {
+  if (!node || offset === undefined || !className?.includes("task-list-item")) {
     return (
       <li className={className} {...rest}>
         {children}
@@ -30,7 +50,9 @@ function TaskItem({
   }
   return (
     <li className={className} {...rest}>
-      <TaskOffsetContext.Provider value={offset}>
+      <TaskOffsetContext.Provider
+        value={{ offset, text: wordsOf(node).replace(/\s+/g, " ").trim() }}
+      >
         {children}
       </TaskOffsetContext.Provider>
     </li>
@@ -45,16 +67,17 @@ function TaskInput({
   ...rest
 }: ComponentProps<"input"> & ExtraProps) {
   const actions = useContext(TaskActionsContext);
-  const offset = useContext(TaskOffsetContext);
-  if (type !== "checkbox" || !actions || offset === null) {
+  const task = useContext(TaskOffsetContext);
+  if (type !== "checkbox")
     return <input type={type} checked={checked} disabled {...rest} />;
+  if (!actions || task === null) {
+    return <Checkbox checked={checked} disabled {...rest} />;
   }
   return (
-    <input
-      type="checkbox"
+    <Checkbox
       checked={!!checked}
-      aria-label="Done"
-      onChange={() => actions.toggle(offset)}
+      aria-label={task.text || "Done"}
+      onChange={() => actions.toggle(task.offset)}
     />
   );
 }

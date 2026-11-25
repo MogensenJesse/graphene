@@ -24,7 +24,7 @@ function VaultSwitcher({ vaults, onOpenSettings }: VaultSwitcherProps) {
 
   const switchTo = async (path: string) => {
     // The folder is gone: the Vaults tab says so and offers to remove it
-    if (!(await vaults.switchTo(path))) onOpenSettings("vaults");
+    if ((await vaults.switchTo(path)) === "missing") onOpenSettings("vaults");
   };
 
   const addVault = async () => {

@@ -98,6 +98,7 @@ function ContextMenuProvider({ children }: { children: ReactNode }) {
           [
             {
               label: "Copy",
+              keys: "Ctrl+C",
               onSelect: () => writeText(selection).catch(console.error),
             },
           ],

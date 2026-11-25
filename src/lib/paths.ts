@@ -18,6 +18,10 @@ export function relativePath(root: string, absolute: string): string {
   return abs.startsWith(`${base}/`) ? abs.slice(base.length + 1) : abs;
 }
 
+/** A path as the OS writes it, for the clipboard or a message: a Windows path (a drive letter first) gets back its "\\". */
+export const nativePath = (path: string) =>
+  /^[A-Za-z]:/.test(path) ? path.replace(/\//g, "\\") : path;
+
 /** The last part of a path, which must already use "/". */
 export const fileName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 

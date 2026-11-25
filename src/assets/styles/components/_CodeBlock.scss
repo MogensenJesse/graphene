@@ -9,7 +9,7 @@
     margin: 0;
     font-family: var(--font-code);
     font-size: 0.92em; // 12px next to 13px text; follows the text size setting
-    line-height: 1.65;
+    line-height: var(--lh-code);
     color: var(--color-text-primary);
     background: var(--color-background-secondary);
     border: 0.5px solid var(--color-border-tertiary);
@@ -17,7 +17,6 @@
     padding: 14px 48px 14px 18px; // right padding keeps the copy button off the first line
     white-space: pre;
     overflow-x: auto;
-
     @include mixins.custom-scrollbar;
   }
 
@@ -40,7 +39,7 @@
   }
 
   &__lang {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     font-family: var(--font-mono);
     color: var(--color-text-tertiary);
     user-select: none; // a manual selection of the code must not pick up the label
@@ -70,9 +69,6 @@
       border-color: var(--color-border-success);
     }
 
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
-    }
+    @include mixins.focus-ring;
   }
 }

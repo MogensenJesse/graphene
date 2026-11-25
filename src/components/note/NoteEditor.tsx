@@ -1,17 +1,22 @@
 // src/components/note/NoteEditor.tsx
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useClipboard } from "../../hooks/useClipboard";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useFindState, useTextareaFind } from "../../hooks/useFind";
 import { useImageInsert } from "../../hooks/useImageInsert";
 import type { AddItemFields } from "../../hooks/useItems";
 import { replaceText, useMarkdownFormat } from "../../hooks/useMarkdownFormat";
+import { autosaveDelay } from "../../lib/autosave";
 import { findFenceAt, setFenceLang } from "../../lib/codeBlocks";
+import { leaveAction } from "../../lib/editConflict";
 import {
   activeFormats,
   continueTask,
   shiftTaskIndent,
 } from "../../lib/markdownFormat";
+import { perfRender } from "../../lib/perf";
 import type { Folder, Item, ItemKind } from "../../types";
+import Button from "../ui/Button";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
 import { CheckIcon, ClipboardIcon } from "../ui/Icon";
@@ -24,7 +29,9 @@ import ItemHeader from "./ItemHeader";
 import MarkdownToolbar, { formatMenuEntry } from "./MarkdownToolbar";
 import WordCount from "./WordCount";
 
-const AUTOSAVE_DELAY_MS = 800;
+// The count under the note follows the text this long after the last key: on a note of megabytes counting takes
+// a good fraction of a second, which typing must not wait for
+const WORD_COUNT_DELAY_MS = 300;
 
 // A new code draft starts as an empty fenced block (the same text the toolbar's code-block button
 // inserts) with the caret inside it. The word after the opening fence is the language.
@@ -48,8 +55,8 @@ interface NoteEditorProps {
   newKind?: ItemKind;
   // Only used for a brand-new draft; existing items always keep their own folder
   defaultFolderId?: string | null;
-  // Create-or-update and keep the editor open (the parent decides which)
-  onSave: (fields: AddItemFields) => void;
+  // Create-or-update and keep the editor open (the parent decides which). Resolves false when the write failed.
+  onSave: (fields: AddItemFields) => Promise<boolean>;
   onDirtyChange?: (isDirty: boolean) => void;
   onDone: () => void;
   canLeave: boolean;
@@ -61,6 +68,13 @@ interface NoteEditorProps {
   insertImagesRef: React.RefObject<((files: string[]) => void) | null>;
   // Duplicate, reveal and move to trash for the open item (off for a draft that is not saved yet)
   moreEntries: MenuEntry[];
+  // The file of this note was changed outside Graphene while there is typing here that is not saved (lib/editConflict): the bar asks,
+  // and nothing is saved until it is answered. Keep mine: the parent forgets their version and this saves the editor's text over the
+  // file. onTakeTheirs: the parent adopts their version and reopens the editor on it; with `copy` (a flush while the question is open)
+  // the editor's text is first saved as a copy note, so neither version is lost
+  conflict: boolean;
+  onKeepMine: () => void;
+  onTakeTheirs: (copy: AddItemFields | null) => void;
 }
 
 function NoteEditor({
@@ -76,7 +90,11 @@ function NoteEditor({
   findSignal,
   insertImagesRef,
   moreEntries,
+  conflict,
+  onKeepMine,
+  onTakeTheirs,
 }: NoteEditorProps) {
+  perfRender("NoteEditor");
   const seedBody = newKind === "code" ? CODE_SEED : "";
   const [title, setTitle] = useState(initialItem?.title ?? "");
   const [body, setBody] = useState(initialItem?.body ?? seedBody);
@@ -107,17 +125,23 @@ function NoteEditor({
     textareaRef.current?.focus({ preventScroll: true });
   };
 
-  // The code block the caret is in, if any. A textarea value always uses "\n", so match that.
-  const block = useMemo(
-    () => findFenceAt(body.replace(/\r\n/g, "\n"), caret),
-    [body, caret],
+  // The caret and selection are offsets into the textarea's value, which always uses "\n"; the text of a Windows file
+  // has "\r\n" until the first edit. Converted once per text, and not at all when there is no "\r" (the usual case).
+  const text = useMemo(
+    () => (body.includes("\r") ? body.replace(/\r\n/g, "\n") : body),
+    [body],
   );
+
+  // The code block the caret is in, if any
+  const block = useMemo(() => findFenceAt(text, caret), [text, caret]);
 
   // The toolbar buttons that are on at the caret or selection light up
   const active = useMemo(
-    () => activeFormats(body.replace(/\r\n/g, "\n"), caret, selEnd),
-    [body, caret, selEnd],
+    () => activeFormats(text, caret, selEnd),
+    [text, caret, selEnd],
   );
+
+  const countedBody = useDebouncedValue(body, WORD_COUNT_DELAY_MS);
 
   const trackSelection = (el: HTMLTextAreaElement) => {
     setCaret(el.selectionStart);
@@ -139,7 +163,15 @@ function NoteEditor({
   // Empty title saves as "Untitled", so compare the resolved value or an untitled item is dirty forever
   const resolvedTitle = title.trim() || "Untitled";
 
+  // The newest save has not landed yet, or it failed: the note in memory is ahead of the disk, so it stays unsaved
+  // (a flush on leaving saves it again) until a save succeeds
+  const [saving, setSaving] = useState(false);
+  const saveNo = useRef(0);
+  // When the oldest edit that no save has taken yet was made: a burst of typing is saved at the latest a while after it
+  const dirtySince = useRef<number | null>(null);
+
   const isDirty = useMemo(() => {
+    if (saving) return true;
     if (initialItem) {
       return (
         resolvedTitle !== initialItem.title ||
@@ -149,38 +181,70 @@ function NoteEditor({
     }
     // A new draft only counts once there is content beyond the seed, so an untouched draft never creates an item
     return title.length > 0 || body !== seedBody;
-  }, [title, resolvedTitle, body, seedBody, folderId, initialItem]);
+  }, [saving, title, resolvedTitle, body, seedBody, folderId, initialItem]);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
   const save = useCallback(() => {
-    onSave({ title: resolvedTitle, body, folderId });
+    const no = ++saveNo.current;
+    dirtySince.current = null; // what is typed from here on is the next burst
+    setSaving(true);
+    onSave({ title: resolvedTitle, body, folderId }).then((ok) => {
+      if (no === saveNo.current) setSaving(!ok);
+    });
   }, [resolvedTitle, body, folderId, onSave]);
 
-  // Autosave: `save` changes identity on every edit, which restarts the timer (debounce)
+  // Autosave: `save` changes identity on every edit, which restarts the timer (debounce), but the wait is cut so that
+  // a burst of typing with no pause still saves every few seconds (see lib/autosave). It waits while the question about
+  // an outside change is open: the file on disk is theirs until the person chooses
   useEffect(() => {
-    if (!isDirty) return;
-    const t = setTimeout(save, AUTOSAVE_DELAY_MS);
+    if (!isDirty || conflict) {
+      dirtySince.current = null;
+      return;
+    }
+    const now = Date.now();
+    dirtySince.current ??= now;
+    const t = setTimeout(save, autosaveDelay(dirtySince.current, now));
     return () => clearTimeout(t);
-  }, [isDirty, save]);
+  }, [isDirty, conflict, save]);
 
-  // The parent calls this before it navigates away so pending edits are never dropped
+  // The parent calls this before it navigates away (or the vault or window goes) so pending edits are never dropped. With the
+  // question open it never writes over the file: the text becomes a copy note and the editor reopens on their version
   useEffect(() => {
     flushRef.current = () => {
-      if (isDirty) save();
+      const action = leaveAction(conflict, isDirty);
+      if (action === "save") save();
+      else if (action === "copy")
+        onTakeTheirs({ title: resolvedTitle, body, folderId });
+      else if (action === "reload") onTakeTheirs(null);
     };
     return () => {
       flushRef.current = null;
     };
-  }, [flushRef, isDirty, save]);
+  }, [
+    flushRef,
+    isDirty,
+    conflict,
+    save,
+    onTakeTheirs,
+    resolvedTitle,
+    body,
+    folderId,
+  ]);
+
+  // Keep mine: the parent takes their version as the note (so the save is made against the file that is there), then this text goes over it
+  const keepMine = () => {
+    onKeepMine();
+    save();
+  };
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        if (isDirty) save();
+        if (isDirty && !conflict) save();
       }
       // Only when focus is in the editor or nowhere; sidebar inputs handle their own Escape
       const target = e.target as Node;
@@ -200,7 +264,7 @@ function NoteEditor({
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [isDirty, save, onDone]);
+  }, [isDirty, conflict, save, onDone]);
 
   // Image links are relative to the folder the note is saved in (the open item's, else the one picked for the draft)
   const handlePaste = useImageInsert(
@@ -338,18 +402,32 @@ function NoteEditor({
             <MoreButton entries={moreEntries} />
             {canLeave && (
               <Tooltip label="Done" keys="Esc">
-                <button
-                  type="button"
-                  className="item-header__btn item-header__btn--primary"
-                  onClick={onDone}
-                >
+                <Button variant="solid" size="sm" onClick={onDone}>
                   Done
-                </button>
+                </Button>
               </Tooltip>
             )}
           </div>
         }
       />
+
+      {conflict && (
+        <div className="note-editor__conflict" role="alert">
+          <span>This note was changed outside Graphene</span>
+          <div className="note-editor__conflict-actions">
+            <Tooltip label="Save what is in the editor over the changed file">
+              <Button size="sm" onClick={keepMine}>
+                Keep mine
+              </Button>
+            </Tooltip>
+            <Tooltip label="Open the changed file. What you typed since the last save is discarded">
+              <Button size="sm" onClick={() => onTakeTheirs(null)}>
+                Load theirs
+              </Button>
+            </Tooltip>
+          </div>
+        </div>
+      )}
 
       {find.open && (
         <FindBar
@@ -361,7 +439,7 @@ function NoteEditor({
         />
       )}
 
-      <div className="note-editor__body">
+      <div className="note-editor__body" data-scrollbar>
         <div className="note-editor__editor-wrap">
           <MarkdownToolbar
             onFormat={applyFormat}
@@ -380,6 +458,8 @@ function NoteEditor({
           <textarea
             ref={textareaRef}
             className="note-editor__textarea"
+            data-pristine={!initialItem && body === seedBody}
+            data-scrollbar
             placeholder="Start writing…"
             value={body}
             onChange={(e) => {
@@ -396,11 +476,11 @@ function NoteEditor({
               )
             }
           />
-          <WordCount body={body} updatedAt={initialItem?.updatedAt} />
+          <WordCount body={countedBody} updatedAt={initialItem?.updatedAt} />
         </div>
       </div>
     </div>
   );
 }
 
-export default NoteEditor;
+export default memo(NoteEditor);

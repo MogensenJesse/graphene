@@ -80,3 +80,18 @@ test("without storage nothing breaks", async () => {
   prefs.setFolderCollapsed("D:/a", "Docs", true);
   expect(prefs.isFolderCollapsed("D:/a", "Docs")).toBe(true); // for this session
 });
+
+test("a row that listens is told when a folder opens or closes, and not when the change is silent", async () => {
+  stubStorage();
+  const prefs = await startApp();
+  const seen: boolean[] = [];
+  const stop = prefs.subscribeCollapsed(() =>
+    seen.push(prefs.isFolderCollapsed("D:/a", "Docs")),
+  );
+  prefs.setFolderCollapsed("D:/a", "Docs", true);
+  prefs.setFolderCollapsed("D:/a", "Docs", false, false);
+  prefs.setFolderCollapsed("D:/a", "Docs", true);
+  stop();
+  prefs.setFolderCollapsed("D:/a", "Docs", false);
+  expect(seen).toEqual([true, true]);
+});

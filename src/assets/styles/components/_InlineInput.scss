@@ -1,0 +1,28 @@
+// src/assets/styles/components/_InlineInput.scss
+@use '../base/variables' as v;
+
+// InlineInput wraps its field only when it validates (the folder names); the message hangs under the field,
+// over the rows below it, so a row keeps its height.
+
+.inline-input {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+
+  &__error {
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    left: 0;
+    right: 0;
+    z-index: v.z('raised');
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-snug);
+    color: var(--color-text-danger);
+    background: var(--color-background-primary); // opaque: the rows behind it are not
+    border: 1px solid var(--color-border-danger);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-popover);
+  }
+}

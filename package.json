@@ -10,6 +10,7 @@
     "pack:mcpb": "node scripts/pack-mcpb.mjs",
     "preview": "vite preview",
     "test": "vitest run",
+    "bench": "vitest bench --run --reporter=verbose",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",

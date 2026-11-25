@@ -1,13 +1,14 @@
 // src/components/sidebar/TaskLists.tsx
-import { useContext, useState } from "react";
+import { memo, useContext, useState } from "react";
+import { useDragValue } from "../../hooks/useDragToFolder";
 import { useEscape } from "../../hooks/useEscape";
+import { taskDragOver } from "../../hooks/useTaskDrag";
 import type { TasksApi } from "../../hooks/useTasks";
 import { VaultPathContext } from "../../lib/attachmentStore";
+import type { DragStore } from "../../lib/dragStore";
+import { perfRender } from "../../lib/perf";
 import { isFolderCollapsed, setFolderCollapsed } from "../../lib/prefs";
 import {
-  COLOR_KEYS,
-  type ColorKey,
-  DEFAULT_LIST_ID,
   openCount,
   orderedLists,
   smartList,
@@ -16,15 +17,13 @@ import {
   type TaskGroup,
   type TaskList,
 } from "../../lib/taskStore";
+import ConfirmBar from "../ui/ConfirmBar";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
 import {
   ChevronRightIcon,
   EllipsisIcon,
-  FolderIcon,
-  FolderInputIcon,
   FolderPlusIcon,
-  NoFolderIcon,
   PlusIcon,
   SearchIcon,
   StarIcon,
@@ -32,23 +31,18 @@ import {
   TextCursorInputIcon,
   TrashIcon,
 } from "../ui/Icon";
+import IconButton from "../ui/IconButton";
 import InlineInput from "../ui/InlineInput";
 import Tooltip from "../ui/Tooltip";
-
-const COLOR_LABEL: Record<ColorKey, string> = {
-  red: "Red",
-  orange: "Orange",
-  yellow: "Yellow",
-  green: "Green",
-  blue: "Blue",
-  purple: "Purple",
-};
+import {
+  ColorDot,
+  deleteListQuestion,
+  deleteListWithUndo,
+  listEntries,
+  shiftEntries,
+} from "./listMenu";
 
 const groupKey = (id: string) => `group:${id}`;
-
-function ColorDot({ color }: { color?: ColorKey }) {
-  return <span className="task-dot" data-color={color} aria-hidden="true" />;
-}
 
 interface TaskListsProps {
   api: TasksApi;
@@ -56,11 +50,13 @@ interface TaskListsProps {
   selected: string;
   onSelect: (view: string) => void;
   onOpenSearch: () => void;
+  /** A list or group was deleted: the app offers the Undo (`what` is the word before the name, "the list "). */
+  onDeleted: (what: string, title: string, undo: () => void) => void;
   /** A press on a list or group row that may start a drag (see useDragToFolder). */
   onListPointerDown?: (e: React.PointerEvent, list: TaskList) => void;
   onGroupPointerDown?: (e: React.PointerEvent, group: TaskGroup) => void;
-  /** Which row a drag is over: undefined = none, null = the area outside every group, else a list or group id. */
-  dragOverId?: string | null;
+  /** The drag of a list or group: which row it is over is read from here, so a frame of the drag renders nothing. */
+  drag: DragStore;
 }
 
 /** The Tasks tab of the sidebar: My Day and Important, then the lists, some of them in groups. */
@@ -69,11 +65,15 @@ function TaskLists({
   selected,
   onSelect,
   onOpenSearch,
+  onDeleted,
   onListPointerDown,
   onGroupPointerDown,
-  dragOverId,
+  drag,
 }: TaskListsProps) {
+  perfRender("TaskLists");
   const { index, tasks, today } = api;
+  // Which row a drag is over: undefined = none, null = the area outside every group, else a list or group id
+  const dragOverId = useDragValue(drag, (view) => taskDragOver(view, index));
   const { open, openAt } = useContextMenu();
   const vault = useContext(VaultPathContext) ?? "";
   // The box for a new list or group (a list can be made inside a group), what is being renamed, what waits for a yes
@@ -105,63 +105,12 @@ function TaskLists({
     setAdding(null);
   };
 
-  const listEntries = (list: TaskList): MenuEntry[] => [
-    {
-      label: "Rename",
-      icon: <TextCursorInputIcon size={14} />,
-      onSelect: () => setRenaming(list.id),
-    },
-    {
-      label: "Color",
-      icon: <ColorDot color={list.color} />,
-      submenu: [
-        {
-          label: "No color",
-          checked: !list.color,
-          onSelect: () => api.updateList(list.id, { color: null }),
-        },
-        ...COLOR_KEYS.map((key) => ({
-          label: COLOR_LABEL[key],
-          icon: <ColorDot color={key} />,
-          checked: list.color === key,
-          onSelect: () => api.updateList(list.id, { color: key }),
-        })),
-      ],
-    },
-    ...(groups.length > 0 || list.groupId
-      ? [
-          {
-            label: "Move to group",
-            icon: <FolderInputIcon size={14} />,
-            submenu: [
-              {
-                label: "No group",
-                icon: <NoFolderIcon size={14} />,
-                checked: !list.groupId,
-                onSelect: () => api.updateList(list.id, { groupId: null }),
-              },
-              ...groups.map((g) => ({
-                label: g.name,
-                icon: <FolderIcon size={14} />,
-                checked: list.groupId === g.id,
-                onSelect: () => api.updateList(list.id, { groupId: g.id }),
-              })),
-            ],
-          } satisfies MenuEntry,
-        ]
-      : []),
-    ...(list.id === DEFAULT_LIST_ID
-      ? []
-      : [
-          "separator" as const,
-          {
-            label: "Delete list",
-            icon: <TrashIcon size={14} />,
-            danger: true,
-            onSelect: () => setConfirming(list.id),
-          },
-        ]),
-  ];
+  // The list's menu (right-click and "…"), the same one the heading of the Tasks pane offers
+  const entriesOf = (list: TaskList): MenuEntry[] =>
+    listEntries(api, list, {
+      rename: () => setRenaming(list.id),
+      remove: () => setConfirming(list.id),
+    });
 
   const groupEntries = (group: TaskGroup): MenuEntry[] => [
     {
@@ -174,14 +123,27 @@ function TaskLists({
       icon: <TextCursorInputIcon size={14} />,
       onSelect: () => setRenaming(group.id),
     },
+    ...shiftEntries(groups, group.id, api.rankGroups),
     "separator",
     {
       label: "Delete group",
       icon: <TrashIcon size={14} />,
       danger: true,
-      onSelect: () => api.deleteGroup(group.id),
+      onSelect: () => setConfirming(group.id),
     },
   ];
+
+  // The question under a row that waits for a yes; the id in `confirming` says which row. Escape and Cancel drop it
+  const confirmBar = (question: string, onConfirm: () => void) => (
+    <ConfirmBar
+      question={question}
+      onConfirm={() => {
+        setConfirming(null);
+        onConfirm();
+      }}
+      onCancel={() => setConfirming(null)}
+    />
+  );
 
   const emptyEntries = (): MenuEntry[] => [
     {
@@ -190,7 +152,7 @@ function TaskLists({
       onSelect: () => setAdding({ kind: "list" }),
     },
     {
-      label: "New group",
+      label: "New group of lists",
       icon: <FolderPlusIcon size={14} />,
       onSelect: () => setAdding({ kind: "group" }),
     },
@@ -224,7 +186,7 @@ function TaskLists({
           className={`task-list-row${isSelected ? " task-list-row--selected" : ""}${dragOverId === list.id ? " task-list-row--drag-over" : ""}`}
           onContextMenu={(e) => {
             if (renaming === list.id) return; // keep the input's own copy/paste menu
-            open(e, listEntries(list));
+            open(e, entriesOf(list));
           }}
         >
           {renaming === list.id ? (
@@ -255,51 +217,24 @@ function TaskLists({
           )}
           <div className="folder-row__actions">
             <Tooltip label="List options">
-              <button
-                type="button"
-                className="folder-row__action-btn"
+              <IconButton
+                size="sm"
                 aria-label={`Options for ${list.name}`}
                 aria-haspopup="menu"
                 onClick={(e) => {
                   const r = e.currentTarget.getBoundingClientRect();
-                  openAt(r.left, r.bottom + 2, listEntries(list));
+                  openAt(r.left, r.bottom + 2, entriesOf(list));
                 }}
               >
                 <EllipsisIcon size={13} />
-              </button>
+              </IconButton>
             </Tooltip>
           </div>
         </div>
-        {confirming === list.id && (
-          <div className="sidebar__folder-confirm-delete">
-            <span>
-              Delete &ldquo;{list.name}&rdquo;
-              {count > 0
-                ? ` and its ${count} open ${count === 1 ? "task" : "tasks"}?`
-                : "?"}
-            </span>
-            <div className="sidebar__folder-confirm-actions">
-              <button
-                type="button"
-                className="sidebar__folder-confirm-btn sidebar__folder-confirm-btn--danger"
-                onClick={() => {
-                  setConfirming(null);
-                  api.deleteList(list.id);
-                  if (selected === list.id) onSelect(DEFAULT_LIST_ID);
-                }}
-              >
-                Delete
-              </button>
-              <button
-                type="button"
-                className="sidebar__folder-confirm-btn"
-                onClick={() => setConfirming(null)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
+        {confirming === list.id &&
+          confirmBar(deleteListQuestion(list, tasks[list.id] ?? []), () =>
+            deleteListWithUndo(api, list, selected, onSelect, onDeleted),
+          )}
       </div>
     );
   };
@@ -358,19 +293,17 @@ function TaskLists({
           )}
           <div className="folder-row__actions">
             <Tooltip label="New list here">
-              <button
-                type="button"
-                className="folder-row__action-btn"
+              <IconButton
+                size="sm"
                 aria-label={`New list in ${group.name}`}
                 onClick={() => setAdding({ kind: "list", groupId: group.id })}
               >
                 <PlusIcon size={13} />
-              </button>
+              </IconButton>
             </Tooltip>
             <Tooltip label="Group options">
-              <button
-                type="button"
-                className="folder-row__action-btn"
+              <IconButton
+                size="sm"
                 aria-label={`Options for ${group.name}`}
                 aria-haspopup="menu"
                 onClick={(e) => {
@@ -379,10 +312,26 @@ function TaskLists({
                 }}
               >
                 <EllipsisIcon size={13} />
-              </button>
+              </IconButton>
             </Tooltip>
           </div>
         </div>
+        {confirming === group.id &&
+          confirmBar(
+            // Only the group goes: its lists, and their tasks, stay in the list of lists (see removeGroup)
+            `Delete the group “${group.name}”?${
+              own.length > 0
+                ? ` Its ${own.length} ${own.length === 1 ? "list stays" : "lists stay"}, outside any group.`
+                : ""
+            }`,
+            () => {
+              const gone = api.deleteGroup(group.id);
+              if (gone)
+                onDeleted("the group ", group.name, () =>
+                  api.restoreGroup(gone),
+                );
+            },
+          )}
         {((expanded && own.length > 0) || adding_here) && (
           <div className="folder-row__children">
             {adding_here && addRow("list")}
@@ -431,30 +380,29 @@ function TaskLists({
       <div
         className={`sidebar__folders${dragOverId === null ? " sidebar__folders--drag-over" : ""}`}
         data-folder-drop-id="unfiled"
+        data-scrollbar
         onContextMenu={(e) => open(e, emptyEntries())}
       >
         <div className="sidebar__folders-header">
           <span className="sidebar__folders-label">Lists</span>
           <div className="sidebar__folders-tools">
-            <Tooltip label="New group">
-              <button
-                type="button"
-                className="sidebar__icon-btn"
-                aria-label="New group"
+            <Tooltip label="New group of lists">
+              <IconButton
+                size="sm"
+                aria-label="New group of lists"
                 onClick={() => setAdding({ kind: "group" })}
               >
                 <FolderPlusIcon size={13} />
-              </button>
+              </IconButton>
             </Tooltip>
             <Tooltip label="New list">
-              <button
-                type="button"
-                className="sidebar__icon-btn"
+              <IconButton
+                size="sm"
                 aria-label="New list"
                 onClick={() => setAdding({ kind: "list" })}
               >
                 <PlusIcon size={13} />
-              </button>
+              </IconButton>
             </Tooltip>
           </div>
         </div>
@@ -468,4 +416,4 @@ function TaskLists({
   );
 }
 
-export default TaskLists;
+export default memo(TaskLists);

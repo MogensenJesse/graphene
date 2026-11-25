@@ -1,5 +1,6 @@
 // src/assets/styles/components/_Segments.scss
 // A row of buttons of which one is pressed (see ui/Segmented.tsx)
+@use '../base/mixins' as mixins;
 
 .segments {
   display: flex;
@@ -8,7 +9,7 @@
   padding: 2px;
   border: none;
   border-radius: calc(var(--border-radius-row) + 3px);
-  background: var(--color-background-hover);
+  background: var(--color-background-field);
 
   &__item {
     flex: 1;
@@ -16,8 +17,8 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 5px 0;
-    font-size: 13px;
+    padding: var(--space-3) 0;
+    font-size: var(--fs-md);
     font-family: inherit;
     border: none;
     border-radius: var(--border-radius-row);
@@ -34,12 +35,9 @@
     &--active:hover {
       background: var(--color-background-active);
       color: var(--color-text-primary);
-      font-weight: 500;
+      font-weight: var(--fw-medium);
     }
 
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
-    }
+    @include mixins.focus-ring;
   }
 }

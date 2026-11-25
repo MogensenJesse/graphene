@@ -52,7 +52,9 @@ function AddTask({ placeholder, today, onAdd, focusSignal }: AddTaskProps) {
         value={due ?? ""}
         onChange={setDue}
         label="Due date"
-        className={due ? "due-chip" : "add-task__date"}
+        className={
+          due ? "btn btn--primary btn--sm btn--pill" : "icon-btn icon-btn--md"
+        }
       >
         {due ? dueLabel(due, today) : <CalendarIcon size={14} />}
       </DatePick>

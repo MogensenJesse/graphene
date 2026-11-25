@@ -1,7 +1,10 @@
 // src/lib/fileFormat.test.ts
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { test } from "vitest";
 import { parseNoteFile, serializeItem } from "./fileFormat";
+import { itemKind } from "./utils";
 
 const item = {
   id: "abc",
@@ -45,4 +48,57 @@ test("a root-level note stores folderId null", () => {
   const raw = serializeItem({ ...item, folderId: null });
   assert.match(raw, /^folderId: null$/m);
   assert.equal(parseNoteFile(raw).folderId, null);
+});
+
+// The shared fixtures. The Rust scan (src-tauri/tests/vault_scan.rs) and the MCP scan (mcp/vault.test.ts) are held to the same files and
+// the same expected values, so the three implementations of the vault rules (and the frontmatter subset) cannot drift apart.
+const FIXTURES = resolve(import.meta.dirname, "../../fixtures");
+
+interface ExpectedNote {
+  id: string;
+  title: string;
+  folderId: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  order?: number;
+  kind: string;
+  path: string;
+  body: string;
+}
+
+const expected: { notes: ExpectedNote[]; noId: string[] } = JSON.parse(
+  readFileSync(`${FIXTURES}/vault.expected.json`, "utf8"),
+);
+
+// How the app reads a file: Tauri's readTextFile hands the bytes to a TextDecoder, which is lossy and drops a byte order mark
+const readFixture = (path: string) =>
+  parseNoteFile(
+    new TextDecoder().decode(readFileSync(`${FIXTURES}/vault/${path}`)),
+  );
+
+test("every fixture note parses to the expected values", () => {
+  for (const want of expected.notes) {
+    const parsed = readFixture(want.path);
+    const at = want.path.lastIndexOf("/");
+    // The folder a note sits in wins over the one in its frontmatter (readItemFile in storage.ts)
+    const folderId = at < 0 ? parsed.folderId : want.path.slice(0, at);
+    assert.equal(parsed.id, want.id, want.path);
+    assert.equal(parsed.title, want.title, want.path);
+    assert.equal(folderId, want.folderId, want.path);
+    assert.equal(parsed.order, want.order, want.path);
+    assert.equal(parsed.body, want.body, want.path);
+    assert.equal(itemKind(parsed), want.kind, want.path);
+    for (const key of ["createdAt", "updatedAt"] as const) {
+      // A line the file lacks becomes the time of the parse; the Rust scan says null
+      if (want[key] === null)
+        assert.ok(!Number.isNaN(Date.parse(parsed[key])), want.path);
+      else assert.equal(parsed[key], want[key], want.path);
+    }
+  }
+});
+
+test("the fixture files that are no note have no id", () => {
+  assert.ok(expected.noId.length > 0);
+  for (const path of expected.noId)
+    assert.equal(readFixture(path).id, "", path);
 });

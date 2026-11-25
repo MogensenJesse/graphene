@@ -34,7 +34,7 @@ body {
   display: flex;
   flex: 1;
   overflow: hidden;
-  border-radius: v.$radius-lg; // the clip follows the panels' corners, so a floating sidebar's shadow is not left showing square
+  border-radius: var(--radius-lg); // the clip follows the panels' corners, so a floating sidebar's shadow is not left showing square
   gap: 10px;
 }
 
@@ -42,8 +42,7 @@ body {
   --sidebar-width: 252px;
   width: var(--sidebar-width);
   flex-shrink: 0;
-  background: rgba(v.$night, 0);
-  border-radius: v.$radius-lg;
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -75,7 +74,7 @@ body {
   top: 0;
   bottom: 0;
   left: 0;
-  z-index: 30; // above the note and its scrim, below dialogs (300) and menus (400)
+  z-index: v.z('sidebar-float'); // above the note and its scrim, below dialogs (300) and menus (400)
   background: var(--color-background-primary); // opaque: the app surfaces are translucent
   border: 0.5px solid var(--color-border-primary);
   box-shadow: var(--shadow-popover);
@@ -93,8 +92,8 @@ body {
 .app__scrim {
   position: absolute;
   inset: 0;
-  z-index: 9;
-  background: rgba(0, 0, 0, 0.3);
+  z-index: v.z('scrim');
+  background: var(--surface-scrim);
   opacity: 0;
   visibility: hidden;
   transition:
@@ -113,7 +112,7 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--surface-main);
-  border-radius: v.$radius-lg;
+  border-radius: var(--radius-lg);
   position: relative;
   // The header lines its title up with the text column from this panel's width (see .item-header)
   container: main / inline-size;
@@ -122,13 +121,39 @@ body {
   --pane-pad: 44px;
 }
 
-// The same 24px button as the window controls, in the header's left corner so it keeps its place whether the
-// sidebar is showing or not
+// A 24px icon button (ui/IconButton) in the header's left corner, so it keeps its place whether the sidebar is showing or not
 .app__sidebar-toggle {
   position: absolute;
-  top: 14px;
+  top: calc((var(--bar-height) - 24px) / 2); // centred in the header bar
   left: 10px;
-  z-index: 10;
+  z-index: v.z('chrome');
+}
+
+// Search, New and Settings beside the toggle, while the sidebar is hidden (its own are out of sight then)
+.app__quick {
+  position: absolute;
+  top: calc((var(--bar-height) - 24px) / 2);
+  left: 38px; // the toggle's 10px and 24px, and 4px
+  z-index: v.z('chrome');
+  display: flex;
+  gap: 2px;
+  animation: var(--anim-fade);
+}
+
+// The header's title starts right of them: three buttons and the toggle, and 10px (two buttons and the toggle when the panel
+// is too narrow for Settings)
+.app__main--quick {
+  --chrome-left: 124px;
+}
+
+@container main (max-width: #{v.$cq-quick-settings}) {
+  .app__quick-settings {
+    display: none;
+  }
+
+  .app__main--quick .item-header {
+    --chrome-left: 98px;
+  }
 }
 
 .app__drag-strip {
@@ -136,47 +161,18 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 52px; // same height as .item-header
-  z-index: 5;
+  height: var(--bar-height); // same height as .item-header
+  z-index: v.z('drag-strip');
   -webkit-app-region: drag;
 }
 
 .app__win-controls {
   position: absolute;
-  top: 14px; // centred in the 52px header bar
+  top: calc((var(--bar-height) - 24px) / 2); // centred in the header bar
   right: 14px;
-  z-index: 10;
+  z-index: v.z('chrome');
   display: flex;
   gap: 6px;
-}
-
-.app__win-btn {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--border-radius-md);
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: var(--color-text-tertiary);
-  transition: background var(--transition-fast), color var(--transition-fast);
-
-  &:hover {
-    background: var(--color-border-secondary);
-    color: var(--color-text-secondary);
-  }
-
-  &--close:hover {
-    background: rgba(var(--rgb-danger), 0.18);
-    color: var(--color-text-danger);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--color-text-info);
-    outline-offset: 1px;
-  }
 }
 
 // ─── Vault Picker (first-launch fullscreen) ─────────────────────────────────
@@ -204,64 +200,41 @@ body {
   padding: 40px 48px;
   background: var(--surface-card);
   border: 1px solid var(--color-border-primary);
-  border-radius: v.$radius-lg;
+  border-radius: var(--radius-lg);
   max-width: 380px;
   text-align: center;
 }
 
 .vault-picker__icon {
   display: flex;
-  line-height: 1;
+  line-height: var(--lh-none);
   color: var(--color-text-secondary);
 }
 
 .vault-picker__title {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--fs-title);
+  font-weight: var(--fw-semibold);
   color: var(--color-text-primary);
   letter-spacing: 0.04em;
   margin: 0;
 }
 
 .vault-picker__desc {
-  font-size: 14px;
+  font-size: var(--fs-lg);
   color: var(--color-text-secondary);
-  line-height: 1.6;
+  line-height: var(--lh-relaxed);
   margin: 0;
 }
 
 .vault-picker__error {
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--color-text-danger);
   margin: 0;
 }
 
-.vault-picker__btn {
-  margin-top: 4px;
-  padding: 9px 22px;
-  background: var(--color-border-primary);
-  border: 1px solid var(--color-border-secondary);
-  border-radius: v.$radius-md;
-  color: var(--color-text-primary);
-  font-size: 14px;
-  font-family: var(--font-sans);
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-
-  &:hover:not(:disabled) {
-    background: var(--color-background-hover-strong);
-    border-color: var(--color-border-primary);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--color-text-info);
-    outline-offset: 2px;
-  }
+// The call to action is a ui/Button; the card's gap is 14px, this is the 4px more
+.vault-picker__card .btn {
+  margin-top: var(--space-2);
 }
 
 // ─── File Drop Overlay ───────────────────────────────────────────────────────
@@ -269,20 +242,42 @@ body {
 .drop-overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: v.z('drop-overlay');
   pointer-events: none;
-  border-radius: v.$radius-lg;
+  border-radius: var(--radius-lg);
   background: var(--surface-scrim);
   border: 2px dashed var(--color-text-info);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  animation: fade-in 0.12s ease-out;
+  gap: var(--space-4);
+  animation: var(--anim-fade);
 
-  &::after {
-    content: 'Drop to import';
-    font-size: 15px;
+  // What a drop does here (lib/fileDrop): said in words, since nothing else on the window says it
+  &__text {
+    font-size: var(--fs-xl);
     color: var(--color-text-info);
     letter-spacing: 0.06em;
   }
+
+  &__sub {
+    font-size: var(--fs-md);
+    color: var(--color-text-secondary);
+  }
+}
+
+// A pane waiting for what it shows (a note whose text is being read, the trash being listed): quiet, and only after a moment, so
+// something that arrives at once is never seen flashing
+.pane-pending {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+  font-size: var(--fs-md);
+  color: var(--color-text-tertiary);
+  animation: fade-in 0.2s ease-out 0.25s backwards;
 }

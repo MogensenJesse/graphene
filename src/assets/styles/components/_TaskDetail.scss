@@ -1,0 +1,245 @@
+// src/assets/styles/components/_TaskDetail.scss
+@use '../base/mixins' as mixins;
+@use '../base/variables' as v;
+
+// ── The side pane of the open task ─────────────────────────────────────────────
+
+.task-detail {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: var(--details-width);
+  border-left: 0.5px solid var(--color-border-tertiary);
+
+  // As tall as the header bar, so the window controls, which sit over its right end, have room
+  &__bar {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    height: var(--bar-height);
+    padding: 0 calc(var(--win-controls-width) + 24px) 0 12px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    -webkit-app-region: drag;
+    user-select: none;
+
+    // The close button sits above the drag strip and opts out of dragging
+    .icon-btn {
+      position: relative;
+      z-index: v.z('header-control');
+      -webkit-app-region: no-drag;
+    }
+  }
+
+  &__body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 16px;
+    overflow-y: auto;
+    @include mixins.custom-scrollbar;
+    @include mixins.scroll-gutter;
+  }
+
+  // The checkbox, the title and the star, as in the row
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__title {
+    flex: 1;
+    min-width: 0;
+    padding: 4px 6px;
+    font: inherit;
+    font-size: var(--fs-xl);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-snug);
+    color: var(--color-text-primary);
+    background: none;
+    border: 0.5px solid transparent;
+    border-radius: var(--border-radius-sm);
+    outline: none;
+    resize: none;
+    field-sizing: content;
+
+    &:hover {
+      background: var(--color-background-hover);
+    }
+
+    &:focus {
+      border-color: var(--color-border-primary);
+      background: var(--color-background-primary);
+    }
+  }
+
+  &__steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__step,
+  &__add-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__add-step {
+    padding-left: 2px;
+    color: var(--color-text-tertiary);
+  }
+
+  // Steps are the smaller checkboxes
+  &__step .checkbox {
+    width: 14px;
+    height: 14px;
+    margin: 0 4px 0 2px;
+
+    &:checked::after {
+      width: 3px;
+      height: 6px;
+    }
+  }
+
+  &__step-title {
+    flex: 1;
+    min-width: 0;
+    padding: 4px 2px;
+    font: inherit;
+    font-size: var(--fs-md);
+    color: var(--color-text-primary);
+    background: none;
+    border: none;
+    border-bottom: 0.5px solid transparent;
+    outline: none;
+
+    &:focus {
+      border-bottom-color: var(--color-border-primary);
+    }
+
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  &__step--done &__step-title {
+    color: var(--color-text-tertiary);
+    text-decoration: line-through;
+  }
+
+  // My Day, due date and list: one card, a row each (icon, then what it sets), like the note below it
+  &__options {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-background-field);
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-row);
+  }
+
+  &__option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative; // the list's dropdown opens under its row
+    height: 36px;
+    padding: 0 0 0 12px; // no right padding: the clear button lines up with the steps' remove buttons
+    font-size: var(--fs-md);
+    color: var(--color-text-secondary);
+
+    & + & {
+      border-top: 0.5px solid var(--color-border-tertiary);
+    }
+
+    // The date picker's wrapper fills the row, so the whole row is its button
+    .date-pick {
+      flex: 1;
+      min-width: 0;
+    }
+
+    // The list's dropdown has the folder picker's look (see _ItemHeader.scss), as wide as the row
+    .folder-picker__dropdown {
+      right: 0;
+    }
+  }
+
+  &__chevron {
+    display: inline-flex;
+    margin: 0 12px 0 auto;
+    color: var(--color-text-tertiary);
+    transition: transform var(--anim-in);
+  }
+
+  &__option-btn[aria-expanded='true'] &__chevron {
+    transform: rotate(180deg);
+  }
+
+  // One row of the card is one button (ui/Button, link): its icon and words, a colour change when pointed at
+  &__option-btn {
+    justify-content: flex-start;
+    gap: 10px;
+    width: 100%;
+    height: 36px;
+    text-align: left;
+
+    &:hover:not(:disabled) {
+      text-decoration: none;
+    }
+
+    &--on,
+    &--on:hover:not(:disabled) {
+      color: var(--color-text-info);
+    }
+
+    @include mixins.focus-ring(-2px) {
+      border-radius: var(--border-radius-row);
+    }
+  }
+
+  &__note {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 52px;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: var(--fs-md);
+    line-height: var(--lh-base);
+    color: var(--color-text-primary);
+    background: var(--color-background-field);
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-row);
+    outline: none;
+    resize: none;
+    field-sizing: content;
+
+    &:focus {
+      border-color: var(--color-border-primary);
+    }
+
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  &__foot {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    font-size: var(--fs-sm);
+    color: var(--color-text-tertiary);
+    border-top: 0.5px solid var(--color-border-tertiary);
+  }
+
+  // Delete (ui/Button, quiet and small): grey until it is pointed at, then red
+  &__delete {
+    color: var(--color-text-tertiary);
+
+    &:hover:not(:disabled) {
+      color: var(--color-text-danger);
+    }
+  }
+}

@@ -24,13 +24,15 @@ export type Updater = ReturnType<typeof useUpdater>;
  * `update` is set when one exists, and `install` downloads it and hands over to the installer
  * (on Windows the app quits and the installer reopens it).
  */
-export function useUpdater(flushPendingSave: () => Promise<void>) {
+export function useUpdater(flushPendingSave: () => Promise<boolean>) {
   const [version, setVersion] = useState("");
   const [update, setUpdate] = useState<Update | null>(null);
   const [notes, setNotes] = useState<ReleaseNote[]>([]);
   const [status, setStatus] = useState<UpdateStatus>("idle");
   const [progress, setProgress] = useState(0); // 0..1 while installing
   const [error, setError] = useState<string | null>(null);
+  // The install was held back: a note or a task could not be saved, and the restart would lose it
+  const [unsaved, setUnsaved] = useState(false);
   const busy = useRef(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -90,8 +92,16 @@ export function useUpdater(flushPendingSave: () => Promise<void>) {
     setStatus("installing");
     setProgress(0);
     setError(null);
+    setUnsaved(false);
     try {
-      await flushPendingSave(); // the installer closes the window; do not lose an edit
+      // The installer closes the window, so an edit that could not be saved would be lost: wait for the person (the
+      // flush has shown the error toast, with its Retry)
+      if (!(await flushPendingSave())) {
+        setUnsaved(true);
+        setStatus("idle");
+        busy.current = false;
+        return;
+      }
       let total = 0;
       let done = 0;
       await update.downloadAndInstall((event) => {
@@ -117,6 +127,7 @@ export function useUpdater(flushPendingSave: () => Promise<void>) {
     status,
     progress,
     error,
+    unsaved,
     canInstall: !import.meta.env.DEV,
     checkNow: useCallback(() => run(false), [run]),
     install,

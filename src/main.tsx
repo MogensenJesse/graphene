@@ -3,15 +3,25 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./assets/styles/main.scss";
+import ErrorBoundary from "./components/ui/ErrorBoundary";
 import { applyFontPrefs } from "./lib/fontPrefs";
+import { observeIpc, observeLongFrames, perfMark } from "./lib/perf";
+import { initScrollbars } from "./lib/scrollbars";
 import { initTheme } from "./lib/theme";
+
+perfMark("main");
+observeLongFrames();
+observeIpc();
 
 // Before the first render, so the wrong theme or font never flashes
 initTheme();
 applyFontPrefs();
+initScrollbars();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>,
 );

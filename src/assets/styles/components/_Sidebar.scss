@@ -1,5 +1,4 @@
 // src/assets/styles/components/_Sidebar.scss
-@use '../base/variables' as v;
 @use '../base/mixins' as mixins;
 
 .sidebar {
@@ -9,7 +8,7 @@
   overflow: hidden;
 
   &__header {
-    height: 52px; // the same bar as the item header, so the brand and the note title share a line
+    height: var(--bar-height); // the same bar as the item header, so the brand and the note title share a line
     padding: 0 18px;
     display: flex;
     align-items: center;
@@ -30,12 +29,26 @@
     -webkit-app-region: no-drag;
   }
 
+  // Shown only while there is an update; a button, clickable inside the drag region
   &__update-pill {
     flex-shrink: 0;
+    padding: 1px 8px;
     font-family: inherit;
-    background: none;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--color-text-info);
+    background: var(--color-background-info);
     border: none;
+    border-radius: var(--radius-pill);
     cursor: pointer;
+    animation: var(--anim-pop);
+    transition: background var(--transition-fast);
+
+    &:hover {
+      background: var(--color-background-info-hover);
+    }
+
+    @include mixins.focus-ring;
   }
 
   // The open vault's name; opens the list of vaults
@@ -48,18 +61,16 @@
     height: 24px;
     padding: 0 6px 0 8px;
     font-family: inherit;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--color-text-secondary);
-    background: var(--color-background-hover);
+    background: var(--color-background-field);
     border: none;
     border-radius: var(--border-radius-md);
     cursor: pointer;
     transition: background var(--transition-fast), color var(--transition-fast);
 
     span {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      @include mixins.ellipsis;
     }
 
     svg {
@@ -72,34 +83,16 @@
       background: var(--color-background-hover-strong);
     }
 
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
-    }
-  }
-
-  &__update-pill {
-    padding: 1px 8px;
-    font-size: 11px;
-    font-weight: 600;
-    color: rgb(var(--rgb-blue));
-    background: rgba(var(--rgb-blue), 0.14);
-    border-radius: 999px;
-    animation: pop-in 0.16s var(--ease-out);
-    transition: background var(--transition-fast);
-
-    &:hover {
-      background: rgba(var(--rgb-blue), 0.24);
-    }
+    @include mixins.focus-ring;
   }
 
   &__brand {
     display: flex;
     align-items: center;
     flex-shrink: 0;
-    gap: 7px;
-    font-size: 13px;
-    font-weight: 600;
+    gap: var(--space-4);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
     color: var(--color-text-primary);
     letter-spacing: -0.01em;
     pointer-events: none;
@@ -127,7 +120,7 @@
     height: 32px;
     padding: 0 10px;
     box-sizing: border-box;
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-family: inherit;
     text-align: left;
     color: var(--color-text-secondary);
@@ -141,27 +134,27 @@
       flex-shrink: 0;
     }
 
-    &:hover {
-      background: var(--color-background-hover);
-      color: var(--color-text-primary);
-    }
+    @include mixins.row-surface('--active');
 
+    &:hover,
     &--active,
     &--active:hover {
-      background: var(--color-background-active);
       color: var(--color-text-primary);
     }
 
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: -2px;
-    }
+    @include mixins.focus-ring(-2px);
 
+    // New note and New code while the vault cannot be opened
+    &:disabled {
+      background: none;
+      opacity: var(--opacity-disabled);
+      cursor: default;
+    }
   }
 
   &__nav-count {
     margin-left: auto;
-    font-size: 11px;
+    font-size: var(--fs-sm); // as the trash count: the +1px change left it at 11px
     color: var(--color-text-tertiary);
   }
 
@@ -176,7 +169,7 @@
     flex-shrink: 0;
 
     // A note is being dragged: the row is one wide Trash target, so the gear steps aside
-    &--dragging .sidebar__icon-btn--footer {
+    &--dragging .sidebar__settings {
       display: none;
     }
   }
@@ -201,15 +194,12 @@
       flex-shrink: 0;
     }
 
-    &:hover {
-      background: var(--color-background-hover);
-      color: var(--color-text-primary);
-    }
-
     // The Trash view is open
+    @include mixins.row-surface('--active');
+
+    &:hover,
     &--active,
     &--active:hover {
-      background: var(--color-background-active);
       color: var(--color-text-primary);
     }
 
@@ -217,7 +207,7 @@
     &--drop {
       flex: 1;
       justify-content: center;
-      font-size: 13px;
+      font-size: var(--fs-md);
       color: var(--color-text-danger);
       border: 1px dashed var(--color-border-danger);
     }
@@ -229,14 +219,18 @@
       color: var(--color-text-danger);
     }
 
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: -2px;
+    @include mixins.focus-ring(-2px);
+
+    // While the vault cannot be opened there is no trash to open
+    &:disabled {
+      background: none;
+      opacity: var(--opacity-disabled);
+      cursor: default;
     }
   }
 
   &__trash-count {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--color-text-tertiary);
   }
 
@@ -249,20 +243,26 @@
     padding: 8px 8px 4px;
     outline: none;
     --drop-gap: 2px; // the space between rows (see _DragDrop.scss)
-    border-radius: v.$radius-lg; // rounds the drop tint and the focus ring below too
-
+    border-radius: var(--radius-lg); // rounds the drop tint and the focus ring below too
     @include mixins.custom-scrollbar;
+    @include mixins.scroll-gutter;
 
-    // Keyboard focus only; clicking an item parks focus here without a ring
-    &:focus-visible {
+    // Keyboard focus only; clicking an item parks focus on the tree without a ring. The tree is the rows inside this list, and the
+    // ring goes round the whole list
+    &:has(.sidebar__tree:focus-visible) {
       box-shadow: inset 0 0 0 2px var(--color-text-info);
     }
 
     // Dropping on empty space (or a root item) unfiles the dragged item
     &--drag-over {
-      background: rgba(var(--rgb-blue), 0.06);
-      box-shadow: inset 0 0 0 1px rgba(var(--rgb-blue), 0.3);
+      background: var(--color-background-info-faint);
+      box-shadow: inset 0 0 0 1px var(--color-border-info);
     }
+  }
+
+  // The rows: the one tab stop of the list, and what the arrow keys act on (the ring is the list's, above)
+  &__tree {
+    outline: none;
   }
 
   &__folders-header {
@@ -273,9 +273,9 @@
   }
 
   &__folders-label {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     font-variant-numeric: tabular-nums;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     color: var(--color-text-secondary);
   }
 
@@ -285,134 +285,21 @@
     gap: 2px;
   }
 
-  &__sort-btn {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    font-family: inherit;
-    height: 22px; // as tall as the "+" beside it
-    padding: 0 6px;
-    background: none;
-    border: none;
-    border-radius: var(--border-radius-md);
-    color: var(--color-text-tertiary);
-    cursor: pointer;
-
-    &:hover {
-      background: var(--color-background-hover);
-      color: var(--color-text-secondary);
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
-    }
-  }
-
-  &__icon-btn {
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--color-text-tertiary);
-    border-radius: var(--border-radius-md);
-    padding: 0;
-
-    &:hover {
-      background: var(--color-background-hover);
-      color: var(--color-text-secondary);
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
-    }
-  }
-
-  // The settings button in the footer, as tall as the Trash button beside it
-  &__icon-btn--footer {
-    width: 32px;
-    height: 32px;
-    flex-shrink: 0;
-  }
-
   &__folder-add-row {
-    padding: 3px 4px 3px 10px;
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-5);
   }
 
   &__folder-add-input {
     width: 100%;
-    font-size: 13px;
-    font-family: inherit;
-    background: var(--color-background-primary);
-    border: 0.5px solid var(--color-border-primary);
-    border-radius: var(--border-radius-md);
-    color: var(--color-text-primary);
-    padding: 4px 8px;
-    outline: none;
     box-sizing: border-box;
-
-    &::placeholder {
-      color: var(--color-text-tertiary);
-    }
+    @include mixins.inline-field(4px 8px, var(--border-radius-md));
   }
 
   &__empty {
     padding: 40px 16px;
     text-align: center;
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--color-text-tertiary);
-  }
-}
-
-// ── Folder delete confirmation ─────────────────────────────────────────────────
-
-.sidebar__folder-confirm-delete {
-  margin: 4px 0;
-  padding: 8px 10px;
-  border-radius: v.$radius-sm;
-  background: rgba(var(--rgb-danger), 0.12);
-  border: 1px solid rgba(var(--rgb-danger), 0.3);
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.sidebar__folder-confirm-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.sidebar__folder-confirm-btn {
-  font-size: 12px;
-  font-family: inherit;
-  padding: 3px 8px;
-  border-radius: v.$radius-sm;
-  border: 1px solid var(--color-border-primary);
-  background: var(--color-background-secondary);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-
-  &:hover {
-    background: var(--color-background-primary);
-    color: var(--color-text-primary);
-  }
-
-  &--danger {
-    border-color: rgba(var(--rgb-danger), 0.4);
-    color: var(--color-text-danger);
-
-    &:hover {
-      background: rgba(var(--rgb-danger), 0.15);
-      color: var(--color-text-danger);
-    }
   }
 }
 
@@ -421,23 +308,15 @@
 .item-row {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-4);
   height: 28px;
   margin-top: 2px; // space between rows
-  padding: 0 8px 0 10px;
+  padding: 0 4px 0 10px; // the "…" button sits at the right, as the actions of a folder row do
   cursor: pointer;
   border-radius: var(--border-radius-row);
   transition: background var(--transition-fast);
   list-style: none;
-
-  &:hover {
-    background: var(--color-background-hover);
-  }
-
-  &--selected,
-  &--selected:hover {
-    background: var(--color-background-active);
-  }
+  @include mixins.row-surface;
 
   &__type-icon {
     display: inline-flex;
@@ -447,18 +326,16 @@
   }
 
   &__title {
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--color-text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include mixins.ellipsis;
     flex: 1;
     min-width: 0;
   }
 
   &--selected &__title {
     color: var(--color-text-primary);
-    font-weight: 500;
+    font-weight: var(--fw-medium);
   }
 
   &--selected &__type-icon {
@@ -468,23 +345,38 @@
   // Inline rename, same look as the folder rename input
   &__rename-input {
     flex: 1;
-    min-width: 0;
-    padding: 2px 6px;
-    font-size: 13px;
-    font-family: inherit;
-    color: var(--color-text-primary);
-    background: var(--color-background-primary);
-    border: 0.5px solid var(--color-border-primary);
-    border-radius: var(--border-radius-sm);
-    outline: none;
+    @include mixins.inline-field;
   }
 
   &__unsaved-dot {
     width: 5px;
     height: 5px;
-    border-radius: 50%;
+    border-radius: var(--radius-round);
     background: var(--color-text-secondary);
     flex-shrink: 0;
     display: inline-block;
+  }
+
+  // The "…" button is mounted on the row's first hover (ItemRow), so until then this keeps its 22px free and the title does not
+  // move when it appears
+  &--more-pending::after {
+    content: '';
+    flex-shrink: 0;
+    width: 22px;
+  }
+
+  // Drawn while the row is hovered or the button has the focus (CSS only: hovering again renders nothing). It keeps its place at
+  // rest, so the title does not move when it appears
+  &__more {
+    opacity: 0;
+    transition:
+      opacity var(--transition-fast),
+      background var(--transition-fast),
+      color var(--transition-fast);
+  }
+
+  &:hover &__more,
+  &:focus-within &__more {
+    opacity: 1;
   }
 }

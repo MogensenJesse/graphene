@@ -3,7 +3,11 @@ import { useEffect, useState } from "react";
 import type { Vaults } from "../../hooks/useVaults";
 import { pickVaultPath } from "../../lib/vault";
 import { type VaultEntry, vaultProblemText } from "../../lib/vaultList";
+import Button from "../ui/Button";
+import Checkbox from "../ui/Checkbox";
+import ConfirmBar from "../ui/ConfirmBar";
 import { ChevronDownIcon, ChevronUpIcon } from "../ui/Icon";
+import IconButton from "../ui/IconButton";
 import InlineInput from "../ui/InlineInput";
 import Tooltip from "../ui/Tooltip";
 
@@ -42,7 +46,7 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
 
   const open = async (vault: VaultEntry) => {
     setMessage(null);
-    if (await vaults.switchTo(vault.path)) onClose();
+    if ((await vaults.switchTo(vault.path)) === "opened") onClose();
   };
 
   const rename = (vault: VaultEntry, name: string) => {
@@ -94,26 +98,24 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
                 {current && <span className="settings__tag">Open</span>}
                 <span className="settings__vault-order">
                   <Tooltip label="Move up">
-                    <button
-                      type="button"
-                      className="settings__icon-btn"
+                    <IconButton
+                      size="sm"
                       aria-label={`Move ${vault.name} up`}
                       disabled={index === 0}
                       onClick={() => vaults.move(vault.path, -1)}
                     >
                       <ChevronUpIcon size={14} />
-                    </button>
+                    </IconButton>
                   </Tooltip>
                   <Tooltip label="Move down">
-                    <button
-                      type="button"
-                      className="settings__icon-btn"
+                    <IconButton
+                      size="sm"
                       aria-label={`Move ${vault.name} down`}
                       disabled={index === vaults.vaults.length - 1}
                       onClick={() => vaults.move(vault.path, 1)}
                     >
                       <ChevronDownIcon size={14} />
-                    </button>
+                    </IconButton>
                   </Tooltip>
                 </span>
               </div>
@@ -126,36 +128,20 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
               )}
 
               {removing === vault.path ? (
-                <div className="settings__vault-confirm">
-                  <p className="settings__muted">
-                    Remove "{vault.name}" from Graphene? The folder and its
-                    notes stay on your computer.
-                  </p>
-                  <div className="settings__row">
-                    <button
-                      type="button"
-                      className="settings__btn settings__btn--danger"
-                      onClick={() => {
-                        setRemoving(null);
-                        vaults.remove(vault.path);
-                      }}
-                    >
-                      Remove
-                    </button>
-                    <button
-                      type="button"
-                      className="settings__btn"
-                      onClick={() => setRemoving(null)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
+                <ConfirmBar
+                  question={`Remove "${vault.name}" from Graphene? The folder and its notes stay on your computer.`}
+                  confirmLabel="Remove"
+                  onConfirm={() => {
+                    setRemoving(null);
+                    vaults.remove(vault.path);
+                  }}
+                  onCancel={() => setRemoving(null)}
+                />
               ) : (
                 <div className="settings__vault-foot">
+                  {/* biome-ignore lint/a11y/noLabelWithoutControl: Checkbox renders an <input> */}
                   <label className="settings__check">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={vault.shared}
                       onChange={(e) =>
                         vaults.setShared(vault.path, e.target.checked)
@@ -165,25 +151,23 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
                   </label>
                   <span className="settings__vault-actions">
                     {!current && (
-                      <button
-                        type="button"
-                        className="settings__link"
+                      <Button
+                        variant="link"
                         disabled={missing}
                         onClick={() => open(vault)}
                       >
                         Open
-                      </button>
+                      </Button>
                     )}
-                    <button
-                      type="button"
-                      className="settings__link"
+                    <Button
+                      variant="link"
                       onClick={() => {
                         setMessage(null);
                         setRemoving(vault.path);
                       }}
                     >
                       Remove
-                    </button>
+                    </Button>
                   </span>
                 </div>
               )}
@@ -199,13 +183,9 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
       )}
 
       <div className="settings__row">
-        <button
-          type="button"
-          className="settings__btn settings__btn--primary"
-          onClick={add}
-        >
+        <Button variant="primary" onClick={add}>
           Add vault…
-        </button>
+        </Button>
       </div>
     </>
   );

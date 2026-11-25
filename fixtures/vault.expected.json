@@ -1,0 +1,399 @@
+{
+  "notes": [
+    {
+      "id": "n24",
+      "title": "A name with no id in it",
+      "folderId": null,
+      "createdAt": null,
+      "updatedAt": null,
+      "kind": "note",
+      "path": "any-name-at-all.md",
+      "body": "The path is the file's own name.\n"
+    },
+    {
+      "id": "n19",
+      "title": "Bad \ufffdbyte",
+      "folderId": null,
+      "createdAt": null,
+      "updatedAt": null,
+      "kind": "note",
+      "path": "badbytes-n19.md",
+      "body": "ok \ufffd\ufffd end\n"
+    },
+    {
+      "id": "n05",
+      "title": "Mark and CRLF",
+      "folderId": null,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "bom-crlf-n05.md",
+      "body": "Both at once.\n"
+    },
+    {
+      "id": "n04",
+      "title": "Byte order mark",
+      "folderId": null,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "bom-n04.md",
+      "body": "The mark is ignored.\n"
+    },
+    {
+      "id": "n26",
+      "title": "Indented fence",
+      "folderId": null,
+      "createdAt": null,
+      "updatedAt": null,
+      "kind": "code",
+      "path": "code-indented-n26.md",
+      "body": "\n  ```js\nlet y;\n```\n"
+    },
+    {
+      "id": "n25",
+      "title": "Code",
+      "folderId": null,
+      "createdAt": null,
+      "updatedAt": null,
+      "kind": "code",
+      "path": "code-n25.md",
+      "body": "```ts\nconst x = 1;\n```\n"
+    },
+    {
+      "id": "n27",
+      "title": "Fence after a no-break space",
+      "folderId": null,
+      "createdAt": null,
+      "updatedAt": null,
+      "kind": "code",
+      "path": "code-nbsp-n27.md",
+      "body": "\u00a0```js\nlet z;\n```\n"
+    },
+    {
+      "id": "n03",
+      "title": "Windows line endings",
+      "folderId": null,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "crlf-n03.md",
+      "body": "Line one\nLine two\n"
+    },
+    {
+      "id": "n07",
+      "title": "Empty dates",
+      "folderId": null,
+      "createdAt": "",
+      "updatedAt": "",
+      "kind": "note",
+      "path": "empty-dates-n07.md",
+      "body": "A line with no value is an empty string, not a missing one.\n"
+    },
+    {
+      "id": "n20",
+      "title": "Empty first block",
+      "folderId": null,
+      "createdAt": null,
+      "updatedAt": null,
+      "kind": "note",
+      "path": "empty-first-n20.md",
+      "body": "The closing fence is looked for from byte 4.\n"
+    },
+    {
+      "id": "n21",
+      "title": "Fence tail",
+      "folderId": null,
+      "createdAt": null,
+      "updatedAt": null,
+      "kind": "note",
+      "path": "fence-tail-n21.md",
+      "body": " tail\nbody after a fence with a tail\n"
+    },
+    {
+      "id": "n34",
+      "title": "Mixed case folder",
+      "folderId": "Mixed Case",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "Mixed Case/inside-n34.md",
+      "body": "A folder with a space and capitals.\n"
+    },
+    {
+      "id": "n06",
+      "title": "",
+      "folderId": null,
+      "createdAt": null,
+      "updatedAt": null,
+      "kind": "note",
+      "path": "no-dates-n06.md",
+      "body": "No title, no dates, no folder.\n"
+    },
+    {
+      "id": "n22",
+      "title": "Nothing after the fence",
+      "folderId": null,
+      "createdAt": null,
+      "updatedAt": null,
+      "kind": "note",
+      "path": "no-final-newline-n22.md",
+      "body": ""
+    },
+    {
+      "id": "n31",
+      "title": "Deep",
+      "folderId": "projects/alpha",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "projects/alpha/deep-n31.md",
+      "body": "Two levels down.\n"
+    },
+    {
+      "id": "n32",
+      "title": "Leaf",
+      "folderId": "projects/alpha/deeper",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "projects/alpha/deeper/leaf-n32.md",
+      "body": "Three levels down.\n"
+    },
+    {
+      "id": "n30",
+      "title": "Folder wins",
+      "folderId": "projects",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "projects/alpha-n30.md",
+      "body": "The folder it sits in wins over the one in the frontmatter.\n"
+    },
+    {
+      "id": "n33",
+      "title": "Nested attachments",
+      "folderId": "projects/attachments",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "projects/attachments/nested-n33.md",
+      "body": "Only the root attachments folder is skipped.\n"
+    },
+    {
+      "id": "n17",
+      "title": "last: with: colons",
+      "folderId": null,
+      "createdAt": "",
+      "updatedAt": "\"unbalanced'",
+      "kind": "note",
+      "path": "quirks-n17.md",
+      "body": "Only the last value of a repeated key counts.\n"
+    },
+    {
+      "id": "n02",
+      "title": "Quoted: a colon",
+      "folderId": null,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "quoted-n02.md",
+      "body": "Quotes are stripped once.\n"
+    },
+    {
+      "id": "n16",
+      "title": "Rank",
+      "folderId": null,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "rank-empty-n16.md",
+      "body": "order: \n"
+    },
+    {
+      "id": "n12",
+      "title": "Rank 1e3",
+      "folderId": null,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "order": 1000,
+      "kind": "note",
+      "path": "rank-exp-n12.md",
+      "body": "order: 1e3\n"
+    },
+    {
+      "id": "n11",
+      "title": "Rank 0x10",
+      "folderId": null,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "order": 16,
+      "kind": "note",
+      "path": "rank-hex-n11.md",
+      "body": "order: 0x10\n"
+    },
+    {
+      "id": "n15",
+      "title": "Rank Infinity",
+      "folderId": null,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "rank-inf-n15.md",
+      "body": "order: Infinity\n"
+    },
+    {
+      "id": "n13",
+      "title": "Rank 12px",
+      "folderId": null,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "rank-junk-n13.md",
+      "body": "order: 12px\n"
+    },
+    {
+      "id": "n10",
+      "title": "Rank 1536.5",
+      "folderId": null,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "order": 1536.5,
+      "kind": "note",
+      "path": "rank-n10.md",
+      "body": "order: 1536.5\n"
+    },
+    {
+      "id": "n14",
+      "title": "Rank -5",
+      "folderId": null,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "order": -5,
+      "kind": "note",
+      "path": "rank-neg-n14.md",
+      "body": "order: -5\n"
+    },
+    {
+      "id": "n08",
+      "title": "Root note, remembered folder",
+      "folderId": "ghost/place",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "root-folder-n08.md",
+      "body": "At the root, the folder in the frontmatter is kept.\n"
+    },
+    {
+      "id": "n29",
+      "title": "Text first",
+      "folderId": null,
+      "createdAt": null,
+      "updatedAt": null,
+      "kind": "note",
+      "path": "text-first-n29.md",
+      "body": "Text first\n```js\nlet w;\n```\n"
+    },
+    {
+      "id": "n28",
+      "title": "Tilde fence",
+      "folderId": null,
+      "createdAt": null,
+      "updatedAt": null,
+      "kind": "note",
+      "path": "tilde-n28.md",
+      "body": "~~~\nnot code\n~~~\n"
+    },
+    {
+      "id": "n18",
+      "title": "Caf\u00e9 \u2615 \u65e5\u672c\u8a9e",
+      "folderId": null,
+      "createdAt": "\u00852026-03-01T00:00:00.000Z\u0085",
+      "updatedAt": "2026-03-02",
+      "kind": "note",
+      "path": "unicode-n18.md",
+      "body": "JavaScript trims NBSP and U+FEFF but not U+0085.\n"
+    },
+    {
+      "id": "n23",
+      "title": "Upper-case extension",
+      "folderId": null,
+      "createdAt": null,
+      "updatedAt": null,
+      "kind": "note",
+      "path": "UPPER-n23.MD",
+      "body": "A .MD file counts.\n"
+    },
+    {
+      "id": "n01",
+      "title": "Welcome",
+      "folderId": null,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "welcome-n01.md",
+      "body": "# Welcome\n\nThe plain case: every field, no rank.\n"
+    },
+    {
+      "id": "n35",
+      "title": "Zurich",
+      "folderId": "Z\u00fcrich",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "kind": "note",
+      "path": "Z\u00fcrich/zurich-n35.md",
+      "body": "A folder with a non-ASCII name.\n"
+    }
+  ],
+  "folders": [
+    {
+      "id": "empty",
+      "name": "empty",
+      "parentId": null
+    },
+    {
+      "id": "Mixed Case",
+      "name": "Mixed Case",
+      "parentId": null,
+      "order": 7
+    },
+    {
+      "id": "projects",
+      "name": "projects",
+      "parentId": null,
+      "order": 2048
+    },
+    {
+      "id": "projects/alpha",
+      "name": "alpha",
+      "parentId": "projects",
+      "order": 1024.5
+    },
+    {
+      "id": "projects/alpha/deeper",
+      "name": "deeper",
+      "parentId": "projects/alpha"
+    },
+    {
+      "id": "projects/attachments",
+      "name": "attachments",
+      "parentId": "projects"
+    },
+    {
+      "id": "Z\u00fcrich",
+      "name": "Z\u00fcrich",
+      "parentId": null
+    }
+  ],
+  "trashCount": 3,
+  "noId": [
+    "no-frontmatter.md",
+    "no-id.md",
+    "empty-id.md",
+    "empty.md",
+    "never-closed.md",
+    "open-space.md",
+    "leading-blank.md",
+    "cr-only.md"
+  ]
+}

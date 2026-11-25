@@ -1,6 +1,7 @@
 // src/components/note/ItemActions.tsx
 import { useEffect } from "react";
 import { useLatest } from "../../hooks/useLatest";
+import Button from "../ui/Button";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { EditIcon } from "../ui/Icon";
 import MoreButton from "../ui/MoreButton";
@@ -53,15 +54,10 @@ function ItemActions({
       <CopyNoteButton text={body} />
       <MoreButton entries={moreEntries} />
       <Tooltip label="Edit" keys="Ctrl+E">
-        <button
-          type="button"
-          className="item-header__btn"
-          onClick={onEdit}
-          aria-label="Edit item"
-        >
+        <Button size="sm" onClick={onEdit} aria-label="Edit note">
           <EditIcon />
           <span className="item-header__btn-label">Edit</span>
-        </button>
+        </Button>
       </Tooltip>
     </div>
   );

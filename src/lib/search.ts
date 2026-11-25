@@ -132,7 +132,30 @@ function passes(term: Term, doc: Doc): boolean {
 
 // Lower-case title and text per note or task, so a keystroke does not lower-case every one again. Keyed by the
 // object: an edit makes a new one, and a rescan keeps the old object for those that did not change.
-const lowerCache = new WeakMap<object, { title: string; body: string }>();
+// ponytail: it holds a second copy of every searched text. Without it a search is about twice as slow at 20k notes (the
+// copies are made again on every keystroke), and a case-insensitive RegExp over the original text is about ten times slower.
+// So the copy lives only while the palette is open and for a while after it closes (releaseSearchCache); the next palette
+// makes it again on its first keystroke. A Rust-side index (01-audit-fixes.md, WP8) is what removes the copy.
+let lowerCache = new WeakMap<object, { title: string; body: string }>();
+let releaseTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** How long the lower-cased copies are kept after the palette closes: a second Ctrl+K soon after still finds them. */
+export const SEARCH_CACHE_KEEP_MS = 30_000;
+
+/** A search is open: a release that was waiting is cancelled. */
+export function holdSearchCache(): void {
+  clearTimeout(releaseTimer);
+  releaseTimer = undefined;
+}
+
+/** The search closed: drops the lower-cased copies (about the size of all the text again) after `ms`, unless a search opens first. */
+export function releaseSearchCache(ms = SEARCH_CACHE_KEEP_MS): void {
+  clearTimeout(releaseTimer);
+  releaseTimer = setTimeout(() => {
+    lowerCache = new WeakMap();
+    releaseTimer = undefined;
+  }, ms);
+}
 
 function lowered(
   key: object,
@@ -147,46 +170,78 @@ function lowered(
   return l;
 }
 
-/** Everything that fits the query, best first (title matches, then text matches, newest within a score). */
+interface Ranked<T> {
+  entry: T;
+  score: number;
+  /** When it was last updated (an ISO date: it compares as plain text, in the same order as `localeCompare`, and much faster). */
+  updated: string;
+  /** Null when the query has no terms: nothing about the entry was looked at. */
+  doc: Doc | null;
+}
+
+/**
+ * The `limit` entries that fit the query, best first (title matches, then text matches, newest within a score; entries
+ * that tie stay in list order). One pass that keeps only the best so far, so the whole list is never sorted, and with
+ * no terms every entry fits and none is lower-cased. ponytail: a kept entry costs up to `limit` moves; the app asks for 100 at most.
+ */
 function rank<T>(
   entries: T[],
   terms: Term[],
   docOf: (entry: T) => Doc,
   updatedOf: (entry: T) => string,
-): { entry: T; score: number; doc: Doc }[] {
-  const scored: { entry: T; score: number; doc: Doc }[] = [];
+  limit: number,
+): Ranked<T>[] {
+  const top: Ranked<T>[] = [];
+  if (limit < 1) return top;
   for (const entry of entries) {
-    const doc = docOf(entry);
+    let doc: Doc | null = null;
     let score = 0;
     let ok = true;
-    for (const term of terms) {
-      if (term.key === null && !term.neg) {
-        const s = termScore(term, doc.title, doc.body);
-        if (s === 0) {
+    if (terms.length > 0) {
+      doc = docOf(entry);
+      for (const term of terms) {
+        if (term.key === null && !term.neg) {
+          const s = termScore(term, doc.title, doc.body);
+          if (s === 0) {
+            ok = false;
+            break;
+          }
+          score += s;
+        } else if (!passes(term, doc)) {
           ok = false;
           break;
         }
-        score += s;
-      } else if (!passes(term, doc)) {
-        ok = false;
-        break;
       }
     }
-    if (ok) scored.push({ entry, score, doc });
+    if (!ok) continue;
+    const updated = updatedOf(entry);
+    if (top.length === limit && !beats(score, updated, top[limit - 1]))
+      continue; // not better than the worst one kept
+    let at = top.length;
+    while (at > 0 && beats(score, updated, top[at - 1])) at--; // after every entry it does not beat: a tie keeps list order
+    top.splice(at, 0, { entry, score, updated, doc });
+    if (top.length > limit) top.pop();
   }
-  return scored.sort(
-    (a, b) =>
-      b.score - a.score || updatedOf(b.entry).localeCompare(updatedOf(a.entry)),
-  );
+  return top;
+}
+
+/** Whether a result with this score and date ranks strictly before `other`: a higher score, else a later date. */
+function beats(
+  score: number,
+  updated: string,
+  other: { score: number; updated: string },
+): boolean {
+  return score !== other.score ? score > other.score : updated > other.updated;
 }
 
 /** The title letters to highlight and the part of the text that matched, for one kept result. */
 function highlights(
   terms: Term[],
-  doc: Doc,
+  doc: Doc | null,
   rawBody: string,
 ): { titleMarks: number[]; snippet: Snippet | null } {
   const words = terms.filter((t) => t.key === null && !t.neg);
+  if (!doc || words.length === 0) return { titleMarks: [], snippet: null };
   const marks = new Set<number>();
   for (const { value } of words) {
     const at = doc.title.indexOf(value);
@@ -216,16 +271,18 @@ const itemDoc = (item: Item): Doc => ({
 /**
  * Notes that fit the query, best first (title matches, then text matches, newest within a score).
  * Only the `limit` kept notes get their highlights and snippet worked out.
+ * A note whose text has not been read yet (`unloaded`, while the app starts) has an empty body: it is found by its title, folder
+ * and kind (its kind is the scan's), and by text only once its text is in. A "-word" cannot exclude it by text until then.
  */
 export function searchItems(items: Item[], query: string, limit = 50): Hit[] {
   const terms = parseQuery(query);
-  return rank(items, terms, itemDoc, (i) => i.updatedAt)
-    .slice(0, limit)
-    .map(({ entry: item, score, doc }) => ({
+  return rank(items, terms, itemDoc, (i) => i.updatedAt, limit).map(
+    ({ entry: item, score, doc }) => ({
       item,
       score,
       ...highlights(terms, doc, item.body),
-    }));
+    }),
+  );
 }
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────
@@ -260,11 +317,11 @@ export function searchTasks(
     place: listName.toLowerCase(),
     kind: "task",
   });
-  return rank(entries, terms, docOf, (e) => e.task.updatedAt)
-    .slice(0, limit)
-    .map(({ entry, score, doc }) => ({
+  return rank(entries, terms, docOf, (e) => e.task.updatedAt, limit).map(
+    ({ entry, score, doc }) => ({
       entry,
       score,
       ...highlights(terms, doc, taskText(entry.task)),
-    }));
+    }),
+  );
 }

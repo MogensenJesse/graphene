@@ -1,4 +1,5 @@
 // src/components/ui/MoreButton.tsx
+import Button from "./Button";
 import type { MenuEntry } from "./ContextMenu";
 import { useContextMenu } from "./ContextMenuProvider";
 import { EllipsisIcon } from "./Icon";
@@ -9,9 +10,9 @@ function MoreButton({ entries }: { entries: MenuEntry[] }) {
   const { openAt } = useContextMenu();
   return (
     <Tooltip label="More">
-      <button
-        type="button"
-        className="item-header__btn item-header__btn--icon"
+      <Button
+        size="sm"
+        iconOnly
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
           openAt(r.left, r.bottom + 2, entries);
@@ -20,7 +21,7 @@ function MoreButton({ entries }: { entries: MenuEntry[] }) {
         aria-haspopup="menu"
       >
         <EllipsisIcon />
-      </button>
+      </Button>
     </Tooltip>
   );
 }

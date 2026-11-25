@@ -1,5 +1,7 @@
 // src/components/ui/SidebarToggle.tsx
+
 import { PanelLeftIcon } from "./Icon";
+import IconButton from "./IconButton";
 import Tooltip from "./Tooltip";
 
 interface SidebarToggleProps {
@@ -11,15 +13,14 @@ interface SidebarToggleProps {
 function SidebarToggle({ hidden, onToggle }: SidebarToggleProps) {
   return (
     <Tooltip label={hidden ? "Show sidebar" : "Hide sidebar"}>
-      <button
-        type="button"
-        className="app__win-btn app__sidebar-toggle"
+      <IconButton
+        className="app__sidebar-toggle"
         onClick={onToggle}
         aria-label="Sidebar"
         aria-expanded={!hidden}
       >
         <PanelLeftIcon size={16} />
-      </button>
+      </IconButton>
     </Tooltip>
   );
 }

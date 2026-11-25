@@ -1,0 +1,57 @@
+// src/assets/styles/components/_ErrorBoundary.scss
+@use '../base/variables' as v;
+
+// What replaces the app after a render error. Opaque on purpose: the window is transparent, and the app's own
+// surfaces (and the tokens built on them) are not there any more.
+
+.error-boundary {
+  position: fixed;
+  inset: 0;
+  z-index: v.z('error-screen');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+
+  // The window has no title bar: this strip moves it, and the window buttons (.app__win-controls) sit above it
+  &__drag {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--bar-height);
+    z-index: v.z('drag-strip');
+    -webkit-app-region: drag;
+  }
+
+  &__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-5);
+    max-width: 380px;
+    padding: 0 24px;
+    text-align: center;
+
+    // Its Reload button (ui/Button) sits a little apart from the text
+    .btn {
+      margin-top: var(--space-3);
+    }
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--fs-xl);
+    font-weight: var(--fw-semibold);
+    color: var(--color-text-primary);
+  }
+
+  &__text {
+    margin: 0;
+    font-size: var(--fs-lg);
+    line-height: var(--lh-relaxed);
+    color: var(--color-text-secondary);
+  }
+}

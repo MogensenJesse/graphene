@@ -1,4 +1,5 @@
 // src/assets/styles/base/_variables.scss
+@use 'sass:map';
 
 // ─── SCSS color variables (pastel palette, dark theme) ──────────────────────
 $light:  #c8ccd6;   // cool blue-grey off-white
@@ -30,7 +31,39 @@ $radius-lg: 12px;
 
 // ─── Motion ─────────────────────────────────────────────────────────────────
 // How a panel opens and closes: the sidebar, and the task details pane (prefers-reduced-motion turns it off, see base/_reset)
-$panel-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
+$panel-anim: 0.22s var(--ease-out);
+
+// ─── Layers (z-index) ───────────────────────────────────────────────────────
+// Lowest to highest. Use v.z('name'), never a number, so the order stays in one place.
+$z: (
+  'raised': 1,          // above its siblings inside one component: a submenu, the drop line
+  'drag-strip': 5,      // the window's drag region over the header
+  'header-control': 6,  // header buttons and fields, above the drag strip so they stay clickable
+  'pane-float': 8,      // the find bar, and the task details pane when it floats over the list
+  'scrim': 9,           // dims the note behind a floating sidebar
+  'chrome': 10,         // the window buttons and the sidebar toggle
+  'toast': 20,
+  'sidebar-float': 30,  // the floating sidebar: above the note and its scrim, below dialogs
+  'dropdown': 200,      // the folder, language and list pickers
+  'drop-overlay': 200,  // "Drop to import"
+  'modal': 300,
+  'alert': 310,         // the error toast: over dialogs, below tooltips
+  'tooltip': 350,       // above dialogs, below right-click menus
+  'menu': 400,
+  'error-screen': 1000, // replaces the whole app after a render error
+  'drag-ghost': 9999,
+);
+
+@function z($layer) {
+  @return map.get($z, $layer);
+}
+
+// ─── Container-query widths ─────────────────────────────────────────────────
+// SCSS only: a custom property cannot sit inside a query. (The sidebar's own breakpoint, 799px, is in App.tsx.)
+$cq-header-compact: 470px;  // .item-header drops the words of its buttons
+$cq-folder-gutter: 1010px;  // the folder chip moves into the left gutter of the header
+$cq-details-float: 739px;   // the task details pane floats over the list instead of sitting beside it
+$cq-quick-settings: 640px;  // below this the header's quick buttons (the sidebar is hidden) leave out Settings
 
 // ─── CSS Custom Properties (:root) ─────────────────────────────────────────
 // Dark is the default; :root[data-theme="light"] below overrides the colours.
@@ -47,6 +80,8 @@ $panel-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
   --color-background-hover:     rgba(200, 204, 214, 0.05);
   --color-background-hover-strong: rgba(200, 204, 214, 0.14);
   --color-background-active:    rgba(200, 204, 214, 0.1);
+  // A resting fill: a text box, a card, a segmented control. Same wash as hover, but a hover state must not borrow it
+  --color-background-field:     rgba(200, 204, 214, 0.05);
 
   // Tints laid over the translucent (acrylic) window
   --surface-app:      rgba(12, 13, 16, 0.66);  // the whole window
@@ -75,6 +110,18 @@ $panel-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
   --rgb-blue: 137, 184, 232;
   --rgb-danger: 232, 144, 154;
 
+  // Blue tints. Built from --rgb-blue, so the light theme follows; a component never writes rgba(var(--rgb-blue), …) itself
+  --color-border-info:             rgba(var(--rgb-blue), 0.35);  // a border or outline in the info colour (as the success and danger ones)
+  --color-background-info-hover:   rgba(var(--rgb-blue), 0.2);   // --color-background-info, hovered
+  --color-background-danger-hover: rgba(var(--rgb-danger), 0.18); // the close button of the window, pointed at
+  --color-background-info-faint:   rgba(var(--rgb-blue), 0.06);  // a drop target the size of a whole list
+  --color-mark:                    rgba(var(--rgb-blue), 0.3);   // a search hit or a find match in text
+  --color-mark-current:            rgba(var(--rgb-blue), 0.75);  // the find match you are on
+
+  // The scrollbar thumb: faint at rest (it is always there), clear under the pointer
+  --color-scrollbar-thumb:         rgba(200, 204, 214, 0.14);
+  --color-scrollbar-thumb-hover:   rgba(200, 204, 214, 0.5);
+
   // Shadows of popups (menus, tooltips, find bar) and dialogs
   --shadow-popover: 0 6px 20px rgba(0, 0, 0, 0.35);
   --shadow-modal:   0 16px 48px rgba(0, 0, 0, 0.5);
@@ -82,6 +129,29 @@ $panel-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
   // Typography
   --font-sans: "Switzer", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "Cascadia Code", "Fira Code", Consolas, monospace;
+
+  // Type scale. The note text is the exception: it is calc(13px * var(--text-scale)) and follows the user's size setting
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-lg: 14px;
+  --fs-xl: 15px;
+  --fs-title: 18px;
+
+  // Weights. Only Switzer 500 and 700 ship, so 400 draws as 500 and 600 as 700 until Switzer Regular and SemiBold
+  // are added in public/fonts (with an @font-face each in base/_typography.scss); use the tokens by meaning, not by what shows
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  --lh-none: 1;
+  --lh-tight: 1.3;     // titles
+  --lh-snug: 1.4;
+  --lh-base: 1.5;
+  --lh-relaxed: 1.6;   // paragraphs and dialog text
+  --lh-code: 1.65;     // code blocks in a note
+  --lh-prose: 1.7;     // the text of a note and the editor
 
   // What the user can change in Settings (lib/fontPrefs.ts sets these on <html> and they win over the defaults here).
   // The chrome (sidebar, menus, tooltips, dialogs) keeps --font-sans and --font-mono.
@@ -102,6 +172,25 @@ $panel-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
   --border-radius-sm: #{$radius-sm};
   --border-radius-md: #{$radius-md};
   --border-radius-row: 8px; // list rows, nav rows and their selected pills
+  --radius-lg: #{$radius-lg}; // the panels, dialogs and cards
+  --radius-pill: 999px;       // tags, chips and the update pill
+  --radius-round: 50%;        // dots and round checkboxes
+
+  // Spacing for gaps and padding. Odd values (3, 5, 7, 9px) are not used: they round to this scale
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+
+  // Layout
+  --modal-width: 580px;   // a dialog's width (the search palette is wider: 620px)
+  --bar-height: 52px;     // the header bars (item, sidebar, task details) and the search field row; a 24px button is centred in it at 14px
+  --column-width: 720px;  // the notes' text column, and the lists that line up with it
+
+  --opacity-disabled: 0.45;
+  --icon-md: 14px;  // the slot of a menu icon (the icons themselves take a size prop in Icon.tsx)
 
   // Transitions
   --transition-fast: 0.1s ease;
@@ -117,6 +206,7 @@ $panel-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
   --color-background-hover:     rgba(27, 29, 36, 0.05);
   --color-background-hover-strong: rgba(27, 29, 36, 0.12);
   --color-background-active:    rgba(27, 29, 36, 0.1);
+  --color-background-field:     rgba(27, 29, 36, 0.05);
 
   --surface-app:      rgba(245, 246, 249, 0.72);
   --surface-main:     rgba(252, 252, 254, 0.62);
@@ -140,6 +230,9 @@ $panel-anim: 0.22s cubic-bezier(0.2, 0, 0, 1);
 
   --rgb-blue: 29, 95, 176;
   --rgb-danger: 179, 38, 30;
+
+  --color-scrollbar-thumb:       rgba(27, 29, 36, 0.16);  // faint at rest
+  --color-scrollbar-thumb-hover: rgba(27, 29, 36, 0.5);   // clear under the pointer
 
   --accent-red:    #{$red-d};
   --accent-orange: #{$orange-d};

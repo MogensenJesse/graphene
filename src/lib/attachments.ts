@@ -27,6 +27,36 @@ export function extForMime(mime: string): string | null {
 
 export const isImagePath = (path: string) => extOf(path) in MIME_BY_EXT;
 
+/** A pasted or dropped picture longer than this on its longer side is scaled down when it is saved. */
+export const MAX_IMAGE_SIDE = 2000;
+
+/**
+ * The type a scaled-down copy is encoded as, or null when the picture is left as it is: the stills
+ * (PNG stays PNG, so transparency stays) are re-encoded in their own type; a GIF may be animated and
+ * an SVG is vector, so neither is ever touched. ponytail: an animated WebP or APNG over the limit
+ * is flattened to its first frame.
+ */
+export function reencodeMime(ext: string): string | null {
+  const e = ext.toLowerCase();
+  return e === "png" || e === "jpg" || e === "jpeg" || e === "webp"
+    ? MIME_BY_EXT[e]
+    : null;
+}
+
+/** The size of a `w` x `h` picture scaled down to fit `max` on its longer side, aspect kept; never larger. */
+export function fitWithin(
+  w: number,
+  h: number,
+  max: number,
+): { width: number; height: number } {
+  const scale = Math.min(1, max / Math.max(w, h));
+  if (scale === 1) return { width: w, height: h };
+  return {
+    width: Math.max(1, Math.round(w * scale)),
+    height: Math.max(1, Math.round(h * scale)),
+  };
+}
+
 export const mimeOf = (name: string) =>
   MIME_BY_EXT[extOf(name)] ?? "application/octet-stream";
 
@@ -49,6 +79,25 @@ export function unusedImages(files: string[], notesText: string): string[] {
     (f) =>
       OWN_NAME.test(f) && isImagePath(f) && !text.includes(f.toLowerCase()),
   );
+}
+
+/**
+ * The pictures Graphene saved itself that a note's text links in attachments/, by file name, once each. What one note leaves behind
+ * when it is deleted for good: only these are looked at for a sweep (`unusedImages` decides whether another note still uses one).
+ * ponytail: a picture named only by a bare wiki embed is not listed, and waits for the sweep that Empty trash runs.
+ */
+export function ownImagesIn(text: string): string[] {
+  const names = new Set<string>();
+  for (const m of text.matchAll(/attachments\/([^/?#)\s"'<>]+)/gi)) {
+    let name = m[1];
+    try {
+      name = decodeURIComponent(name);
+    } catch {
+      // keep the name as written
+    }
+    if (OWN_NAME.test(name) && isImagePath(name)) names.add(name);
+  }
+  return [...names];
 }
 
 // How many folders deep a note sits: the number of "../" it takes to get back to the vault root

@@ -1,5 +1,4 @@
 // src/lib/markdown.tsx
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { isValidElement, type ReactNode } from "react";
 import type { Components } from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
@@ -7,19 +6,13 @@ import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import CodeBlock from "../components/note/CodeBlock";
 import { useClipboard } from "../hooks/useClipboard";
+import { openLink } from "./openLink";
 
 // No `as const` — it makes the array readonly and triggers TS4104 on remarkPlugins
 export const REMARK_PLUGINS = [remarkGfm, remarkBreaks];
 
 // Colours fenced code by its language tag (```js). Untagged or unknown tags stay plain.
 export const REHYPE_PLUGINS = [rehypeHighlight];
-
-/** Hands a web or mail link to the default app; anything else (file:, javascript:) is ignored. */
-export function openLink(href?: string): void {
-  if (href && /^(https?:|mailto:)/i.test(href)) {
-    openUrl(href).catch(console.error);
-  }
-}
 
 // The <code> inside <pre> carries the fence's language as the class "language-js"
 function languageOf(children: ReactNode): string {

@@ -1,23 +1,24 @@
 // src/assets/styles/components/_DragDrop.scss
 // What dragging looks like, shared by the sidebar (notes, folders, to-do lists) and the tasks:
 // the label that follows the pointer, and the line where the dragged row will land.
+@use '../base/variables' as v;
+@use '../base/mixins' as mixins;
 
 .drag-ghost {
   position: fixed;
   pointer-events: none;
-  z-index: 9999;
+  z-index: v.z('drag-ghost');
   max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  @include mixins.ellipsis;
   padding: 4px 10px;
-  background: rgba(var(--rgb-blue), 0.15);
-  border: 1px solid rgba(var(--rgb-blue), 0.4);
+  // The info tint over the panel colour: solid, so no blur has to be redrawn on every frame of a drag
+  background: linear-gradient(var(--color-background-info), var(--color-background-info)),
+    var(--color-background-primary);
+  border: 1px solid var(--color-border-info);
   border-radius: var(--border-radius-sm);
   color: var(--color-text-primary);
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  backdrop-filter: blur(4px);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
   translate: -50% calc(-100% - 8px);
 }
 
@@ -36,7 +37,7 @@
     border-radius: 1px;
     background: var(--color-text-info);
     pointer-events: none;
-    z-index: 1;
+    z-index: v.z('raised');
   }
 }
 

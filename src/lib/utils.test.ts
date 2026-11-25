@@ -1,27 +1,9 @@
 // src/lib/utils.test.ts
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
-import { formatDate, lineCount, wordCount } from "./utils";
+import { formatDate, itemKind } from "./utils";
 
 afterEach(() => vi.useRealTimers());
-
-test("wordCount counts words, not markdown syntax", () => {
-  assert.equal(wordCount(""), 0);
-  assert.equal(wordCount("one two  three\nfour"), 4);
-  assert.equal(
-    wordCount("- [ ] dit\n- [x] is\n- [ ] een\n- [x] todo\n- [x] lijst"),
-    5,
-  );
-  assert.equal(wordCount("# Heading\n\n**bold** text\n\n---"), 3);
-  assert.equal(wordCount("1. first\n2. second"), 2);
-  assert.equal(wordCount("```bash\nViVeTool.exe /query\n```"), 2);
-  assert.equal(wordCount("héllo wörld 123"), 3);
-});
-
-test("lineCount skips fences and blank lines", () => {
-  assert.equal(lineCount("```bash\na\nb\n\nc\n```"), 3);
-  assert.equal(lineCount(""), 0);
-});
 
 test("formatDate counts calendar days", () => {
   vi.useFakeTimers();
@@ -33,4 +15,25 @@ test("formatDate counts calendar days", () => {
   assert.equal(formatDate(at(18, 23)), "today"); // clock skew: never "-1d ago"
   assert.equal(formatDate(at(15, 12)), "3d ago");
   assert.equal(formatDate(at(4, 12)), "2w ago");
+});
+
+test("a note whose text has not been read has the kind the scan saw", () => {
+  const base = {
+    id: "a",
+    title: "t",
+    folderId: null,
+    createdAt: "",
+    updatedAt: "",
+  };
+  assert.equal(itemKind({ ...base, body: "```js\nx\n```" }), "code");
+  assert.equal(itemKind({ ...base, body: "text" }), "note");
+  // its body is "", so the text says nothing: the scan's kind counts
+  assert.equal(
+    itemKind({ ...base, body: "", unloaded: { kind: "code" } }),
+    "code",
+  );
+  assert.equal(
+    itemKind({ ...base, body: "", unloaded: { kind: "note" } }),
+    "note",
+  );
 });

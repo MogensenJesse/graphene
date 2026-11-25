@@ -12,6 +12,7 @@
       "!**/dist",
       "!**/dist-mcp",
       "!**/src-tauri",
+      "!**/fixtures",
       "!**/node_modules",
       "!**/.gitnexus",
       "!**/*.scss",

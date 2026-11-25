@@ -1,4 +1,6 @@
 // src/assets/styles/components/_Toast.scss
+@use '../base/variables' as v;
+@use '../base/mixins' as mixins;
 
 // "Moved "x" to trash · Undo", at the bottom of the main panel (see UndoToast.tsx)
 
@@ -7,21 +9,18 @@
   left: 50%;
   bottom: 44px; // above the status line ("Edited today · 5 words"), which a narrow panel would otherwise put it over
   transform: translateX(-50%);
-  z-index: 20;
+  z-index: v.z('toast');
   display: flex;
   align-items: center;
   gap: 12px;
   max-width: calc(100% - 48px);
   padding: 6px 6px 6px 14px;
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--color-text-primary);
-  background: var(--color-background-primary);
-  border: 0.5px solid var(--color-border-primary);
-  border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-popover);
-  animation: toast-in 0.15s ease-out;
+  @include mixins.popover-surface;
+  animation: toast-in var(--anim-in);
 
-  // It goes by itself: UndoToast plays this before it closes
+  // It goes by itself: UndoToast plays this before it closes, and waits LEAVE_MS (150) for it, so keep the two equal
   &--leaving {
     animation: toast-out 0.15s var(--ease-out) forwards;
   }
@@ -38,41 +37,8 @@
     vertical-align: bottom;
   }
 
-  &__btn {
+  // The buttons are ui/Button (small); they keep their size when a long message wraps
+  .btn {
     flex-shrink: 0;
-    height: 24px;
-    padding: 0 10px;
-    font-size: 12px;
-    font-family: inherit;
-    font-weight: 500;
-    color: var(--color-text-info);
-    background: none;
-    border: 0.5px solid var(--color-border-secondary);
-    border-radius: var(--border-radius-md);
-    cursor: pointer;
-    transition: background var(--transition-fast), border-color var(--transition-fast);
-
-    &:hover {
-      background: var(--color-background-info);
-      border-color: var(--color-text-info);
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
-    }
-  }
-}
-
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 6px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .toast {
-    animation: none;
   }
 }

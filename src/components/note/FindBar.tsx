@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import type { Finder } from "../../hooks/useFind";
 import { ChevronDownIcon, ChevronUpIcon, XIcon } from "../ui/Icon";
+import IconButton from "../ui/IconButton";
 import Tooltip from "../ui/Tooltip";
 
 interface FindBarProps {
@@ -55,36 +56,29 @@ function FindBar({
         {query ? `${finder.count ? finder.index + 1 : 0}/${finder.count}` : ""}
       </span>
       <Tooltip label="Previous match" keys="Shift+Enter">
-        <button
-          type="button"
-          className="find-bar__btn"
+        <IconButton
+          size="sm"
           onClick={finder.prev}
           disabled={finder.count === 0}
           aria-label="Previous match"
         >
           <ChevronUpIcon size={14} />
-        </button>
+        </IconButton>
       </Tooltip>
       <Tooltip label="Next match" keys="Enter">
-        <button
-          type="button"
-          className="find-bar__btn"
+        <IconButton
+          size="sm"
           onClick={finder.next}
           disabled={finder.count === 0}
           aria-label="Next match"
         >
           <ChevronDownIcon size={14} />
-        </button>
+        </IconButton>
       </Tooltip>
       <Tooltip label="Close" keys="Esc">
-        <button
-          type="button"
-          className="find-bar__btn"
-          onClick={onClose}
-          aria-label="Close find"
-        >
+        <IconButton size="sm" onClick={onClose} aria-label="Close find">
           <XIcon size={14} />
-        </button>
+        </IconButton>
       </Tooltip>
     </search>
   );

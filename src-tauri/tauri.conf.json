@@ -20,6 +20,7 @@
         "minHeight": 540,
         "resizable": true,
         "transparent": true,
+        "visible": false,
         "decorations": false,
         "windowEffects": {
           "effects": [

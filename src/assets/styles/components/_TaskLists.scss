@@ -1,12 +1,13 @@
 // src/assets/styles/components/_TaskLists.scss
 // The Tasks tab of the sidebar. Groups reuse .folder-row (see _FolderRow.scss), the list rows are lighter.
+@use '../base/mixins' as mixins;
 
 // The colour dot of a list; no colour is a quiet grey
 .task-dot {
   flex-shrink: 0;
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: var(--color-text-tertiary);
   opacity: 0.7;
 
@@ -30,25 +31,15 @@
   padding: 0 4px 0 10px;
   border-radius: var(--border-radius-row);
   transition: background var(--transition-fast);
-
-  &:hover {
-    background: var(--color-background-hover);
-  }
+  @include mixins.row-surface;
 
   &:hover .folder-row__actions,
   &:focus-within .folder-row__actions {
     opacity: 1;
   }
 
-  &--selected,
-  &--selected:hover {
-    background: var(--color-background-active);
-  }
-
   &--drag-over {
-    background: rgba(var(--rgb-blue), 0.12);
-    outline: 1px solid rgba(var(--rgb-blue), 0.3);
-    outline-offset: -1px;
+    @include mixins.drop-over;
   }
 
   &__name {
@@ -60,36 +51,32 @@
     height: 100%;
     padding: 0;
     font: inherit;
-    font-size: 13px;
+    font-size: var(--fs-md);
     text-align: left;
     color: var(--color-text-secondary);
     background: none;
     border: none;
     cursor: pointer;
 
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 2px;
+    @include mixins.focus-ring(2px) {
       border-radius: var(--border-radius-sm);
     }
   }
 
   &--selected &__name {
     color: var(--color-text-primary);
-    font-weight: 500;
+    font-weight: var(--fw-medium);
   }
 
   &__label {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    @include mixins.ellipsis;
   }
 
   &__count {
     flex-shrink: 0;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     font-variant-numeric: tabular-nums;
     color: var(--color-text-tertiary);
   }
@@ -100,15 +87,11 @@
   padding-left: 10px;
 }
 
-// The Notes | Tasks switch under the header
+// The Notes | Tasks switch under the header. Its items are 13px like the nav rows below it (they used to be overridden
+// to 12px, a leftover of the "+1px" text change)
 .sidebar__tabs {
   margin: 0 8px 8px;
   flex-shrink: 0;
-
-  // Like the nav rows below it, it keeps its size when the rest of the UI text grows (see .segments__item)
-  .segments__item {
-    font-size: 12px;
-  }
 }
 
 // Only Settings in the footer (the Trash is the notes'): at the end, as it is beside the Trash

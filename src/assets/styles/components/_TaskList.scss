@@ -1,6 +1,6 @@
 // src/assets/styles/components/_TaskList.scss
-// Checkboxes ("- [ ] item") in a note's read view: drawn boxes, and a ticked one is struck through.
-@use '../base/mixins' as mixins;
+// Checkboxes ("- [ ] item") in a note's read view: the drawn ones of ui/Checkbox (see _Checkbox.scss), and a ticked one is
+// struck through.
 
 // A ticked task, whether its checkbox sits straight in the item (tight list) or inside a paragraph (loose list)
 $done: 'li.task-list-item:has(> input:checked, > p > input:checked)';
@@ -17,10 +17,6 @@ $done: 'li.task-list-item:has(> input:checked, > p > input:checked)';
 
   li.task-list-item {
     position: relative;
-  }
-
-  input[type='checkbox'] {
-    @include mixins.task-checkbox;
   }
 
   #{$done} {

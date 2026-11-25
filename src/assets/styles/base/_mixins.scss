@@ -1,9 +1,32 @@
 // src/assets/styles/base/_mixins.scss
 
+// The keyboard focus ring: 2px in the info colour. $offset is how far it sits from the edge: 1px for a small button,
+// 2px for a round or text-sized control, negative for a row that clips its own outline. The block adds more
+// declarations to the same :focus-visible rule (a border radius, say).
+@mixin focus-ring($offset: 1px) {
+  &:focus-visible {
+    outline: 2px solid var(--color-text-info);
+    outline-offset: $offset;
+    @content;
+  }
+}
+
+// One line of text that ends in "…". The box needs a width to be cut at (a flex child also needs min-width: 0)
+@mixin ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// A thin bar that is always there, so it can be grabbed. (WebView2's overlay bar, scrollBarStyle fluentOverlay, fades
+// about a second after a scroll and cannot be grabbed once it has: tried, and dropped.) The bar is 6px, which is also
+// the room a gutter keeps. A native thumb cannot animate, so on a pane marked data-scrollbar it is made invisible and
+// lib/scrollbars.ts draws the visible one (_Scrollbar.scss); any other scroller shows this one, 2px thin, and 4px under
+// the pointer, by a transparent border that shrinks, so nothing around it moves.
 @mixin custom-scrollbar {
   &::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+    width: 6px;
+    height: 6px;
   }
 
   &::-webkit-scrollbar-track {
@@ -11,53 +34,124 @@
   }
 
   &::-webkit-scrollbar-thumb {
-    background: var(--color-border-secondary);
-    border-radius: 2px;
-  }
-}
+    background: var(--color-scrollbar-thumb);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: 6px;
 
-// The drawn checkbox of a task, in the read view and in the Tasks view
-@mixin task-checkbox {
-  appearance: none;
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-  margin: 0 8px 0 0;
-  vertical-align: -2px;
-  border: 1px solid var(--color-text-tertiary);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-
-  &:hover {
-    border-color: var(--color-text-secondary);
+    &:hover,
+    &:active {
+      background-color: var(--color-scrollbar-thumb-hover);
+      border-width: 1px;
+    }
   }
 
-  &:focus-visible {
-    outline: 2px solid var(--color-text-info);
-    outline-offset: 2px;
-  }
-
-  &:checked {
-    background: var(--color-text-info);
-    border-color: var(--color-text-info);
-
-    // The check mark: two sides of a box, turned
-    &::after {
-      content: '';
-      display: block;
-      width: 4px;
-      height: 8px;
-      margin: 0 auto;
-      border: solid var(--color-background-secondary);
-      border-width: 0 1.5px 1.5px 0;
-      transform: translateY(0.5px) rotate(45deg);
+  &[data-scrollbar-on]::-webkit-scrollbar-thumb {
+    &,
+    &:hover,
+    &:active {
+      background-color: transparent;
     }
   }
 }
 
-@mixin markdown-prose {
-  p { margin: 0 0 0.75em; }
+// For a pane that scrolls up and down: the room of the bar is kept whether or not it shows, so the text never shifts
+// when it appears. $both keeps a centred column centred.
+@mixin scroll-gutter($both: false) {
+  @if $both {
+    scrollbar-gutter: stable both-edges;
+  } @else {
+    scrollbar-gutter: stable;
+  }
+}
+
+// The shell of everything that pops up over the page: a dropdown, a right-click menu, a tooltip, the find bar, a toast.
+// Opaque on purpose, since the app's own surfaces are translucent.
+@mixin popover-surface {
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-primary);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+// One row of a menu or a dropdown: the right-click menu and the folder and language pickers all use it, so a row looks
+// the same wherever it is. Add menu-item-lit for the hover or focus state.
+@mixin menu-item($font: inherit) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  height: 28px;
+  padding: 0 var(--space-4);
+  font-family: $font;
+  font-size: var(--fs-md);
+  text-align: left;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+
+  &:disabled {
+    color: var(--color-text-tertiary);
+    cursor: default;
+  }
+}
+
+// The row under the pointer, or the one the keyboard is on. It is a light wash of the text colour, so it shows on any
+// panel in both themes; the old pickers mixed a sliver of the panel's own colour into it, which showed nothing.
+@mixin menu-item-lit {
+  color: var(--color-text-primary);
+  background: var(--color-background-active);
+}
+
+// A row in a list that can be hovered and selected (notes, folders, lists, the sidebar's nav rows). $selected is the
+// modifier that marks the chosen one. Selected beats hover, so it stays put under the pointer.
+@mixin row-surface($selected: '--selected') {
+  &:hover {
+    background: var(--color-background-hover);
+  }
+
+  &#{$selected},
+  &#{$selected}:hover {
+    background: var(--color-background-active);
+  }
+}
+
+// A row a dragged item would drop into
+@mixin drop-over {
+  background: var(--color-background-info);
+  outline: 1px solid var(--color-border-info);
+  outline-offset: -1px;
+}
+
+// A text box that edits a name in place (a rename, a new folder, a vault name): a panel-coloured field with a hairline.
+// The caller adds its width before the include (a declaration after the nested rule below would be misordered).
+@mixin inline-field($padding: 2px 6px, $radius: var(--border-radius-sm)) {
+  min-width: 0;
+  padding: $padding;
+  font-family: inherit;
+  font-size: var(--fs-md);
+  color: var(--color-text-primary);
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-primary);
+  border-radius: $radius;
+  outline: none;
+
+  &::placeholder {
+    color: var(--color-text-tertiary);
+  }
+}
+
+// The look of rendered Markdown, for the read view of a note and the update notes. $code-font is the font of inline
+// code: a note follows the user's code font, the chrome (the update dialog) keeps --font-mono.
+@mixin markdown-prose($code-font: var(--font-code)) {
+  // The global `p` size would otherwise win over the size of the container
+  p {
+    margin: 0 0 0.75em;
+    font-size: inherit;
+  }
   p:last-child { margin-bottom: 0; }
 
   // Restore heading sizes overridden by the global reset
@@ -67,13 +161,13 @@
 
   h1, h2, h3, h4, h5, h6 {
     color: var(--color-text-primary);
-    font-weight: 600;
-    line-height: 1.3;
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-tight);
     margin: 1em 0 0.4em;
   }
 
   // Restore inline styles stripped by the global reset's `font: inherit` rule
-  strong, b { font-weight: 700; }
+  strong, b { font-weight: var(--fw-bold); }
   em, i { font-style: italic; }
   del, s { text-decoration: line-through; }
 
@@ -109,7 +203,7 @@
   }
 
   code {
-    font-family: var(--font-code);
+    font-family: $code-font;
     font-size: 0.92em; // 12px next to 13px text; follows the text size setting
     background: var(--color-background-secondary);
     border: 0.5px solid var(--color-border-secondary);

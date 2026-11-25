@@ -5,7 +5,10 @@ import { useEscape } from "../../hooks/useEscape";
 import type { TasksApi } from "../../hooks/useTasks";
 import { dueLabel } from "../../lib/taskDates";
 import type { Step, Task, TaskList } from "../../lib/taskStore";
+import { isTextField } from "../../lib/textMenu";
 import { formatDate } from "../../lib/utils";
+import Button from "../ui/Button";
+import Checkbox from "../ui/Checkbox";
 import DatePick from "../ui/DatePick";
 import {
   CalendarIcon,
@@ -18,6 +21,7 @@ import {
   TrashIcon,
   XIcon,
 } from "../ui/Icon";
+import IconButton from "../ui/IconButton";
 import Tooltip from "../ui/Tooltip";
 
 interface TaskDetailProps {
@@ -44,11 +48,10 @@ function StepLine({ step, onDone, onRename, onRemove }: StepLineProps) {
     <li
       className={`task-detail__step${step.done ? " task-detail__step--done" : ""}`}
     >
-      <input
-        type="checkbox"
-        className="task-row__check"
+      <Checkbox
+        round
         checked={step.done}
-        aria-label={step.done ? "Mark step as not done" : "Mark step as done"}
+        aria-label={`Mark step "${step.title}" as ${step.done ? "not done" : "done"}`}
         onChange={() => onDone(!step.done)}
       />
       <input
@@ -66,14 +69,9 @@ function StepLine({ step, onDone, onRename, onRemove }: StepLineProps) {
             e.currentTarget.blur();
         }}
       />
-      <button
-        type="button"
-        className="task-row__icon-btn"
-        aria-label="Delete step"
-        onClick={onRemove}
-      >
+      <IconButton aria-label={`Delete step "${step.title}"`} onClick={onRemove}>
         <XIcon size={12} />
-      </button>
+      </IconButton>
     </li>
   );
 }
@@ -94,8 +92,8 @@ function ListPicker({ lists, value, onChange }: ListPickerProps) {
 
   return (
     <div className="task-detail__option" ref={wrapRef}>
-      <button
-        type="button"
+      <Button
+        variant="link"
         className="task-detail__option-btn"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -107,7 +105,7 @@ function ListPicker({ lists, value, onChange }: ListPickerProps) {
         <span className="task-detail__chevron" aria-hidden="true">
           <ChevronDownIcon size={12} />
         </span>
-      </button>
+      </Button>
 
       {open && (
         <div className="folder-picker__dropdown" role="menu">
@@ -132,6 +130,16 @@ function ListPicker({ lists, value, onChange }: ListPickerProps) {
       )}
     </div>
   );
+}
+
+/**
+ * The fields of the details pane commit when they lose the focus. This takes the focus off the one being typed in, so
+ * its text is committed before the tab, the vault or the window goes (App's flush calls it).
+ */
+export function commitTaskFields() {
+  const field = document.activeElement;
+  if (field instanceof HTMLElement && field.closest(".task-detail"))
+    field.blur();
 }
 
 /** The side pane of the open task: its title, steps, My Day, a due date, its list, a note, and Delete. TasksPane keys it by task, so every field starts from the task it shows. */
@@ -176,32 +184,32 @@ function TaskDetail({
       className="task-detail"
       aria-label="Task details"
       onKeyDown={(e) => {
-        if (e.key === "Escape") {
-          e.stopPropagation();
-          close();
+        if (e.key !== "Escape" || e.nativeEvent.isComposing) return;
+        e.stopPropagation();
+        // The one Escape rule: it cancels what is being typed (the field goes back to its saved text, as in a
+        // rename) and the pane stays; the next Escape closes the pane
+        const field = e.target;
+        if (isTextField(field) && field.value !== field.defaultValue) {
+          field.value = field.defaultValue;
+          return;
         }
+        close();
       }}
     >
       <div className="task-detail__bar" data-tauri-drag-region>
         <Tooltip label="Close" keys="Esc">
-          <button
-            type="button"
-            className="item-header__btn item-header__btn--icon item-header__btn--quiet"
-            aria-label="Close details"
-            onClick={close}
-          >
+          <IconButton aria-label="Close details" onClick={close}>
             <ChevronRightIcon size={16} />
-          </button>
+          </IconButton>
         </Tooltip>
       </div>
 
-      <div className="task-detail__body">
+      <div className="task-detail__body" data-scrollbar>
         <div className="task-detail__head">
-          <input
-            type="checkbox"
-            className="task-row__check"
+          <Checkbox
+            round
             checked={task.done}
-            aria-label={task.done ? "Mark as not done" : "Mark as done"}
+            aria-label={`Mark "${task.title}" as ${task.done ? "not done" : "done"}`}
             onChange={() => api.setDone(listId, task.id, !task.done)}
           />
           {/* A textarea so a long title wraps; Enter commits it, and cleanTitle makes any pasted line break a space */}
@@ -220,20 +228,21 @@ function TaskDetail({
               }
             }}
           />
-          <Tooltip label={task.important ? "Not important" : "Important"}>
-            <button
-              type="button"
-              className={`task-row__icon-btn task-row__star${task.important ? " task-row__star--on" : ""}`}
-              aria-label={
-                task.important ? "Not important" : "Mark as important"
-              }
+          <Tooltip
+            label={
+              task.important ? "Mark as not important" : "Mark as important"
+            }
+          >
+            <IconButton
+              className={task.important ? "task-row__star--on" : undefined}
+              aria-label={`Mark "${task.title}" as ${task.important ? "not important" : "important"}`}
               aria-pressed={!!task.important}
               onClick={() =>
                 api.updateTask(listId, task.id, { important: !task.important })
               }
             >
               <StarIcon size={15} filled={!!task.important} />
-            </button>
+            </IconButton>
           </Tooltip>
         </div>
 
@@ -267,6 +276,14 @@ function TaskDetail({
               if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 addStep();
+              } else if (
+                e.key === "Escape" &&
+                step &&
+                !e.nativeEvent.isComposing
+              ) {
+                // A step that is only half typed: Escape drops it, the pane stays (see the pane's own Escape)
+                e.stopPropagation();
+                setStep("");
               }
             }}
           />
@@ -275,8 +292,8 @@ function TaskDetail({
         {/* One card of rows: an icon, then what it sets */}
         <div className="task-detail__options">
           <div className="task-detail__option">
-            <button
-              type="button"
+            <Button
+              variant="link"
               className={`task-detail__option-btn${inMyDay ? " task-detail__option-btn--on" : ""}`}
               aria-pressed={inMyDay}
               onClick={() =>
@@ -287,7 +304,7 @@ function TaskDetail({
             >
               <SunIcon size={14} />
               {inMyDay ? "In My Day" : "Add to My Day"}
-            </button>
+            </Button>
           </div>
 
           <div className="task-detail__option">
@@ -295,20 +312,18 @@ function TaskDetail({
               value={task.due ?? ""}
               onChange={(due) => api.updateTask(listId, task.id, { due })}
               label="Due date"
-              className={`task-detail__option-btn${task.due ? " task-detail__option-btn--on" : ""}`}
+              className={`btn btn--link task-detail__option-btn${task.due ? " task-detail__option-btn--on" : ""}`}
             >
               <CalendarIcon size={14} />
               {task.due ? `Due ${dueLabel(task.due, today)}` : "Add due date"}
             </DatePick>
             {task.due && (
-              <button
-                type="button"
-                className="task-row__icon-btn"
+              <IconButton
                 aria-label="Remove due date"
                 onClick={() => api.updateTask(listId, task.id, { due: null })}
               >
                 <XIcon size={12} />
-              </button>
+              </IconButton>
             )}
           </div>
 
@@ -334,14 +349,15 @@ function TaskDetail({
 
       <div className="task-detail__foot">
         <span>Created {formatDate(task.createdAt)}</span>
-        <button
-          type="button"
+        <Button
+          variant="quiet"
+          size="sm"
           className="task-detail__delete"
           onClick={onDelete}
         >
           <TrashIcon size={13} />
           Delete task
-        </button>
+        </Button>
       </div>
     </aside>
   );

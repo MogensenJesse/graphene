@@ -1,6 +1,7 @@
 // mcp/tools.test.ts
 import assert from "node:assert/strict";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -239,4 +240,17 @@ test("the server lists its tools and answers a call", () =>
       "- [ ] oat milk\n",
     );
     await client.close();
+  }));
+
+test("create_note and the edits refuse a vault folder that is not there", () =>
+  withVault(async (vault) => {
+    const gone = joinPath(vault, "renamed-away");
+    await assert.rejects(
+      createNote(gone, { title: "Plan", folder: "Work/New" }),
+      /the vault folder is not there/,
+    );
+    assert.equal(existsSync(gone), false);
+    // A new folder below a vault that is there is made, as before
+    const made = await createNote(vault, { title: "Plan", folder: "Work/New" });
+    assert.equal(made.folder, "Work/New");
   }));

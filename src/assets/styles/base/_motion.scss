@@ -1,13 +1,18 @@
 // src/assets/styles/base/_motion.scss
 // How things come and go. Short and ease-out, so the app feels quick. prefers-reduced-motion turns every animation
-// and transition off (see _reset); the timers in TasksPane and UndoToast follow it too. Panels that slide
-// (the sidebar, the task details pane) use $panel-anim from _variables.scss, the same curve as --ease-out.
+// and transition off (see _reset); the timers in TasksPane and UndoToast follow it too, so no component needs a
+// reduced-motion block of its own. Panels that slide (the sidebar, the task details pane) use $panel-anim from
+// _variables.scss, the same curve as --ease-out. Every keyframe lives here.
 
 :root {
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
   --anim-in: 0.14s var(--ease-out);
   // How long a row takes to fold away: TasksPane waits ROW_LEAVE_MS (the same time) before it lets go of it
   --anim-out: 0.2s var(--ease-out);
+  // A whole animation: use as `animation: var(--anim-pop)`. Pop is for what opens (dropdowns, dialogs, the find bar,
+  // a new row); fade is for what covers or replaces (a scrim, a menu, a view).
+  --anim-pop: pop-in 0.14s var(--ease-out);
+  --anim-fade: fade-in 0.12s ease-out;
 }
 
 @keyframes fade-in {
@@ -23,10 +28,25 @@
   }
 }
 
+// The Undo toast sits at left: 50%, so its own translate(-50%) is part of every frame. UndoToast waits 150ms for toast-out
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+}
+
 @keyframes toast-out {
   to {
     opacity: 0;
     transform: translate(-50%, 6px);
+  }
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
   }
 }
 
@@ -61,7 +81,7 @@
 .note-editor,
 .tasks-pane,
 .trash-view {
-  animation: fade-in 0.1s ease-out;
+  animation: var(--anim-fade);
 }
 
 // A disclosure chevron: it points right, and turns down when open

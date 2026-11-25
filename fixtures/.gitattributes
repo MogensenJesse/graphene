@@ -1,0 +1,2 @@
+# Exact bytes: the fixtures hold CRLF files, a byte order mark and invalid UTF-8 on purpose
+* -text

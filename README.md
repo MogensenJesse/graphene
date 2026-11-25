@@ -15,11 +15,11 @@ A minimal desktop app for writing markdown notes and keeping reusable code snipp
 
 ### Tasks
 A to-do app of its own, apart from your notes: switch between **Notes** and **Tasks** at the top of the sidebar (**Ctrl+Shift+T**).
-- **Lists**, which you can colour and gather in **groups**, plus two smart lists: **My Day** (what you plan for today; it empties itself overnight) and **Important** (starred tasks). Right-click a list to rename, colour, group or delete it
-- A task has a **due date**, **steps** (smaller things to tick off), a **note**, a star and a list. Click a task to open it in place and tick its circle to finish it. Finished tasks fold away under **Completed**
+- **Lists**, which you can colour and gather in **groups**, plus two smart lists: **My Day** (what you plan for today; it empties itself overnight) and **Important** (starred tasks). Right-click a list to rename, colour, group or delete it; deleting a list or a group asks first and then shows an **Undo** bar (a list comes back with all its tasks, ticked ones too)
+- A task has a **due date**, **steps** (smaller things to tick off), a **note**, a star and a list. Click a task to open its details in a pane beside the list and tick its circle to finish it. Finished tasks fold away under **Completed**. Right-click a task for a menu: Rename, Mark as done or important, Add to My Day, a due date (today, tomorrow or **Pick a date…**), Move to list, Copy title and Delete
 - Type in **Add a task** and press Enter (**Ctrl+N** puts the cursor there); pick a day with the calendar button first if you like
 - Drag tasks to reorder them, or onto a list in the sidebar to move them. Drag lists to reorder them or into a group, and groups to reorder them
-- Deleting a task shows an **Undo** bar. **Ctrl+K** finds tasks as well as notes (a task carries a "Task" tag; `type:task` shows only tasks)
+- Deleting a task shows an **Undo** bar (so does deleting a list, a group or a folder; **Ctrl+Z** is the same as clicking Undo while you are not typing). **Ctrl+K** finds tasks as well as notes (a task carries a "Task" tag; `type:task` shows only tasks)
 - Tasks are stored as plain JSON in a hidden `.tasks` folder of the vault, one file per list, so they follow the vault when you sync or back it up
 
 ### Code
@@ -28,16 +28,17 @@ A to-do app of its own, apart from your notes: switch between **Notes** and **Ta
 - A note that starts with a code block counts as code in the sidebar
 
 ### Organization and search
-- Drag notes and folders to move or reorder them, or onto Trash to delete. Order by hand, name or recent
+- Drag notes and folders to move or reorder them, or onto Trash to delete. Order by hand, name or recent. A folder is put under another folder with **Move to** in its right-click menu (its notes follow, and their picture links are kept right)
+- Deleting a folder moves every note in it up to the folder above and removes its subfolders; an **Undo** bar brings the folders and notes back as they were. Switching between Notes and Tasks keeps the sidebar where you scrolled it, and opening a note from Search opens the folders around it
 - Search palette (**Ctrl+K**) finds notes and tasks, with `in:folder` (a task's list too), `type:note`, `code` or `task`, `title:word`, `"an exact phrase"` and `-word`. **Ctrl+F** finds in the open note
-- Right-click works everywhere (**Shift+F10** opens the menu of the selected item). Rename with **F2**
+- Right-click works everywhere (**Shift+F10** opens the menu of the selected item); the menu of a note or folder has **Copy path** and **Show in Explorer**. Rename with **F2**
 
 ### Trash
 - Deleted notes move to a hidden `.trash` folder in the vault, with an Undo bar for a few seconds. Restore or empty the trash from the button at the bottom of the sidebar
 - Emptying also deletes pictures in `attachments` that no note mentions any more, but only ones Graphene saved itself
 
 ### Import
-- Drop `.md` files onto the window to import them into the selected folder, or `.js`, `.ts`, `.css`, `.scss`, `.html` and `.sh` files to import them as code notes
+- Drop `.md` files onto the window to import them into the selected folder, or `.js`, `.ts`, `.css`, `.scss`, `.html` and `.sh` files to import them as code notes. The window says what a drop does while you drag; other files are named in a message, and in the Tasks tab nothing is imported
 
 ### Editing, window and updates
 - Autosave about a second after you stop typing and before you leave the editor; **Ctrl+S** saves now, **Ctrl+Enter** saves and goes back to reading

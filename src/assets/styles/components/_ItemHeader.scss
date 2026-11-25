@@ -1,7 +1,8 @@
 // src/assets/styles/components/_ItemHeader.scss
 @use '../base/mixins' as mixins;
+@use '../base/variables' as v;
 
-// Shared header for the read view and the editor: title, folder, badge, actions
+// Shared header for the read view and the editor: title, folder, actions
 
 // Where the text column starts. Registered so it stays a length: the folder chip, a descendant, sizes itself with it.
 @property --text-left {
@@ -14,9 +15,13 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 52px;
-  // The panel's width less the 720px column, halved; the panel's gutter at least. 100cqw is the width of .app__main.
-  --text-left: max(var(--pane-pad), calc((100cqw - 720px) / 2));
+  height: var(--bar-height);
+  // The panel's width less the text column, halved; the panel's gutter at least. 100cqw is the width of .app__main.
+  // --chrome-left is wider than the gutter while the sidebar is hidden and its buttons sit beside the toggle (see .app__quick)
+  --text-left: max(
+    var(--chrome-left, var(--pane-pad)),
+    calc((100cqw - var(--column-width)) / 2)
+  );
   // The right padding clears the window controls, which sit over this bar. The left one puts the title right
   // above the text it names.
   padding: 0 calc(var(--win-controls-width) + 24px) 0 var(--text-left);
@@ -51,13 +56,13 @@
   // Interactive items inside the top drag strip sit above it and opt out of dragging
   &__title {
     position: relative;
-    z-index: 6;
+    z-index: v.z('header-control');
     display: block;
     max-width: 100%;
-    font-size: 18px;
-    font-weight: 600;
+    font-size: var(--fs-title);
+    font-weight: var(--fw-semibold);
     font-family: inherit;
-    line-height: 1.3;
+    line-height: var(--lh-tight);
     color: var(--color-text-primary);
     background: none;
     border: none;
@@ -66,9 +71,7 @@
     letter-spacing: -0.02em;
     text-align: left;
     cursor: text;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include mixins.ellipsis;
     -webkit-app-region: no-drag;
 
     &--placeholder {
@@ -79,21 +82,18 @@
       opacity: 0.8;
     }
 
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 2px;
-    }
+    @include mixins.focus-ring(2px);
   }
 
   &__title-input {
     position: relative;
-    z-index: 6;
+    z-index: v.z('header-control');
     user-select: text;
     width: 100%;
-    font-size: 18px;
-    font-weight: 600;
+    font-size: var(--fs-title);
+    font-weight: var(--fw-semibold);
     font-family: inherit;
-    line-height: 1.3;
+    line-height: var(--lh-tight);
     color: var(--color-text-primary);
     background: none;
     border: none;
@@ -109,50 +109,13 @@
 
   &__dirty-dot {
     position: relative;
-    z-index: 6;
+    z-index: v.z('header-control');
     flex-shrink: 0;
     width: 6px;
     height: 6px;
-    border-radius: 50%;
+    border-radius: var(--radius-round);
     background: var(--color-text-secondary);
     display: inline-block;
-  }
-
-  // Chips: the folder picker and the "2/5 done" progress. Same height, corners and look as the buttons.
-  &__badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    flex-shrink: 0;
-    height: 24px;
-    padding: 0 9px;
-    font-size: 12px;
-    font-family: var(--font-mono);
-    white-space: nowrap;
-    color: var(--color-text-secondary);
-    background: var(--color-background-secondary);
-    border: 0.5px solid var(--color-border-secondary);
-    border-radius: var(--border-radius-md);
-
-    // The read view's chip is also the switch for hiding the done tasks
-    &--toggle {
-      position: relative;
-      z-index: 6;
-      cursor: pointer;
-      -webkit-app-region: no-drag;
-      transition: border-color var(--transition-fast), color var(--transition-fast);
-
-      &:hover,
-      &[aria-pressed='true'] {
-        border-color: var(--color-border-primary);
-        color: var(--color-text-primary);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--color-text-info);
-        outline-offset: 1px;
-      }
-    }
   }
 
   &__actions {
@@ -160,91 +123,26 @@
     display: flex;
     align-items: center;
     gap: 6px;
-  }
 
-  &__btn {
-    position: relative;
-    z-index: 6;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 12px;
-    font-family: inherit;
-    height: 24px;
-    padding: 0 9px;
-    border-radius: var(--border-radius-md);
-    border: 0.5px solid var(--color-border-secondary);
-    background: none;
-    cursor: pointer;
-    color: var(--color-text-secondary);
-    -webkit-app-region: no-drag;
-    transition: background var(--transition-fast), color var(--transition-fast),
-      border-color var(--transition-fast);
-
-    &:hover {
-      border-color: var(--color-border-primary);
-      color: var(--color-text-primary);
+    // Interactive items inside the drag strip sit above it and opt out of dragging
+    .btn,
+    .icon-btn {
+      position: relative;
+      z-index: v.z('header-control');
+      -webkit-app-region: no-drag;
     }
 
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
-    }
-
-    &--danger {
-      color: var(--color-text-danger);
-      border-color: transparent;
-
-      &:hover {
-        color: var(--color-text-danger);
-        background: var(--color-background-danger);
-        border-color: var(--color-border-danger);
-      }
-    }
-
-    &--quiet {
-      border-color: transparent;
-    }
-
-    // Icon only (copy note): a square button
-    &--icon {
-      justify-content: center;
-      width: 24px;
-      height: 24px;
-      padding: 0;
-    }
-
-    &--copied {
+    // The copy button after a copy: green until it reverts
+    .item-header__copied,
+    .item-header__copied:hover:not(:disabled) {
       color: var(--color-text-success);
       border-color: var(--color-border-success);
-
-      &:hover {
-        color: var(--color-text-success);
-        border-color: var(--color-border-success);
-      }
-    }
-
-    &:disabled {
-      opacity: 0.4;
-      cursor: default;
-
-      &:hover {
-        border-color: var(--color-border-secondary);
-        color: var(--color-text-secondary);
-      }
-    }
-
-    &--primary {
-      background: var(--color-background-primary);
-      border-color: var(--color-border-primary);
-      color: var(--color-text-primary);
-      font-weight: 500;
     }
   }
 }
 
 // Narrow panel: drop the date and the button words (the icons and tooltips remain)
-@container (max-width: 470px) {
+@container (max-width: #{v.$cq-header-compact}) {
   .item-header__btn-label {
     display: none;
   }
@@ -259,7 +157,7 @@
 .folder-picker {
   order: 1; // right of the spacer, beside the buttons; a wide panel moves it to the left edge (bottom of this file)
   position: relative;
-  z-index: 6;
+  z-index: v.z('header-control');
   flex: 0 1 auto;
   min-width: 0;
   -webkit-app-region: no-drag;
@@ -268,11 +166,11 @@
     max-width: 100%;
     display: flex;
     align-items: center;
-    gap: 5px;
-    font-size: 12px;
+    gap: var(--space-3);
+    font-size: var(--fs-sm);
     font-family: inherit;
     height: 24px;
-    padding: 0 8px;
+    padding: 0 var(--space-4);
     border-radius: var(--border-radius-md);
     border: 0.5px solid var(--color-border-secondary);
     background: var(--color-background-secondary);
@@ -287,17 +185,12 @@
       color: var(--color-text-primary);
     }
 
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
-    }
+    @include mixins.focus-ring;
   }
 
   &__label {
     max-width: 260px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include mixins.ellipsis;
   }
 
   &__chevron {
@@ -315,51 +208,38 @@
     position: absolute;
     top: calc(100% + 4px);
     left: 0;
-    z-index: 200;
+    z-index: v.z('dropdown');
     min-width: 180px;
-    animation: pop-in 0.12s var(--ease-out);
-    background: var(--color-background-primary);
-    border: 0.5px solid var(--color-border-primary);
-    border-radius: var(--border-radius-md);
-    box-shadow: var(--shadow-popover);
+    padding: var(--space-2);
+    animation: var(--anim-pop);
+    @include mixins.popover-surface;
     overflow: hidden;
     max-height: 240px;
     overflow-y: auto;
     -webkit-app-region: no-drag;
-
     @include mixins.custom-scrollbar;
   }
 
   &__option {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-    padding: 6px 12px;
-    font-size: 13px;
-    font-family: inherit;
-    text-align: left;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--color-text-secondary);
-    transition: background var(--transition-fast), color var(--transition-fast);
-
-    &:hover {
-      background: color-mix(in srgb, var(--color-background-secondary) 40%, transparent);
-      color: var(--color-text-primary);
-    }
+    @include mixins.menu-item;
 
     &--selected {
       color: var(--color-text-primary);
-      font-weight: 500;
-      background: color-mix(in srgb, var(--color-background-secondary) 25%, transparent);
+      font-weight: var(--fw-medium);
+      background: var(--color-background-hover);
     }
+
+    &:hover:not(:disabled) {
+      @include mixins.menu-item-lit;
+    }
+
+    // Inside the dropdown, which clips: the ring sits within the row
+    @include mixins.focus-ring(-2px);
   }
 
   &__option-icon {
     display: inline-flex;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     flex-shrink: 0;
     color: var(--color-text-tertiary);
   }
@@ -367,11 +247,14 @@
 
 // A wide panel has a free gutter left of the title (the title starts where the text column does), so the
 // folder chip moves there, at the pane's left edge. Smaller, and it stays beside the buttons.
-@container main (min-width: 1010px) {
+@container main (min-width: #{v.$cq-folder-gutter}) {
   .item-header .folder-picker {
     position: absolute;
-    left: var(--pane-pad);
-    top: 14px; // centred in the 52px bar
-    max-width: min(220px, calc(var(--text-left) - var(--pane-pad) - 12px)); // 12px before the title
+    left: var(--chrome-left, var(--pane-pad));
+    top: calc((var(--bar-height) - 24px) / 2); // centred in the bar
+    max-width: min(
+      220px,
+      calc(var(--text-left) - var(--chrome-left, var(--pane-pad)) - 12px)
+    ); // 12px before the title
   }
 }

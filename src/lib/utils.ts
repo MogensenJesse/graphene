@@ -7,27 +7,9 @@ export function isCodeBody(body: string): boolean {
 }
 
 export function itemKind(item: Item): ItemKind {
+  // A note whose text has not been read yet has the kind the scan saw in it
+  if (item.unloaded) return item.unloaded.kind;
   return isCodeBody(item.body) ? "code" : "note";
-}
-
-const FENCE_LINE = /^\s*(```|~~~)/;
-
-/** Words in a note body: tokens with a letter or digit. Fence lines, list and task markers and bare "---" are syntax. */
-export function wordCount(body: string): number {
-  const text = body
-    .split(/\r?\n/)
-    .filter((line) => !FENCE_LINE.test(line))
-    .join("\n")
-    .replace(/^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\](?=\s))?/gm, "");
-  return (text.match(/\S+/g) ?? []).filter((t) => /[\p{L}\p{N}]/u.test(t))
-    .length;
-}
-
-/** Lines of a code note's text, not counting the fences or blank lines. */
-export function lineCount(body: string): number {
-  return body
-    .split(/\r?\n/)
-    .filter((line) => line.trim() && !FENCE_LINE.test(line)).length;
 }
 
 export function formatDate(iso: string): string {

@@ -2,9 +2,7 @@
 @use '../base/mixins' as mixins;
 
 .search-palette {
-  display: flex;
-  flex-direction: column;
-  width: min(620px, calc(100vw - 40px));
+  --modal-width: 620px;
   max-height: min(520px, 72vh);
 
   &__input-row {
@@ -12,7 +10,7 @@
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
-    height: 52px;
+    height: var(--bar-height);
     padding: 0 12px 0 16px;
     border-bottom: 0.5px solid var(--color-border-secondary);
     color: var(--color-text-tertiary);
@@ -24,7 +22,7 @@
     background: none;
     border: none;
     outline: none;
-    font-size: 15px;
+    font-size: var(--fs-xl);
     font-family: inherit;
     color: var(--color-text-primary);
 
@@ -33,35 +31,11 @@
     }
   }
 
-  &__close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 26px;
-    height: 26px;
-    padding: 0;
-    background: none;
-    border: none;
-    border-radius: var(--border-radius-md);
-    color: var(--color-text-tertiary);
-    cursor: pointer;
-
-    &:hover {
-      background: var(--color-background-hover);
-      color: var(--color-text-primary);
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-    }
-  }
-
   &__list {
     margin: 0;
     padding: 6px;
     list-style: none;
     overflow-y: auto;
-
     @include mixins.custom-scrollbar;
   }
 
@@ -70,7 +44,7 @@
     align-items: flex-start;
     gap: 10px;
     min-height: 38px;
-    padding: 9px 12px;
+    padding: var(--space-4) 12px;
     border-radius: var(--border-radius-row);
     color: var(--color-text-secondary);
     cursor: pointer;
@@ -95,7 +69,7 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: var(--space-2);
   }
 
   &__line {
@@ -106,16 +80,14 @@
   }
 
   &__snippet {
-    font-size: 12px;
-    line-height: 1.4;
+    font-size: var(--fs-sm);
+    line-height: var(--lh-snug);
     color: var(--color-text-tertiary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include mixins.ellipsis;
   }
 
   mark {
-    background: rgba(var(--rgb-blue), 0.28);
+    background: var(--color-mark);
     color: inherit;
     border-radius: 2px;
   }
@@ -123,34 +95,40 @@
   &__title {
     flex: 0 1 auto;
     min-width: 0;
-    font-size: 14px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: var(--fs-lg);
+    @include mixins.ellipsis;
   }
 
   // The folder path takes the slack and truncates first
   &__path {
     flex: 1 1 0;
     min-width: 0;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--color-text-tertiary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include mixins.ellipsis;
   }
 
   &__date {
     flex-shrink: 0;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--color-text-tertiary);
+  }
+
+  // Shown while the texts of the notes are still being read
+  &__hint {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 6px 16px;
+    font-size: var(--fs-sm);
+    color: var(--color-text-tertiary);
+    border-bottom: 0.5px solid var(--color-border-secondary);
   }
 
   &__empty {
     margin: 0;
     padding: 28px 16px;
     text-align: center;
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--color-text-tertiary);
   }
 }
@@ -159,11 +137,11 @@
 .search-palette__tag {
   flex-shrink: 0;
   padding: 0 6px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 16px;
   color: var(--color-text-info);
   background: var(--color-background-info);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .search-palette__row--done .search-palette__title {

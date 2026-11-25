@@ -1,5 +1,6 @@
 // src/components/note/ItemHeader.tsx
 import { type ReactNode, useEffect, useState } from "react";
+import { modalOpen } from "../../lib/focusTrap";
 import type { Folder } from "../../types";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
@@ -16,7 +17,6 @@ interface ItemHeaderProps {
   folders: Folder[];
   folderId: string | null;
   onFolderChange: (id: string | null) => void;
-  badge?: ReactNode;
   isDirty?: boolean;
   actions?: ReactNode;
   // Right-click menu of the bar, below its own "Rename"
@@ -30,7 +30,6 @@ function ItemHeader({
   folders,
   folderId,
   onFolderChange,
-  badge,
   isDirty = false,
   actions,
   menuEntries = [],
@@ -39,10 +38,11 @@ function ItemHeader({
   const [editing, setEditing] = useState(false);
   const startEditing = () => setEditing(true);
 
-  // F2 renames from anywhere, as in a file manager
+  // F2 renames from anywhere, as in a file manager, unless a dialog is open. The sidebar's tree renames its own
+  // highlighted row instead and stops the key before it gets here
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "F2") {
+      if (e.key === "F2" && !modalOpen()) {
         e.preventDefault();
         setEditing(true);
       }
@@ -61,6 +61,7 @@ function ItemHeader({
           {
             label: "Rename",
             icon: <TextCursorInputIcon size={14} />,
+            keys: "F2",
             onSelect: startEditing,
           },
           ...(menuEntries.length ? ["separator" as const, ...menuEntries] : []),
@@ -110,7 +111,6 @@ function ItemHeader({
         value={folderId}
         onChange={onFolderChange}
       />
-      {badge}
       <div className="item-header__spacer" data-tauri-drag-region />
       {actions}
     </div>

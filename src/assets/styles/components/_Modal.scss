@@ -1,25 +1,68 @@
 // src/assets/styles/components/_Modal.scss
 @use '../base/variables' as v;
+@use '../base/mixins' as mixins;
 
-// Backdrop + panel shared by the search palette and the update dialog
+// Backdrop + panel shared by the search palette, Settings and the update dialog, and the pieces a dialog is built from:
+// a header, a scrolling body, a footer with its buttons. A dialog sets only what is its own (its height, its padding).
 
 .modal {
   position: fixed;
   inset: 0;
-  z-index: 300;
+  z-index: v.z('modal');
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding-top: 14vh;
   background: var(--surface-scrim);
-  animation: fade-in 0.12s ease-out;
+  animation: var(--anim-fade);
 
   &__panel {
-    animation: pop-in 0.16s var(--ease-out);
+    display: flex;
+    flex-direction: column;
+    width: min(var(--modal-width), calc(100vw - 40px)); // a dialog may set --modal-width, as the search palette does
+    animation: var(--anim-pop);
     background: var(--color-background-primary);
     border: 0.5px solid var(--color-border-primary);
-    border-radius: v.$radius-lg;
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-modal);
     overflow: hidden;
+    outline: none; // only a frame that holds the focus when the dialog has no control (see Modal.tsx)
+  }
+
+  &__header {
+    flex-shrink: 0;
+    padding: 18px 22px 14px;
+    border-bottom: 0.5px solid var(--color-border-secondary);
+  }
+
+  &__title {
+    font-size: var(--fs-xl);
+    font-weight: var(--fw-semibold);
+    color: var(--color-text-primary);
+  }
+
+  &__body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px 22px;
+    @include mixins.custom-scrollbar;
+    @include mixins.scroll-gutter;
+  }
+
+  // Whatever the dialog says last (a progress bar, an error) and then its buttons
+  &__footer {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    padding: 12px 22px 16px;
+    border-top: 0.5px solid var(--color-border-secondary);
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-4);
   }
 }

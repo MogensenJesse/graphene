@@ -1,0 +1,174 @@
+// src/assets/styles/components/_TasksPane.scss
+// The Tasks tab's main pane: heading, the rows, and the slot of the side pane on the right. The header reuses
+// .item-header (drag region, padding that clears the window controls). The pieces have their own partials:
+// _AddTask, _DatePick, _TaskRow and _TaskDetail.
+@use '../base/variables' as v;
+@use '../base/mixins' as mixins;
+
+.tasks-pane {
+  --details-width: 320px;
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+
+  // The slot of the side pane. It opens and closes like the sidebar (see .app__sidebar): the width runs to
+  // nothing and the pane, which keeps its own width, is clipped instead of reflowing
+  &__details {
+    display: flex;
+    flex-shrink: 0;
+    width: var(--details-width);
+    overflow: hidden;
+    // Opening: visible at once, so the title can take the focus in the frame the pane opens in (a field in a pane that is
+    // still `visibility: hidden` cannot be focused)
+    transition:
+      width v.$panel-anim,
+      transform v.$panel-anim,
+      opacity v.$panel-anim;
+
+    &--hidden {
+      width: 0;
+      opacity: 0;
+      visibility: hidden;
+      // Closing: stays visible until the others have finished, and is gone from the tab order after
+      transition:
+        width v.$panel-anim,
+        transform v.$panel-anim,
+        opacity v.$panel-anim,
+        visibility v.$panel-anim;
+    }
+  }
+
+  // The list. It is a container of its own, so the header's text column lines up with the rows beside the
+  // side pane (100cqw in .item-header is this width, not the whole panel's).
+  &__main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    container-type: inline-size;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--fs-title);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-tight);
+    letter-spacing: -0.02em;
+    color: var(--color-text-primary);
+  }
+
+  // An own list's name is a button: a click renames it
+  &__title-btn {
+    padding: 0 6px;
+    margin: 0 -6px;
+    font: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: text;
+
+    &:hover {
+      background: var(--color-background-hover);
+    }
+
+    @include mixins.focus-ring;
+  }
+
+  &__rename {
+    min-width: 0;
+    width: 260px;
+    padding: 0 6px;
+    margin: 0 -6px;
+    font: inherit;
+    font-size: var(--fs-title);
+    font-weight: var(--fw-semibold);
+    letter-spacing: -0.02em;
+    color: var(--color-text-primary);
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-primary);
+    border-radius: var(--border-radius-sm);
+    outline: none;
+  }
+
+  &__count {
+    font-size: var(--fs-sm);
+    color: var(--color-text-tertiary);
+  }
+
+  &__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px var(--pane-pad) 24px;
+    @include mixins.custom-scrollbar;
+    @include mixins.scroll-gutter(true);
+  }
+
+  // The column of the notes' text
+  &__column {
+    max-width: var(--column-width);
+    margin: 0 auto;
+  }
+
+  &__list {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    // The line where a dragged task lands sits on the row, there is no gap to centre it in
+    --drop-gap: 0px;
+    animation: var(--anim-fade);
+  }
+
+  &__empty {
+    margin: 20px 2px;
+    font-size: var(--fs-md);
+    color: var(--color-text-tertiary);
+  }
+
+  &__done-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 16px 0 0;
+    padding: 4px 2px;
+    font: inherit;
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    color: var(--color-text-secondary);
+    background: none;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+
+    span {
+      font-weight: var(--fw-regular);
+      color: var(--color-text-tertiary);
+    }
+
+    &:hover {
+      color: var(--color-text-primary);
+    }
+
+    @include mixins.focus-ring;
+  }
+}
+
+// A narrow panel has no room for the list beside the pane: the pane floats over its right side instead, as the
+// sidebar floats over the note in a small window (and slides out to the side, keeping its width, as that does)
+@container main (max-width: #{v.$cq-details-float}) {
+  .tasks-pane__details {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: v.z('pane-float'); // above the drag strip (5), below the window buttons (10)
+    background: var(--color-background-primary); // opaque: the app surfaces are translucent
+    box-shadow: var(--shadow-popover);
+
+    &--hidden {
+      width: var(--details-width);
+      transform: translateX(100%);
+    }
+  }
+}

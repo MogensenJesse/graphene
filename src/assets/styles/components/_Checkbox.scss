@@ -1,0 +1,61 @@
+// src/assets/styles/components/_Checkbox.scss
+@use '../base/mixins' as mixins;
+
+// The drawn checkbox (ui/Checkbox.tsx): square in a note and in Settings, round (`--round`) for a task. A step of a task
+// is the round one, smaller (see _TaskDetail.scss).
+
+.checkbox {
+  appearance: none;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin: 0 8px 0 0;
+  vertical-align: -2px;
+  border: 1px solid var(--color-text-tertiary);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+
+  &:hover {
+    border-color: var(--color-text-secondary);
+  }
+
+  @include mixins.focus-ring(2px);
+
+  &:checked {
+    background: var(--color-text-info);
+    border-color: var(--color-text-info);
+
+    // The check mark: two sides of a box, turned
+    &::after {
+      content: '';
+      display: block;
+      width: 4px;
+      height: 8px;
+      margin: 0 auto;
+      border: solid var(--color-background-secondary);
+      border-width: 0 1.5px 1.5px 0;
+      transform: translateY(0.5px) rotate(45deg);
+    }
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &--round {
+    display: grid;
+    place-content: center;
+    width: 18px;
+    height: 18px;
+    margin: 0 8px 0 2px;
+    border-width: 1.5px;
+    border-radius: var(--radius-round);
+
+    &:checked::after {
+      margin: 0;
+      transform: translateY(-1px) rotate(45deg);
+      animation: check-pop var(--anim-in);
+    }
+  }
+}

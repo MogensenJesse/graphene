@@ -2,6 +2,7 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { Updater } from "../../hooks/useUpdater";
 import { RELEASES_PAGE } from "../../lib/releaseNotes";
+import Button from "../ui/Button";
 
 interface AboutPanelProps {
   updater: Updater;
@@ -34,25 +35,16 @@ function AboutPanel({ updater, onShowUpdate }: AboutPanelProps) {
       {update && (
         <p className="settings__notice">
           Version {update.version} is available.{" "}
-          <button
-            type="button"
-            className="settings__link"
-            onClick={onShowUpdate}
-          >
+          <Button variant="link" onClick={onShowUpdate}>
             See what changed and install
-          </button>
+          </Button>
         </p>
       )}
 
       <div className="settings__row settings__row--center">
-        <button
-          type="button"
-          className="settings__btn"
-          disabled={busy}
-          onClick={updater.checkNow}
-        >
+        <Button disabled={busy} onClick={updater.checkNow}>
           Check for updates
-        </button>
+        </Button>
         {result && (
           <span className="settings__muted" role="status">
             {result}
@@ -67,13 +59,12 @@ function AboutPanel({ updater, onShowUpdate }: AboutPanelProps) {
       </p>
 
       <div className="settings__row">
-        <button
-          type="button"
-          className="settings__link"
+        <Button
+          variant="link"
           onClick={() => openUrl(RELEASES_PAGE).catch(console.error)}
         >
           Release notes on GitHub
-        </button>
+        </Button>
       </div>
     </>
   );

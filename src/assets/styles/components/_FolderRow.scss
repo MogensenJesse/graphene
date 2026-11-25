@@ -1,5 +1,5 @@
 // src/assets/styles/components/_FolderRow.scss
-@use '../base/variables' as v;
+@use '../base/mixins' as mixins;
 
 .folder-row__group {
   // Drag-target container; its margin is the space between folders and items (see also .item-row)
@@ -15,25 +15,15 @@
   border-radius: var(--border-radius-row);
   position: relative;
   transition: background var(--transition-fast);
-
-  &:hover {
-    background: var(--color-background-hover);
-  }
+  @include mixins.row-surface;
 
   &:hover .folder-row__actions,
   &:focus-within .folder-row__actions {
     opacity: 1;
   }
 
-  &--selected,
-  &--selected:hover {
-    background: var(--color-background-active);
-  }
-
   &--drag-over {
-    background: rgba(var(--rgb-blue), 0.12);
-    outline: 1px solid rgba(var(--rgb-blue), 0.3);
-    outline-offset: -1px;
+    @include mixins.drop-over;
   }
 
   // The folder name is the whole clickable area: it selects the folder and toggles it
@@ -42,11 +32,11 @@
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: var(--space-3);
     height: 100%;
     padding: 0;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
     font-family: inherit;
     text-align: left;
     color: var(--color-text-primary);
@@ -58,18 +48,14 @@
       color: var(--color-text-secondary);
     }
 
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 2px;
+    @include mixins.focus-ring(2px) {
       border-radius: var(--border-radius-sm);
     }
   }
 
   &__label {
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    @include mixins.ellipsis;
   }
 
   &__chevron {
@@ -80,19 +66,7 @@
 
   &__rename-input {
     flex: 1;
-    font-size: 13px;
-    font-family: inherit;
-    background: var(--color-background-primary);
-    border: 0.5px solid var(--color-border-primary);
-    border-radius: var(--border-radius-sm);
-    color: var(--color-text-primary);
-    padding: 2px 6px;
-    outline: none;
-    min-width: 0;
-
-    &:focus {
-      border-color: var(--color-border-primary);
-    }
+    @include mixins.inline-field;
   }
 
   // Contents of a folder: indented under a faint guide line. Nested folder names are a notch lighter.
@@ -106,7 +80,7 @@
     }
 
     .folder-row__name {
-      font-weight: 500;
+      font-weight: var(--fw-medium);
     }
   }
 
@@ -116,30 +90,6 @@
     opacity: 0;
     transition: opacity var(--transition-fast);
     flex-shrink: 0;
-  }
-
-  &__action-btn {
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--color-text-tertiary);
-    border-radius: var(--border-radius-md);
-    padding: 0;
-
-    &:hover {
-      background: var(--color-background-active);
-      color: var(--color-text-secondary);
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
-    }
   }
 
   &__add-child {

@@ -81,6 +81,15 @@ function collapsedFolders(vault: string): Set<string> {
   return ids;
 }
 
+// A folder row reads its own open state through this (useSyncExternalStore), so a key that opens or closes a folder from the
+// sidebar's tree renders that row and no other
+const collapsedListeners = new Set<() => void>();
+
+export const subscribeCollapsed = (listener: () => void) => {
+  collapsedListeners.add(listener);
+  return () => void collapsedListeners.delete(listener);
+};
+
 export const isFolderCollapsed = (vault: string, id: string) =>
   collapsedFolders(vault).has(id);
 
@@ -88,9 +97,12 @@ export function setFolderCollapsed(
   vault: string,
   id: string,
   isCollapsed: boolean,
+  // False while a component renders (the sidebar opens the folders around a picked note): the rows read the value as they render
+  notify = true,
 ): void {
   const ids = collapsedFolders(vault);
   if (isCollapsed) ids.add(id);
   else ids.delete(id);
   saveCollapsed(collapsedByVault());
+  if (notify) for (const listener of collapsedListeners) listener();
 }

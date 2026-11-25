@@ -12,6 +12,41 @@ interface DatePickProps {
   children: ReactNode;
 }
 
+// The invisible input of the last pickDate, removed by the next one
+let floating: HTMLInputElement | null = null;
+
+/**
+ * Opens the system's date picker beside `anchor` (a row, say) for a menu entry, which has no button to put the invisible input
+ * under. `onPick` gets the day, or null when the picker's Clear was used. The input is made for the pick and removed by the next.
+ */
+export function pickDate(
+  anchor: Element | null,
+  value: string,
+  onPick: (date: string | null) => void,
+): void {
+  floating?.remove();
+  const input = document.createElement("input");
+  input.type = "date";
+  input.className = "date-pick__input date-pick__input--floating";
+  input.tabIndex = -1;
+  input.setAttribute("aria-hidden", "true");
+  input.value = value;
+  const at = anchor?.getBoundingClientRect();
+  input.style.left = `${at?.left ?? 0}px`;
+  input.style.top = `${at?.bottom ?? 0}px`;
+  input.addEventListener("change", () => onPick(input.value || null));
+  document.body.append(input);
+  floating = input;
+  // After the menu has closed and handed the focus back (the picker would otherwise lose it to that)
+  setTimeout(() => {
+    try {
+      input.showPicker();
+    } catch {
+      input.remove(); // no picker to show here
+    }
+  }, 0);
+}
+
 /** A button that opens the system's date picker next to itself; the date input stays invisible under it. */
 function DatePick({
   value,

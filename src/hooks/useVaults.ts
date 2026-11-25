@@ -1,5 +1,7 @@
 // src/hooks/useVaults.ts
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { perfMark } from "../lib/perf";
+import { startVault } from "../lib/startVault";
 import {
   loadVaultConfig,
   saveVaultConfig,
@@ -26,6 +28,8 @@ export interface Vaults {
   ready: boolean;
   /** config.json could not be read: it was kept as config.json.bak and the list starts empty */
   corrupt: boolean;
+  /** At start the saved vault's folder was missing and another vault was opened instead: their names, for a notice (null otherwise) */
+  fellBack: { wanted: string; opened: string } | null;
   vaults: VaultEntry[];
   /** The open vault; null when there are none (the first-run screen) */
   active: string | null;
@@ -33,11 +37,11 @@ export interface Vaults {
   isMissing: (path: string) => boolean;
   /** Looks at every folder again (a drive came back, a folder was deleted) */
   recheck: () => Promise<void>;
-  /** False when the folder is missing */
-  switchTo: (path: string) => Promise<boolean>;
-  /** Adds the folder and opens it. A problem (already a vault, overlaps one) means nothing was added. */
+  /** "missing": the folder is gone. "unsaved": a note or a task could not be saved, so the switch was held back once (the toast says so) */
+  switchTo: (path: string) => Promise<"opened" | "missing" | "unsaved">;
+  /** Adds the folder and opens it. A problem (already a vault, overlaps one) means nothing was added; so does null when the unsaved changes held it back (the toast says so). */
   add: (path: string) => Promise<VaultProblem | null>;
-  /** Takes it off the list; the folder and its notes stay on disk */
+  /** Takes it off the list; the folder and its notes stay on disk. The open vault stays when the unsaved changes hold it back. */
   remove: (path: string) => Promise<void>;
   /** False when the name is empty or taken */
   rename: (path: string, name: string) => boolean;
@@ -55,17 +59,23 @@ async function missingKeys(vaults: VaultEntry[]): Promise<Set<string>> {
 /**
  * The list of vaults and which one is open. Every change is saved at once (config.json is a full snapshot of
  * this list). `flushNow` saves what is typed in the editor; it runs before the open vault changes, so that
- * note lands in the vault it was written in.
+ * note lands in the vault it was written in. `canLeave` saves and waits first, and says no (after telling the person)
+ * when a note or a task could not be saved: the open vault changes only when it says yes.
  */
-export function useVaults(flushNow: () => void): Vaults {
+export function useVaults(
+  flushNow: () => void,
+  canLeave: () => Promise<boolean>,
+): Vaults {
   const [config, setConfig] = useState<VaultConfig>(EMPTY_CONFIG);
   const [ready, setReady] = useState(false);
   const [corrupt, setCorrupt] = useState(false);
+  const [fellBack, setFellBack] = useState<Vaults["fellBack"]>(null);
   const [missing, setMissing] = useState<ReadonlySet<string>>(new Set());
   // Handlers can run twice before a render: they build on this, not on the state of their last render
   const configRef = useRef<VaultConfig>(EMPTY_CONFIG);
   const switching = useRef(false);
   const flush = useLatest(flushNow);
+  const leave = useLatest(canLeave);
 
   const commit = useCallback((next: VaultConfig) => {
     configRef.current = next;
@@ -91,21 +101,21 @@ export function useVaults(flushNow: () => void): Vaults {
   // Start: the saved vault, or the first one whose folder is there. Not saved: only a change by the person is.
   useEffect(() => {
     let cancelled = false;
-    loadVaultConfig().then(async ({ config: loaded, corrupt: bad }) => {
-      const gone = await missingKeys(loaded.vaults);
-      if (cancelled) return;
-      const open = findVault(loaded.vaults, loaded.active);
-      const usable =
-        open && !gone.has(pathKey(open.path))
-          ? open
-          : loaded.vaults.find((v) => !gone.has(pathKey(v.path)));
-      const start = usable ? setActive(loaded, usable.path) : loaded;
-      configRef.current = start;
-      setConfig(start);
-      setMissing(gone);
-      setCorrupt(bad);
-      setReady(true);
-    });
+    // One call to Rust gives the file and which folders are there: no round trip per vault after it
+    loadVaultConfig().then(
+      ({ config: loaded, corrupt: bad, missing: gone }) => {
+        if (cancelled) return;
+        const { config: start, fellBack: fell } = startVault(loaded, gone);
+        configRef.current = start;
+        setConfig(start);
+        if (fell)
+          setFellBack({ wanted: fell.wanted.name, opened: fell.opened.name });
+        setMissing(gone);
+        setCorrupt(bad);
+        perfMark("config-ready");
+        setReady(true);
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -120,34 +130,36 @@ export function useVaults(flushNow: () => void): Vaults {
   const switchTo = useCallback(
     async (path: string) => {
       const target = findVault(configRef.current.vaults, path);
-      if (!target || switching.current) return false;
+      if (!target || switching.current) return "missing";
       if (pathKey(target.path) === pathKey(configRef.current.active ?? ""))
-        return true;
+        return "opened";
       switching.current = true;
       try {
         const there = await vaultFolderExists(target.path);
         markMissing(target.path, !there);
-        if (!there) return false;
-        flush.current();
+        if (!there) return "missing";
+        if (!(await leave.current())) return "unsaved";
+        flush.current(); // what was typed while it waited
         commit(setActive(configRef.current, target.path));
-        return true;
+        return "opened";
       } finally {
         switching.current = false;
       }
     },
-    [commit, flush, markMissing],
+    [commit, flush, leave, markMissing],
   );
 
   const add = useCallback(
     async (path: string) => {
+      if (!(await leave.current())) return null;
       const result = addVault(configRef.current, path);
       if ("kind" in result) return result;
-      flush.current();
+      flush.current(); // what was typed while it waited
       markMissing(path, false);
       commit(setActive(result.config, result.entry.path));
       return null;
     },
-    [commit, flush, markMissing],
+    [commit, flush, leave, markMissing],
   );
 
   const remove = useCallback(
@@ -163,12 +175,13 @@ export function useVaults(flushNow: () => void): Vaults {
             break;
           }
         }
-        flush.current();
+        if (!(await leave.current())) return;
+        flush.current(); // what was typed while it waited
       }
       const rest = removeVault(configRef.current, path);
       commit(heir ? setActive(rest, heir) : rest);
     },
-    [commit, flush],
+    [commit, flush, leave],
   );
 
   const rename = useCallback(
@@ -192,18 +205,44 @@ export function useVaults(flushNow: () => void): Vaults {
     [commit],
   );
 
-  return {
-    ready,
-    corrupt,
-    vaults: config.vaults,
-    active: findVault(config.vaults, config.active)?.path ?? null,
-    isMissing: (path) => missing.has(pathKey(path)),
-    recheck,
-    switchTo,
-    add,
-    remove,
-    rename,
-    move,
-    setShared: share,
-  };
+  const isMissing = useCallback(
+    (path: string) => missing.has(pathKey(path)),
+    [missing],
+  );
+  const active = findVault(config.vaults, config.active)?.path ?? null;
+
+  // One object until something in it changes: it is a prop of the whole tree, and a new one on every render (the update
+  // check alone changes App's state three times) would render it all again
+  return useMemo(
+    () => ({
+      ready,
+      corrupt,
+      fellBack,
+      vaults: config.vaults,
+      active,
+      isMissing,
+      recheck,
+      switchTo,
+      add,
+      remove,
+      rename,
+      move,
+      setShared: share,
+    }),
+    [
+      ready,
+      corrupt,
+      fellBack,
+      config.vaults,
+      active,
+      isMissing,
+      recheck,
+      switchTo,
+      add,
+      remove,
+      rename,
+      move,
+      share,
+    ],
+  );
 }

@@ -1,9 +1,9 @@
 // src/components/note/NoteDetail.tsx
-import { useEffect, useMemo, useRef } from "react";
-import ReactMarkdown from "react-markdown";
+import { lazy, memo, Suspense, useEffect, useRef } from "react";
 import { useClipboard } from "../../hooks/useClipboard";
 import { useDomFind, useFindState } from "../../hooks/useFind";
-import { openLink, REHYPE_PLUGINS, REMARK_PLUGINS } from "../../lib/markdown";
+import { openLink } from "../../lib/openLink";
+import { perfRender } from "../../lib/perf";
 import type { Folder, Item } from "../../types";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
@@ -16,12 +16,14 @@ import {
 import FindBar from "./FindBar";
 import ItemActions from "./ItemActions";
 import ItemHeader from "./ItemHeader";
-import {
-  NOTE_COMPONENTS,
-  type TaskActions,
-  TaskActionsContext,
-} from "./TaskList";
 import WordCount from "./WordCount";
+
+// The Markdown renderer is a script of its own, so it is not in the first one. Its import starts as soon as this module loads, while
+// the vault is still being read, so it is there by the time a note opens; if it is not, the text (inside the fade-in below) appears
+// the moment it arrives.
+const loadMarkdownBody = () => import("./MarkdownBody");
+const MarkdownBody = lazy(loadMarkdownBody);
+loadMarkdownBody().catch(console.error);
 
 interface NoteDetailProps {
   note: Item;
@@ -52,6 +54,7 @@ function NoteDetail({
   deleteKeyEnabled,
   moreEntries,
 }: NoteDetailProps) {
+  perfRender("NoteDetail");
   const markdownRef = useRef<HTMLDivElement>(null);
   // The rendered note text only (not the word count under it), for find
   const textRef = useRef<HTMLDivElement>(null);
@@ -61,10 +64,6 @@ function NoteDetail({
   const { copy } = useClipboard();
 
   const noteId = note.id;
-  const taskActions = useMemo<TaskActions>(
-    () => ({ toggle: (offset) => onToggleTask(noteId, offset) }),
-    [noteId, onToggleTask],
-  );
 
   // What a right-click offers wherever it lands in the note
   const noteEntries: MenuEntry[] = [
@@ -76,6 +75,7 @@ function NoteDetail({
     {
       label: "Edit",
       icon: <EditIcon size={14} />,
+      keys: "Ctrl+E",
       onSelect: onEdit,
     },
     "separator",
@@ -92,7 +92,7 @@ function NoteDetail({
       ?.textContent?.replace(/\n$/, "");
     const here: MenuEntry[] = [
       ...(selection
-        ? [{ label: "Copy", onSelect: () => copy(selection) }]
+        ? [{ label: "Copy", keys: "Ctrl+C", onSelect: () => copy(selection) }]
         : []),
       ...(href
         ? [
@@ -176,6 +176,7 @@ function NoteDetail({
       {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only shortcut, keyboard users have Ctrl+E and the Edit button. Double-click on empty space (not on text, so word-select still works) starts editing */}
       <div
         className="note-detail__body"
+        data-scrollbar
         onContextMenu={handleBodyMenu}
         onDoubleClick={(e) => {
           if (e.target === e.currentTarget) onEdit();
@@ -184,15 +185,13 @@ function NoteDetail({
         {/* Keyed on the note so that going from one note to another fades the text in (see _motion.scss) */}
         <div className="note-detail__markdown" key={noteId} ref={markdownRef}>
           <div ref={textRef}>
-            <TaskActionsContext.Provider value={taskActions}>
-              <ReactMarkdown
-                remarkPlugins={REMARK_PLUGINS}
-                rehypePlugins={REHYPE_PLUGINS}
-                components={NOTE_COMPONENTS}
-              >
-                {note.body}
-              </ReactMarkdown>
-            </TaskActionsContext.Provider>
+            <Suspense fallback={null}>
+              <MarkdownBody
+                noteId={noteId}
+                body={note.body}
+                onToggleTask={onToggleTask}
+              />
+            </Suspense>
           </div>
         </div>
       </div>
@@ -204,4 +203,4 @@ function NoteDetail({
   );
 }
 
-export default NoteDetail;
+export default memo(NoteDetail);

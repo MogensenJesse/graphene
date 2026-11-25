@@ -9,6 +9,8 @@ import {
 } from "react";
 import {
   type Hit,
+  holdSearchCache,
+  releaseSearchCache,
   searchItems,
   searchTasks,
   type TaskEntry,
@@ -19,6 +21,7 @@ import { localDate } from "../../lib/taskStore";
 import { formatDate, getFolderPath, itemKind } from "../../lib/utils";
 import type { Folder, Item } from "../../types";
 import { CircleCheckIcon, KindIcon, SearchIcon, XIcon } from "../ui/Icon";
+import IconButton from "../ui/IconButton";
 import Modal from "../ui/Modal";
 import Tooltip from "../ui/Tooltip";
 
@@ -29,6 +32,8 @@ interface SearchPaletteProps {
   folders: Folder[];
   /** Every task with its list, searched together with the notes. */
   tasks: TaskEntry[];
+  /** The texts of the notes are still being read: title matches are complete, text matches fill in as they arrive. */
+  indexing?: boolean;
   onOpen: (id: string) => void;
   onOpenTask: (listId: string, taskId: string) => void;
   onClose: () => void;
@@ -76,11 +81,17 @@ function SearchPalette({
   items,
   folders,
   tasks,
+  indexing = false,
   onOpen,
   onOpenTask,
   onClose,
 }: SearchPaletteProps) {
   const [query, setQuery] = useState("");
+  // How far the background read has come, for the hint under the field
+  const loaded = useMemo(
+    () => (indexing ? items.filter((i) => !i.unloaded).length : 0),
+    [items, indexing],
+  );
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -93,13 +104,11 @@ function SearchPalette({
         ...searchItems(items, deferred).map(noteResult),
         ...searchTasks(tasks, deferred).map(taskResult),
       ].sort((a, b) => b.hit.score - a.hit.score || byRecent(a, b));
+    // No query: the newest few of each kind, taken in one pass (the search itself lists newest first when it has no terms),
+    // then merged, so a vault of thousands of notes is not sorted whole
     return [
-      ...items.map((item) =>
-        noteResult({ item, score: 0, titleMarks: [], snippet: null }),
-      ),
-      ...tasks.map((entry) =>
-        taskResult({ entry, score: 0, titleMarks: [], snippet: null }),
-      ),
+      ...searchItems(items, "", RECENT_COUNT).map(noteResult),
+      ...searchTasks(tasks, "", RECENT_COUNT).map(taskResult),
     ]
       .sort(byRecent)
       .slice(0, RECENT_COUNT);
@@ -107,6 +116,12 @@ function SearchPalette({
 
   useEffect(() => {
     inputRef.current?.focus();
+  }, []);
+
+  // The lower-cased copies the search keeps are dropped a while after the palette closes
+  useEffect(() => {
+    holdSearchCache();
+    return releaseSearchCache;
   }, []);
 
   useEffect(() => {
@@ -162,16 +177,18 @@ function SearchPalette({
           onKeyDown={handleKeyDown}
         />
         <Tooltip label="Close" keys="Esc">
-          <button
-            type="button"
-            className="search-palette__close"
-            onClick={onClose}
-            aria-label="Close search"
-          >
+          <IconButton onClick={onClose} aria-label="Close search">
             <XIcon size={16} />
-          </button>
+          </IconButton>
         </Tooltip>
       </div>
+
+      {indexing && (
+        <p className="search-palette__hint" role="status">
+          Indexing… {loaded} of {items.length} notes. Titles are searchable now;
+          text matches appear as notes load.
+        </p>
+      )}
 
       {results.length === 0 ? (
         <p className="search-palette__empty">

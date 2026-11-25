@@ -1,25 +1,24 @@
 // src/hooks/useDragToFolder.ts
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { clearDropMarks, markDrop, swallowNextClick } from "../lib/dragDrop";
+import {
+  AT_REST,
+  createDragStore,
+  type DragKind,
+  type DragSource,
+  type DragStore,
+  type DragView,
+} from "../lib/dragStore";
 import { useLatest } from "./useLatest";
 
-// Notes and tasks (and to-do lists) land next to any peer or as a whole on a container; folders and groups only among their siblings
-type DragKind = "item" | "folder" | "task" | "taskList" | "taskGroup";
 const siblingsOnly = (kind: DragKind) =>
   kind === "folder" || kind === "taskGroup";
-
-/** What is dragged. A folder (or group) can only be put among its siblings: those whose parent id is `parent` ("" for the root). */
-interface DragSource {
-  kind: DragKind;
-  id: string;
-  label: string;
-  parent?: string;
-}
-
-interface DragState extends DragSource {
-  x: number;
-  y: number;
-}
 
 /** A row the dragged one would land next to: before it, or after it when `after`. */
 export interface NearRow {
@@ -83,17 +82,27 @@ function locate(
 
 const DRAG_THRESHOLD_PX = 6;
 
+/**
+ * Reads one part of a drag's view (the drop target a row draws, whether a note is being dragged): the component re-renders only
+ * when that value changes, never for a frame of the drag. `pick` must give a plain value (a string, a boolean), not a new object.
+ */
+export function useDragValue<T>(
+  store: DragStore,
+  pick: (view: DragView) => T,
+): T {
+  return useSyncExternalStore(store.subscribe, () => pick(store.get()));
+}
+
+/**
+ * The drag of a row (note, folder, task, to-do list, group). Its state is a store (see lib/dragStore), not React state: the
+ * pointer moves are written onto the ghost directly and the drop line is a data attribute, so a frame of the drag renders nothing;
+ * only a row that gains or loses the drop tint does, through `useDragValue`.
+ */
 export function useDragToFolder(onDrop: DropHandler): {
-  dragState: DragState | null;
-  dragOverId: string | null | undefined;
+  drag: DragStore;
   startDrag: (e: React.PointerEvent, source: DragSource) => void;
 } {
-  const [dragState, setDragState] = useState<DragState | null>(null);
-  // undefined = no active target, null = unfiled zone, string = folder id (or the trash).
-  // Only a note dropped as a whole has one: with a line showing, or for a folder, there is no tint.
-  const [dragOverId, setDragOverId] = useState<string | null | undefined>(
-    undefined,
-  );
+  const [drag] = useState(createDragStore);
 
   const onDropRef = useLatest(onDrop);
   const cleanupRef = useRef<(() => void) | null>(null);
@@ -124,8 +133,7 @@ export function useDragToFolder(onDrop: DropHandler): {
           cancelAnimationFrame(rafRef.current);
           rafRef.current = null;
         }
-        setDragState(null);
-        setDragOverId(undefined);
+        drag.set(AT_REST);
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
         clearDropMarks();
@@ -153,7 +161,9 @@ export function useDragToFolder(onDrop: DropHandler): {
           active = true;
           document.body.style.cursor = "grabbing";
           document.body.style.userSelect = "none";
-          setDragState({ ...source, x: ev.clientX, y: ev.clientY });
+          // The pointer first: the ghost mounts with the view and starts where it is
+          drag.movePointer(ev.clientX, ev.clientY);
+          drag.set({ source, overId: undefined });
           window.addEventListener("keydown", handleKey, true);
         }
 
@@ -162,12 +172,13 @@ export function useDragToFolder(onDrop: DropHandler): {
         const y = ev.clientY;
         rafRef.current = requestAnimationFrame(() => {
           rafRef.current = null;
-          setDragState((prev) => (prev ? { ...prev, x, y } : null));
+          drag.movePointer(x, y);
           const { target, near, mark } = locate(x, y, source);
           markDrop(near ? mark : null, near?.after);
-          setDragOverId(
-            !siblingsOnly(source.kind) && !near ? target : undefined,
-          );
+          drag.set({
+            source,
+            overId: !siblingsOnly(source.kind) && !near ? target : undefined,
+          });
         });
       };
 
@@ -207,8 +218,8 @@ export function useDragToFolder(onDrop: DropHandler): {
       window.addEventListener("blur", abort);
       cleanupRef.current = stop;
     },
-    [onDropRef],
+    [drag, onDropRef],
   );
 
-  return { dragState, dragOverId, startDrag };
+  return { drag, startDrag };
 }

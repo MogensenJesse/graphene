@@ -1,0 +1,21 @@
+// src/assets/styles/components/_ConfirmBar.scss
+
+// The question that waits for a yes under a row (ui/ConfirmBar.tsx): the folder and list deletes, removing a vault
+
+.confirm-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-2) 0;
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-background-danger);
+  border: 1px solid var(--color-border-danger);
+  border-radius: var(--border-radius-sm);
+
+  &__actions {
+    display: flex;
+    gap: var(--space-3);
+  }
+}

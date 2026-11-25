@@ -1,4 +1,7 @@
 // src/assets/styles/components/_VaultUnavailable.scss
+@use '../base/variables' as v;
+@use '../base/mixins' as mixins;
+
 // The main pane while the open vault's folder cannot be opened
 
 .vault-unavailable {
@@ -12,21 +15,21 @@
   text-align: center;
 
   &__title {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: var(--fs-xl);
+    font-weight: var(--fw-semibold);
     color: var(--color-text-primary);
   }
 
   &__text {
     max-width: 420px;
-    font-size: 13.5px;
-    line-height: 1.6;
+    font-size: var(--fs-lg);
+    line-height: var(--lh-relaxed);
     color: var(--color-text-secondary);
     overflow-wrap: anywhere;
 
     code {
       font-family: var(--font-mono);
-      font-size: 12.5px;
+      font-size: var(--fs-md);
     }
   }
 
@@ -35,37 +38,37 @@
     gap: 8px;
     margin-top: 6px;
   }
+}
 
-  &__btn {
-    padding: 6px 14px;
-    font-family: inherit;
-    font-size: 13px;
-    color: var(--color-text-secondary);
-    background: none;
-    border: 0.5px solid var(--color-border-primary);
-    border-radius: var(--border-radius-md);
-    cursor: pointer;
-    transition: background var(--transition-fast), color var(--transition-fast);
+// The same trouble over a working app: what is typed and not saved stays, and this stays too (see VaultMissingBar). It sits over the
+// bottom of the panel like a toast, under the toast layer, so an Undo or an error toast still shows over it.
+.vault-missing-bar {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-6);
+  transform: translateX(-50%);
+  z-index: v.z('pane-float');
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  box-sizing: border-box;
+  width: calc(100% - 2 * var(--pane-pad));
+  max-width: var(--column-width);
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--fs-sm);
+  color: var(--color-text-primary);
+  @include mixins.popover-surface;
+  border-color: var(--color-border-danger);
+  animation: var(--anim-fade);
 
-    &:hover {
-      color: var(--color-text-primary);
-      background: var(--color-background-hover);
-    }
+  &__text {
+    flex: 1 1 18em;
+    min-width: 0;
+    line-height: var(--lh-relaxed);
+  }
 
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
-    }
-
-    &--primary {
-      color: rgb(var(--rgb-blue));
-      background: rgba(var(--rgb-blue), 0.12);
-      border-color: rgba(var(--rgb-blue), 0.35);
-
-      &:hover {
-        color: rgb(var(--rgb-blue));
-        background: rgba(var(--rgb-blue), 0.2);
-      }
-    }
+  .btn {
+    flex-shrink: 0;
   }
 }

@@ -11,6 +11,34 @@
 
   // The header is shared, see _ItemHeader
 
+  // ── Changed outside Graphene ──────────────────────────────────────────────
+  // The file changed on disk while there is typing here that is not saved: autosave waits for the answer (see NoteEditor)
+
+  &__conflict {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-5);
+    flex-shrink: 0;
+    box-sizing: border-box;
+    width: calc(100% - 2 * var(--pane-pad));
+    max-width: var(--column-width); // the column of the text below
+    margin: var(--space-3) auto 0;
+    padding: var(--space-3) var(--space-5);
+    font-size: var(--fs-sm);
+    color: var(--color-text-secondary);
+    background: var(--color-background-info);
+    border: 1px solid var(--color-border-info);
+    border-radius: var(--border-radius-sm);
+    animation: var(--anim-fade);
+  }
+
+  &__conflict-actions {
+    display: flex;
+    gap: var(--space-3);
+  }
+
   // ── Body ──────────────────────────────────────────────────────────────────
 
   &__body {
@@ -21,8 +49,8 @@
     flex-direction: column;
     gap: 10px;
     min-height: 0;
-
     @include mixins.custom-scrollbar;
+    @include mixins.scroll-gutter(true);
   }
 
   // ── Note editor ───────────────────────────────────────────────────────────
@@ -33,7 +61,7 @@
     flex-direction: column;
     min-height: 0;
     width: 100%;
-    max-width: 720px; // same line length and position as the read view
+    max-width: var(--column-width); // same line length and position as the read view
     margin: 0 auto;
   }
 
@@ -43,7 +71,7 @@
     flex: 1;
     font-size: calc(13px * var(--text-scale));
     font-family: var(--font-editor);
-    line-height: 1.7;
+    line-height: var(--lh-prose);
     background: none;
     border: none;
     border-top: 0.5px solid var(--color-border-tertiary);
@@ -53,8 +81,8 @@
     resize: none;
     min-height: 0;
     width: 100%;
-
     @include mixins.custom-scrollbar;
+    @include mixins.scroll-gutter;
 
     &::placeholder {
       color: var(--color-text-tertiary);
@@ -73,50 +101,6 @@
   flex-shrink: 0;
   border-bottom: 0.5px solid var(--color-border-tertiary);
   margin-bottom: 0;
-
-  &__btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 26px;
-    height: 26px;
-    padding: 0;
-    border: 0.5px solid transparent;
-    border-radius: var(--border-radius-sm);
-    background: none;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: border-color var(--transition-fast), color var(--transition-fast),
-      background var(--transition-fast);
-
-    &:hover {
-      color: var(--color-text-primary);
-      border-color: var(--color-border-secondary);
-      background: var(--color-background-hover);
-    }
-
-    &[aria-disabled='true'],
-    &[aria-disabled='true']:hover {
-      opacity: 0.35;
-      cursor: default;
-      color: var(--color-text-secondary);
-      border-color: transparent;
-      background: none;
-    }
-
-    // The format is on where the caret is; pressing the button takes it off
-    &--active,
-    &--active:hover {
-      color: var(--color-text-primary);
-      border-color: var(--color-border-primary);
-      background: var(--color-background-active);
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
-    }
-  }
 
   &__sep {
     display: inline-block;
@@ -141,8 +125,8 @@
   &__chip {
     display: flex;
     align-items: center;
-    gap: 5px;
-    font-size: 12px;
+    gap: var(--space-3);
+    font-size: var(--fs-sm);
     font-family: var(--font-mono);
     padding: 2px 8px;
     border-radius: var(--border-radius-sm);
@@ -158,10 +142,7 @@
       color: var(--color-text-primary);
     }
 
-    &:focus-visible {
-      outline: 2px solid var(--color-text-info);
-      outline-offset: 1px;
-    }
+    @include mixins.focus-ring;
   }
 
   &__chevron {
@@ -178,13 +159,10 @@
     position: absolute;
     top: calc(100% + 4px);
     right: 0;
-    z-index: 200;
+    z-index: v.z('dropdown');
     width: 180px;
-    animation: pop-in 0.12s var(--ease-out);
-    background: var(--color-background-primary);
-    border: 0.5px solid var(--color-border-primary);
-    border-radius: var(--border-radius-md);
-    box-shadow: var(--shadow-popover);
+    animation: var(--anim-pop);
+    @include mixins.popover-surface;
     overflow: hidden;
   }
 
@@ -193,7 +171,7 @@
     width: 100%;
     box-sizing: border-box;
     padding: 6px 10px;
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-family: var(--font-mono);
     background: none;
     border: none;
@@ -208,32 +186,27 @@
 
   &__list {
     max-height: 220px;
+    padding: var(--space-2);
     overflow-y: auto;
-
     @include mixins.custom-scrollbar;
   }
 
   &__option {
-    display: block;
-    width: 100%;
-    padding: 5px 10px;
-    font-size: 13px;
-    font-family: var(--font-mono);
-    text-align: left;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--color-text-secondary);
-
-    &:hover,
-    &--active {
-      background: color-mix(in srgb, var(--color-background-secondary) 40%, transparent);
-      color: var(--color-text-primary);
-    }
+    @include mixins.menu-item(var(--font-mono));
 
     &--current {
-      font-weight: 500;
+      font-weight: var(--fw-medium);
       color: var(--color-text-primary);
+      background: var(--color-background-hover);
     }
+
+    // The keyboard's row (the input takes the arrow keys) is lit like the pointer's
+    &:hover:not(:disabled),
+    &--active {
+      @include mixins.menu-item-lit;
+    }
+
+    // Inside the dropdown, which clips: the ring sits within the row
+    @include mixins.focus-ring(-2px);
   }
 }

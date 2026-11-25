@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import type { UpdateStatus } from "../../hooks/useUpdater";
 import { MARKDOWN_COMPONENTS, REMARK_PLUGINS } from "../../lib/markdown";
 import { RELEASES_PAGE, type ReleaseNote } from "../../lib/releaseNotes";
+import Button from "../ui/Button";
 import Modal from "../ui/Modal";
 
 interface UpdateDialogProps {
@@ -15,6 +16,8 @@ interface UpdateDialogProps {
   progress: number;
   error: string | null;
   canInstall: boolean;
+  /** The install was held back because something could not be saved */
+  unsaved: boolean;
   onInstall: () => void;
   onClose: () => void;
 }
@@ -35,6 +38,7 @@ function UpdateDialog({
   progress,
   error,
   canInstall,
+  unsaved,
   onInstall,
   onClose,
 }: UpdateDialogProps) {
@@ -58,14 +62,14 @@ function UpdateDialog({
       onClose={installing ? noop : onClose}
       className="update-dialog"
     >
-      <header className="update-dialog__header">
-        <h2 className="update-dialog__title">Update available</h2>
+      <header className="modal__header">
+        <h2 className="modal__title">Update available</h2>
         <p className="update-dialog__sub">
           You have v{current} · latest is v{update.version}
         </p>
       </header>
 
-      <div className="update-dialog__body">
+      <div className="modal__body update-dialog__body" data-scrollbar>
         {sections.map((note) => (
           <section key={note.version} className="update-dialog__release">
             <h3 className="update-dialog__version">
@@ -86,7 +90,7 @@ function UpdateDialog({
         ))}
       </div>
 
-      <footer className="update-dialog__footer">
+      <footer className="modal__footer">
         {installing && (
           <progress
             className="update-dialog__progress"
@@ -95,30 +99,32 @@ function UpdateDialog({
             aria-label="Download progress"
           />
         )}
+        {unsaved && (
+          <p className="update-dialog__error" role="alert">
+            Some of your changes could not be saved yet, so the update was not
+            installed. Use Retry in the message at the bottom, then install
+            again.
+          </p>
+        )}
         {error && (
           <p className="update-dialog__error" role="alert">
             {error}{" "}
-            <button
-              type="button"
+            <Button
+              variant="link"
               className="update-dialog__link"
               onClick={() => openUrl(RELEASES_PAGE).catch(console.error)}
             >
               Download it from GitHub
-            </button>
+            </Button>
           </p>
         )}
-        <div className="update-dialog__actions">
-          <button
-            type="button"
-            className="update-dialog__btn"
-            onClick={onClose}
-            disabled={installing}
-          >
+        <div className="modal__actions">
+          {/* The dialog opens with the focus here: a stray Enter must not install and restart */}
+          <Button data-autofocus onClick={onClose} disabled={installing}>
             Later
-          </button>
-          <button
-            type="button"
-            className="update-dialog__btn update-dialog__btn--primary"
+          </Button>
+          <Button
+            variant="primary"
             onClick={onInstall}
             disabled={installing || !canInstall}
             title={
@@ -126,7 +132,7 @@ function UpdateDialog({
             }
           >
             {installing ? "Installing…" : "Install and restart"}
-          </button>
+          </Button>
         </div>
       </footer>
     </Modal>

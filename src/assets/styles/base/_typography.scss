@@ -1,5 +1,22 @@
 // src/assets/styles/base/_typography.scss
-@use 'variables' as v;
+
+// Switzer in four weights (400, 500, 600, 700), all preloaded in index.html. A new weight is a file in public/fonts,
+// an @font-face here and a preload there; the --fw-* tokens (see _variables.scss) already name them.
+@font-face {
+  font-family: 'Switzer';
+  src: url('/fonts/Switzer-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Switzer';
+  src: url('/fonts/Switzer-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
 
 @font-face {
   font-family: 'Switzer';
@@ -19,20 +36,20 @@
 
 body {
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: var(--fs-xl);
+  line-height: var(--lh-base);
   color: var(--color-text-primary);
 }
 
 h1, h2, h3 {
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   color: var(--color-text-primary);
 }
 
 p {
-  font-size: 14px;
+  font-size: var(--fs-lg);
   color: var(--color-text-secondary);
-  line-height: 1.6;
+  line-height: var(--lh-relaxed);
 }
 
 select {
@@ -40,8 +57,8 @@ select {
 }
 
 option {
-  font-size: 14px;
-  font-weight: 400;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-regular);
   color: var(--color-text-primary);
   background: var(--color-background-primary);
   text-transform: none;

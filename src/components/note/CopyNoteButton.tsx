@@ -1,5 +1,6 @@
 // src/components/note/CopyNoteButton.tsx
 import { useClipboard } from "../../hooks/useClipboard";
+import Button from "../ui/Button";
 import { CheckIcon, CopyIcon } from "../ui/Icon";
 import Tooltip from "../ui/Tooltip";
 
@@ -14,15 +15,16 @@ function CopyNoteButton({ text }: CopyNoteButtonProps) {
 
   return (
     <Tooltip label={copied ? "Copied" : "Copy note"}>
-      <button
-        type="button"
-        className={`item-header__btn item-header__btn--icon${copied ? " item-header__btn--copied" : ""}`}
+      <Button
+        size="sm"
+        iconOnly
+        className={copied ? "item-header__copied" : undefined}
         onClick={() => copy(text)}
         disabled={!text}
         aria-label="Copy note"
       >
         {copied ? <CheckIcon /> : <CopyIcon />}
-      </button>
+      </Button>
     </Tooltip>
   );
 }

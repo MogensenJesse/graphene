@@ -1,0 +1,1 @@
+---id: nx4---Only a CR pair counts as a line ending.

@@ -1,9 +1,19 @@
 // src/components/tasks/TasksPane.tsx
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useClipboard } from "../../hooks/useClipboard";
 import { useEscape } from "../../hooks/useEscape";
+import { useStable } from "../../hooks/useLatest";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import type { TasksApi } from "../../hooks/useTasks";
+import { placeNear } from "../../lib/order";
+import { perfRender } from "../../lib/perf";
 import { longDay, nextDay } from "../../lib/taskDates";
 import {
   compareTasks,
@@ -15,19 +25,31 @@ import {
   type Task,
 } from "../../lib/taskStore";
 import { isTextField } from "../../lib/textMenu";
+import {
+  deleteListQuestion,
+  deleteListWithUndo,
+  listEntries,
+} from "../sidebar/listMenu";
+import ConfirmBar from "../ui/ConfirmBar";
 import type { MenuEntry } from "../ui/ContextMenu";
 import { useContextMenu } from "../ui/ContextMenuProvider";
+import { pickDate } from "../ui/DatePick";
 import {
   CalendarIcon,
+  ChevronDownIcon,
   ChevronRightIcon,
+  ChevronUpIcon,
   CircleCheckIcon,
   CopyIcon,
   FolderInputIcon,
   StarIcon,
   SunIcon,
+  TextCursorInputIcon,
   TrashIcon,
 } from "../ui/Icon";
 import InlineInput from "../ui/InlineInput";
+import MoreButton from "../ui/MoreButton";
+import Tooltip from "../ui/Tooltip";
 import AddTask from "./AddTask";
 import TaskDetail from "./TaskDetail";
 import TaskRow from "./TaskRow";
@@ -40,6 +62,10 @@ interface TasksPaneProps {
   onOpenTask: (id: string | null) => void;
   /** A task was deleted here: the app offers the Undo. */
   onTaskDeleted: (listId: string, task: Task) => void;
+  /** Another view: the one a deleted list gives way to (what its heading's menu does, as the sidebar's row does). */
+  onSelectView: (view: string) => void;
+  /** The list was deleted from the heading's menu: the app offers the Undo (`what` is the word before the name, "the list "). */
+  onListDeleted: (what: string, title: string, undo: () => void) => void;
   /** Goes up when the "Add a task" box should take the focus. */
   addSignal: number;
   /** Starts a drag of a task row (see useDragToFolder). */
@@ -75,12 +101,17 @@ function TasksPane({
   openTaskId,
   onOpenTask,
   onTaskDeleted,
+  onSelectView,
+  onListDeleted,
   addSignal,
   onTaskPointerDown,
 }: TasksPaneProps) {
+  perfRender("TasksPane");
   const { index, tasks, today } = api;
   const [showDone, setShowDone] = useState(false);
   const [renaming, setRenaming] = useState(false);
+  // The list whose delete waits for a yes (the question shows under the heading); Escape drops it
+  const [deleting, setDeleting] = useState<string | null>(null);
   // The task was opened from the keyboard: the pane takes the focus (a mouse click leaves it where it was)
   const [focusDetail, setFocusDetail] = useState(false);
   const { open: openMenu } = useContextMenu();
@@ -102,22 +133,43 @@ function TasksPane({
       index.lists.find((l) => l.id === DEFAULT_LIST_ID) ??
       null);
   const listId = list?.id ?? DEFAULT_LIST_ID;
-  const lists = orderedLists(index);
+  const lists = useMemo(() => orderedLists(index), [index]);
 
-  const placed: Placed[] = smart
-    ? smartList(smart, lists, tasks, today)
-    : (tasks[listId] ?? [])
-        .slice()
-        .sort(compareTasks)
-        .map((task) => ({ listId, task }));
-  const open = placed.filter((p) => !p.task.done);
-  const done = placed
-    .filter((p) => p.task.done)
-    .sort((a, b) => (b.task.doneAt ?? "").localeCompare(a.task.doneAt ?? ""));
+  // Sorted and split once per change of the tasks, not on every render of the pane (opening a task, a hover, a typed letter in
+  // the Add box); `open` keeping its identity is also what lets the leaving-rows effect below stand still
+  const { placed, open, done } = useMemo(() => {
+    const placed: Placed[] = smart
+      ? smartList(smart, lists, tasks, today)
+      : (tasks[listId] ?? [])
+          .slice()
+          .sort(compareTasks)
+          .map((task) => ({ listId, task }));
+    return {
+      placed,
+      open: placed.filter((p) => !p.task.done),
+      done: placed
+        .filter((p) => p.task.done)
+        .sort((a, b) =>
+          (b.task.doneAt ?? "").localeCompare(a.task.doneAt ?? ""),
+        ),
+    };
+  }, [smart, lists, tasks, today, listId]);
   const doneShown = showDone || done.some((p) => p.task.id === openTaskId);
   const listName = (id: string) => lists.find((l) => l.id === id)?.name ?? "";
 
   const title = smart ? SMART_TITLE[smart] : (list?.name ?? "Tasks");
+
+  // The "…" of the heading: the entries of the list's row in the sidebar (see listMenu)
+  const listMenu = useMemo(
+    () =>
+      list &&
+      listEntries(api, list, {
+        rename: () => setRenaming(true),
+        remove: () => setDeleting(list.id),
+      }),
+    [api, list],
+  );
+  useEscape(() => setDeleting(null), { active: deleting !== null });
 
   const add = (fields: { title: string; due?: string }) => {
     const id = api.addTask(listId, {
@@ -154,7 +206,7 @@ function TasksPane({
   useLayoutEffect(() => {
     const prev = prevRows.current;
     prevRows.current = { view, rows: open };
-    if (still || prev.view !== view) return;
+    if (still || prev.view !== view || prev.rows === open) return;
     const kept = new Set(open.map((p) => p.task.id));
     const gone: Leaving[] = [];
     prev.rows.forEach((p, at) => {
@@ -177,20 +229,56 @@ function TasksPane({
     if (removed) onTaskDeleted(p.listId, removed);
   };
 
-  const openTask = (id: string, byKeyboard: boolean) => {
+  const openTask = useStable((id: string, byKeyboard: boolean) => {
     setFocusDetail(byKeyboard);
     onOpenTask(id);
+  });
+
+  // The details pane takes the focus with the whole title selected, ready to type over (the pane may be open already, or opening now:
+  // the frame after this event it is there)
+  const renameTask = (id: string) => {
+    openTask(id, true);
+    requestAnimationFrame(() => {
+      const title = document.querySelector<HTMLTextAreaElement>(
+        ".task-detail__title",
+      );
+      title?.focus();
+      title?.select();
+    });
   };
 
-  // A task's right-click menu: what the star, the checkbox and the details pane do, within reach of the row
-  const taskEntries = (p: Placed): MenuEntry[] => {
+  // A task's right-click menu: what the star, the checkbox and the details pane do, within reach of the row. `row` is the row it
+  // was opened on (the date picker opens beside it)
+  const taskEntries = (p: Placed, row: Element | null = null): MenuEntry[] => {
     const { task, listId: from } = p;
     const inMyDay = task.myDay === today;
+    // Only the open tasks of a list's own view have an order to change (as for a drag)
+    const at =
+      smart || task.done ? -1 : open.findIndex((o) => o.task.id === task.id);
+    const shift = (delta: 1 | -1) => {
+      const near = open[at + delta];
+      if (near)
+        api.rankTasks(
+          from,
+          placeNear(
+            open.map((o) => o.task),
+            task.id,
+            near.task.id,
+            delta > 0,
+          ),
+        );
+    };
     return [
       {
         label: "Open details",
         icon: <ChevronRightIcon size={14} />,
-        onSelect: () => openTask(task.id, false),
+        // The pane takes the focus, as it does for the keyboard
+        onSelect: () => openTask(task.id, true),
+      },
+      {
+        label: "Rename",
+        icon: <TextCursorInputIcon size={14} />,
+        onSelect: () => renameTask(task.id),
       },
       "separator",
       {
@@ -199,7 +287,7 @@ function TasksPane({
         onSelect: () => api.setDone(from, task.id, !task.done),
       },
       {
-        label: task.important ? "Not important" : "Mark as important",
+        label: task.important ? "Mark as not important" : "Mark as important",
         icon: <StarIcon size={14} filled={!!task.important} />,
         onSelect: () =>
           api.updateTask(from, task.id, { important: !task.important }),
@@ -225,6 +313,13 @@ function TasksPane({
             onSelect: () =>
               api.updateTask(from, task.id, { due: nextDay(today) }),
           },
+          {
+            label: "Pick a date…",
+            onSelect: () =>
+              pickDate(row, task.due ?? today, (due) =>
+                api.updateTask(from, task.id, { due }),
+              ),
+          },
           "separator",
           {
             label: "Remove due date",
@@ -233,6 +328,22 @@ function TasksPane({
           },
         ],
       },
+      ...(at === -1
+        ? []
+        : [
+            {
+              label: "Move up",
+              icon: <ChevronUpIcon size={14} />,
+              disabled: at === 0,
+              onSelect: () => shift(-1),
+            },
+            {
+              label: "Move down",
+              icon: <ChevronDownIcon size={14} />,
+              disabled: at === open.length - 1,
+              onSelect: () => shift(1),
+            },
+          ]),
       {
         label: "Move to list",
         icon: <FolderInputIcon size={14} />,
@@ -264,6 +375,12 @@ function TasksPane({
     when: () => !isTextField(document.activeElement),
   });
 
+  // The menu is built when the row is right-clicked, from the newest state, so the rows keep one function
+  const openRowMenu = useStable(
+    (e: React.MouseEvent, task: Task, from: string) =>
+      openMenu(e, taskEntries({ listId: from, task }, e.currentTarget)),
+  );
+
   // Only the open tasks of a list's own view can be put in another place
   const row = (p: Placed, draggable: boolean, motion?: "enter" | "leaving") => (
     <TaskRow
@@ -274,14 +391,12 @@ function TasksPane({
       today={today}
       selected={openTaskId === p.task.id}
       showMyDay={view !== "my-day"}
-      api={api}
+      draggable={draggable && !smart}
+      setDone={api.setDone}
+      updateTask={api.updateTask}
       onOpen={openTask}
-      onContextMenu={(e) => openMenu(e, taskEntries(p))}
-      onHeadPointerDown={
-        onTaskPointerDown && draggable && !smart
-          ? (e) => onTaskPointerDown(e, p.task)
-          : undefined
-      }
+      onContextMenu={openRowMenu}
+      onHeadPointerDown={onTaskPointerDown}
       motion={motion}
     />
   );
@@ -318,14 +433,15 @@ function TasksPane({
             />
           ) : list ? (
             <h2 className="tasks-pane__title">
-              <button
-                type="button"
-                className="tasks-pane__title-btn"
-                title="Rename list"
-                onClick={() => setRenaming(true)}
-              >
-                {title}
-              </button>
+              <Tooltip label="Rename list">
+                <button
+                  type="button"
+                  className="tasks-pane__title-btn"
+                  onClick={() => setRenaming(true)}
+                >
+                  {title}
+                </button>
+              </Tooltip>
             </h2>
           ) : (
             <h2 className="tasks-pane__title">{title}</h2>
@@ -335,10 +451,31 @@ function TasksPane({
             {open.length} open
           </span>
           <div className="item-header__spacer" data-tauri-drag-region />
+          {listMenu && (
+            <div className="item-header__actions">
+              <MoreButton entries={listMenu} />
+            </div>
+          )}
         </div>
 
-        <div className="tasks-pane__body">
+        <div className="tasks-pane__body" data-scrollbar>
           <div className="tasks-pane__column">
+            {list && deleting === list.id && (
+              <ConfirmBar
+                question={deleteListQuestion(list, tasks[list.id] ?? [])}
+                onConfirm={() => {
+                  setDeleting(null);
+                  deleteListWithUndo(
+                    api,
+                    list,
+                    view,
+                    onSelectView,
+                    onListDeleted,
+                  );
+                }}
+                onCancel={() => setDeleting(null)}
+              />
+            )}
             <AddTask
               placeholder="Add a task"
               today={today}
@@ -404,4 +541,4 @@ function TasksPane({
   );
 }
 
-export default TasksPane;
+export default memo(TasksPane);

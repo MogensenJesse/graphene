@@ -6,6 +6,7 @@ import AboutPanel from "../settings/AboutPanel";
 import AppearancePanel from "../settings/AppearancePanel";
 import AssistantsPanel from "../settings/AssistantsPanel";
 import VaultsPanel from "../settings/VaultsPanel";
+import Button from "../ui/Button";
 import Modal from "../ui/Modal";
 import Segmented from "../ui/Segmented";
 
@@ -44,18 +45,17 @@ function SettingsDialog({
 
   return (
     <Modal label="Settings" onClose={onClose} className="settings">
-      <header className="settings__header">
-        <h2 className="settings__title">Settings</h2>
+      <header className="modal__header settings__header">
+        <h2 className="modal__title">Settings</h2>
         <Segmented
           label="Settings section"
-          className="settings__tabs"
           value={tab}
           options={TABS}
           onChange={setTab}
         />
       </header>
 
-      <div className="settings__body">
+      <div className="modal__body settings__body" data-scrollbar>
         {tab === "appearance" && <AppearancePanel />}
         {tab === "vaults" && (
           <VaultsPanel
@@ -70,10 +70,10 @@ function SettingsDialog({
         )}
       </div>
 
-      <footer className="settings__footer">
-        <button type="button" className="settings__btn" onClick={onClose}>
-          Close
-        </button>
+      <footer className="modal__footer">
+        <div className="modal__actions">
+          <Button onClick={onClose}>Close</Button>
+        </div>
       </footer>
     </Modal>
   );

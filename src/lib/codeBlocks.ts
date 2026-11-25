@@ -14,6 +14,10 @@ const CLOSING_FENCE = /^ {0,3}(`{3,}|~{3,})\s*$/;
 /**
  * The fenced block that contains `caret` (opening fence line through closing fence line), or null.
  * `text` must use "\n" line endings, like a textarea value.
+ * It runs on every keystroke of the editor, so it never splits the text into lines: only a line that starts with a
+ * fence can open or close a block, and the scan jumps from one such line to the next. It stops at the caret's line,
+ * because nothing after it can change the answer. Whether the caret is inside a block still depends on every fence
+ * before it (a bare fence closes a block and opens one), so those are all read.
  */
 export function findFenceAt(text: string, caret: number): FencedBlock | null {
   let open: {
@@ -22,10 +26,17 @@ export function findFenceAt(text: string, caret: number): FencedBlock | null {
     start: number;
     block: FencedBlock;
   } | null = null;
-  let offset = 0;
+  const run = /`{3,}|~{3,}/g; // a run of fence characters, from wherever the last one left off
 
-  for (const line of text.split("\n")) {
-    const lineEnd = offset + line.length;
+  for (let hit = run.exec(text); hit; hit = run.exec(text)) {
+    // A fence line starts with the run, after at most 3 spaces
+    let offset = hit.index;
+    for (let k = 0; k < 3 && text[offset - 1] === " "; k++) offset--;
+    if (offset > 0 && text[offset - 1] !== "\n") continue;
+    if (offset > caret) break; // the caret's line is behind us
+    const eol = text.indexOf("\n", hit.index);
+    const lineEnd = eol === -1 ? text.length : eol;
+    const line = text.slice(offset, lineEnd);
     if (!open) {
       const m = OPENING_FENCE.exec(line);
       if (m) {
@@ -44,7 +55,7 @@ export function findFenceAt(text: string, caret: number): FencedBlock | null {
         open = null;
       }
     }
-    offset = lineEnd + 1;
+    run.lastIndex = lineEnd + 1;
   }
 
   // An unclosed fence runs to the end of the text

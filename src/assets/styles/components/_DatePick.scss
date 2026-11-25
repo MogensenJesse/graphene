@@ -1,0 +1,24 @@
+// src/assets/styles/components/_DatePick.scss
+
+// The system's date picker opens next to its button: the date input stays invisible under it
+.date-pick {
+  position: relative;
+  display: inline-flex;
+
+  &__input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+
+    // Made by pickDate for a menu entry: a speck at the row it was chosen on, in the window's own coordinates
+    &--floating {
+      position: fixed;
+      inset: auto;
+      width: 1px;
+      height: 1px;
+    }
+  }
+}

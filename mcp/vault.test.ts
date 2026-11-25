@@ -1,16 +1,23 @@
 // mcp/vault.test.ts
 import assert from "node:assert/strict";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
+  readFileSync,
   rmSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
+import { resolve } from "node:path";
 import { test } from "vitest";
-import { joinPath } from "../src/lib/paths";
-import { vaultSource } from "./vault";
+import { serializeItem } from "../src/lib/fileFormat";
+import { joinPath, relativePath } from "../src/lib/paths";
+import { itemKind } from "../src/lib/utils";
+import type { Item } from "../src/types";
+import { scanVault, vaultSource, writeNote } from "./vault";
 
 // What a client passes when it never filled in the setting
 const unfilled = (key: string) => `\${user_config.${key}}`;
@@ -162,4 +169,135 @@ test("no config, an unreadable one or one with no vaults at all says to open Gra
   } finally {
     rmSync(appData, { recursive: true, force: true });
   }
+});
+
+const note = (id: string, body: string): Item => ({
+  id,
+  title: "Plan",
+  folderId: null,
+  body,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+});
+
+/** A scratch vault folder, removed afterwards. */
+async function withVault(run: (vault: string) => Promise<void>) {
+  const vault = mkdtempSync(joinPath(tmpdir(), "graphene-vault-"));
+  try {
+    await run(joinPath(vault));
+  } finally {
+    rmSync(vault, { recursive: true, force: true });
+  }
+}
+
+test("writeNote replaces a note whole and leaves no temp file", async () => {
+  await withVault(async (vault) => {
+    const path = joinPath(vault, "a", "plan-n1.md");
+    await writeNote(vault, path, note("n1", "first"));
+    await writeNote(vault, path, note("n1", "second"));
+    assert.deepEqual(readdirSync(joinPath(vault, "a")), ["plan-n1.md"]);
+    assert.match(readFileSync(path, "utf8"), /second/);
+  });
+});
+
+test("a write that fails rejects and leaves no temp file behind", async () => {
+  await withVault(async (vault) => {
+    const path = joinPath(vault, "plan-n1.md");
+    mkdirSync(path); // a folder where the note should go: the rename cannot succeed
+    await assert.rejects(writeNote(vault, path, note("n1", "x")));
+    assert.deepEqual(readdirSync(vault), ["plan-n1.md"]);
+  });
+});
+
+test("the scan never reports a leftover temp file or a dot file as a note", async () => {
+  await withVault(async (vault) => {
+    await writeNote(vault, joinPath(vault, "plan-n1.md"), note("n1", "real"));
+    const ghost = serializeItem(note("n2", "half written"));
+    writeFileSync(joinPath(vault, ".plan-n2.md.tmp"), ghost); // a crash between the write and the rename
+    writeFileSync(joinPath(vault, ".plan-n3.md"), ghost);
+    const { notes } = await scanVault(vault);
+    assert.deepEqual(
+      notes.map((n) => n.item.id),
+      ["n1"],
+    );
+  });
+});
+
+test("the scan of the fixture vault finds what the shared fixtures expect", async () => {
+  // The same files and expected values as src/lib/fileFormat.test.ts and the Rust scan (src-tauri/tests/vault_scan.rs)
+  const fixtures = joinPath(resolve(import.meta.dirname, "../fixtures"));
+  const expected = JSON.parse(
+    readFileSync(`${fixtures}/vault.expected.json`, "utf8"),
+  );
+  const { notes, folders } = await scanVault(`${fixtures}/vault`);
+  // This scan lists in readdir order and Rust in sorted order, so what must match is the set
+  const byPath = (a: { path: string }, b: { path: string }) =>
+    a.path < b.path ? -1 : 1;
+  const got = notes
+    .map(({ item, path }) => ({
+      item,
+      path: relativePath(`${fixtures}/vault`, path),
+    }))
+    .sort(byPath);
+  const want = [...expected.notes].sort(byPath);
+  assert.deepEqual(
+    got.map((n) => n.path),
+    want.map((n) => n.path),
+  );
+  got.forEach(({ item }, i) => {
+    const w = want[i];
+    assert.deepEqual(
+      { ...item, createdAt: "", updatedAt: "", kind: itemKind(item) },
+      {
+        id: w.id,
+        title: w.title,
+        folderId: w.folderId,
+        body: w.body,
+        ...(w.order === undefined ? {} : { order: w.order }),
+        createdAt: "",
+        updatedAt: "",
+        kind: w.kind,
+      },
+      w.path,
+    );
+    // A missing date is the time of the parse here and null in the Rust scan
+    for (const key of ["createdAt", "updatedAt"] as const)
+      if (w[key] !== null) assert.equal(item[key], w[key], w.path);
+  });
+  assert.deepEqual(
+    [...folders].sort(),
+    expected.folders.map((f: { id: string }) => f.id).sort(),
+  );
+});
+
+test("a note is not written into a vault folder that is not there, and the folder is not made again", async () => {
+  await withVault(async (vault) => {
+    const gone = joinPath(vault, "renamed-away");
+    const path = joinPath(gone, "plan-n1.md");
+    await assert.rejects(
+      writeNote(gone, path, note("n1", "x")),
+      /the vault folder is not there/,
+    );
+    // Not in a subfolder either: nothing below the missing vault is made
+    await assert.rejects(
+      writeNote(gone, joinPath(gone, "a", "b", "plan-n1.md"), note("n1", "x")),
+      /the vault folder is not there/,
+    );
+    assert.equal(existsSync(gone), false);
+    // A file where the vault folder should be is no folder either
+    const file = joinPath(vault, "file.txt");
+    writeFileSync(file, "x");
+    await assert.rejects(
+      writeNote(file, joinPath(file, "plan-n1.md"), note("n1", "x")),
+      /the vault folder is not there/,
+    );
+  });
+});
+
+test("the folders below a vault that is there are still made", async () => {
+  await withVault(async (vault) => {
+    const path = joinPath(vault, "a", "b", "plan-n1.md");
+    await writeNote(vault, path, note("n1", "deep"));
+    assert.match(readFileSync(path, "utf8"), /deep/);
+  });
 });

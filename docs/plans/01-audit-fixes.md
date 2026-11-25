@@ -1,6 +1,109 @@
 # Audit fixes: UI, UX and performance
 
-Status: plan, nothing implemented yet. Written 2026-11-21 from audits run on 2026-11-20 against v1.6.0.
+Status: written 2026-11-21 from audits run on 2026-11-20 against v1.6.0. Wave 1 (WP0 tooling, WP1, WP2), wave 2 (WP3, WP4, the
+first half of WP5), wave 3 (WP6, WP7) and wave 4 (the small and medium items that were left) are implemented and not committed: `tsc`, `npm test` (339), `cargo test` (9 + 13) and Biome (`src`, `mcp`, `scripts`) are green. The
+wave-2 build was driven in a release exe over CDP with no failing check ([00-wave-2-checks.md](00-wave-2-checks.md)); wave 3 was driven the
+same way by hand against a synthetic 1k vault (below), and startup was measured again at 1k and 20k; wave 4 was driven the same way, and 20k startup
+was measured once more.
+
+Wave 2 (2026-11-22 to 24):
+- WP3 shared primitives: `popover-surface`, `menu-item`, `row-surface`, `inline-field`, `ui/Button`, `IconButton`, `Checkbox`, `ConfirmBar`,
+  the modal header and footer; the invisible dropdown hover is fixed (the hover wash was about 1 RGB level in dark). Left for later: the
+  window controls, `SidebarToggle`, the sort button, `MarkdownToolbar` buttons, `.due-chip` and a few task-detail buttons still have their own rules (wave 4 moved them onto the shared buttons).
+- WP4: `Modal` traps Tab, takes the initial focus, makes `.app` inert and gives the focus back; F2, shortcut hints in menus, task titles in checkbox
+  labels, Move up/down in menus, Escape in a task field drops the typed text (behaviour change: it used to commit). Left: the sidebar tree
+  is still not a proper tree (arrow keys skip folders, no expand/collapse keys; done in wave 4).
+- WP5, done: Rust `scan_vault` / `read_notes` (metadata in one call, bodies in batches, guarded by `fixtures/vault` in Rust, mcp and fileFormat tests),
+  the TypeScript load through them with lazy bodies (an unloaded note is never written: `writeItem` refuses it), the "Indexing..." hint, the
+  trash read on demand, the focus rescan reading only changed files, `boot_config` (one call instead of three), the window created hidden and
+  shown after the first scan (3 s Rust safety net), lazy chunks (entry 740 to 376 kB), the release profile (LTO, `opt-level = "s"`, abort, strip;
+  exe 15.2 to 5.8 MB). Measured in [00-after-wave-2.md](00-after-wave-2.md): first paint 3.5 to 0.56 s at 1k, 8.1 to 0.85 s at 5k, 27.7 to 2.2 s at
+  20k, 71 to 7.7 s at 50k.
+- WP5, still open: the first render of every row is the remaining cost at 50k (5.6 s, 480k DOM nodes), each body batch re-renders the whole
+  sidebar (8 long frames at 20k, 10 at 50k; WP6 `memo`), the heap is higher after loading from 5k up (637 MB at 50k, cause not investigated),
+  the window now appears at 0.6 s at 1k (the old build showed an empty one at 60 ms), and the app's own writes are re-read once by the next
+  rescan (stamps are not refreshed). A Rust listing of the trash would replace the 16-at-a-time reads (that and the own-writes re-read were done in wave 4).
+- Found while checking, for WP7: while `VaultUnavailable` shows, the sidebar still offers New note and New folder, and a save would
+  recreate the missing vault folder (`mkdir` recursive); guard those paths. Ctrl+Z straight after Del does nothing because the new draft's
+  textarea takes the focus (the toast's Undo button works). The first focus rescan makes about 22 `exists` and 18 `read_text_file` calls for the
+  task store (P11).
+
+Wave 3 (2026-11-24):
+- WP6, done: the sidebar, the folder and note rows, the note view and editor and the task rows are `memo`ised with `useStable` handlers (events
+  only); the drag state lives in `lib/dragStore.ts`, so a drag frame renders only the folder under the pointer; the word count is deferred; a
+  focus rescan runs at most every 5 s (`rescanGate`); a task-store write is 3 file calls instead of 5; `perfRender` / `perfRenders()` count
+  renders (with `graphene.perf` on). Read in a release exe at 1k: selecting a note renders MainApp 1 to 2, Sidebar 1 to 2, each of the 50
+  folder rows once, the note rows 1 to 2 and NoteDetail 2; a key in the editor renders NoteEditor twice and nothing else; the first key after a pause (the
+  unsaved flag flips) and each autosave also render MainApp, Sidebar, the folder rows and one row once; a drag frame renders one folder row.
+  Startup again, median of 3 launches, against wave 2: 1k window visible 574 ms (580), first paint 582 (557), `bodies-read` 834 (819); 20k window
+  visible 2199 (2146), first paint 2054 (2185), `bodies-read` 5307 (5520). Long frames at 20k: 1 of 965 ms (was 8 of 1756 ms, and none between first paint
+  and `bodies-read`), JS heap after loading 298 MB (was 526), renderer working set 906 MB (was 1172). 5k and 50k were not measured again.
+- WP7, done: a write never makes a vault's own folder (`lib/vaultRoot.ts`; the message says "the vault folder is not there"), the fallback notice
+  when the open vault is missing at start, the conflict bar (Keep mine / Load theirs; leaving with the question open keeps what was typed as a
+  "(conflict copy)" note), the Trash (Delete forever, "Restored to ...", Escape goes back), Undo for deleting a folder, a list and a group, Move to
+  for a folder (pictures are relinked by depth), Copy path, Move up / Move down, and the task menu (Rename, Pick a date...).
+- Checked by hand in the built app (1k synthetic vault, over CDP): boot, perf counters, Move to (20 notes, every `folderId` and the picture link
+  rewritten from `../../` to `../../../`), folder delete and Undo (19 notes, files byte for byte the same, `.folder-order.json` the same), list delete
+  and Undo, the conflict bar in all three ways (the outside text stays on disk until a choice), a vault folder renamed while the app runs (nothing is
+  recreated, saves work again when it is back), Trash (restore message, Delete forever asks, Escape order), Copy path, Pick a date... (the calendar
+  opens beside the row), scroll position kept across the tabs, reveal from Search.
+- Found and fixed in those checks: the first failed save after a vault vanished said only "Could not save" (the look at the folder came one write
+  later; `writeItem` now looks at once). Rename and Open details in a task's menu never left the cursor in the title, for two reasons: the menu handed the
+  focus back to the row after the choice (`ContextMenu` now leaves it where the choice put it) and the closed details pane was still `visibility: hidden`
+  in the frame it opened in (`_TasksPane.scss`: opening is instant, closing keeps its delay). `.app__sidebar` in `_app.scss` has the same transition.
+- Still open: conflict detection runs only when the window gets focus; the MCP server (`mcp/vault.ts`, `mcp/taskFsNode.ts`) can still make a missing
+  vault folder; a vault that vanishes while it is open does not turn into `VaultUnavailable` (saves fail with the message above); "0 notes / Nothing
+  here yet" still shows beside `VaultUnavailable`; the tree is not a proper `role=tree`; Delete forever on one note leaves its pictures until Empty trash;
+  Ctrl+Z straight after Del does nothing (the draft takes the focus); every folder row renders once per select, save or unsaved flip (50 at 1k, not
+  counted at 20k); deleting a folder of about 100 notes takes a couple of seconds (19 notes: 0.43 s); the list's file is still on disk while its Undo bar is up;
+  choosing a date in the calendar was not driven (it is the browser's own popup), and drag by pointer onto the Tasks tab, `Move to` for a folder with
+  unsaved edits and the 5k and 50k vaults were not tried. Virtualising the tree (WP8) was left out on purpose. (Wave 4 below closed most of this list:
+the conflict poll, the MCP `mkdir`, a vault that vanishes while open, "0 notes", the tree role, Delete forever's pictures and Ctrl+Z after Del.)
+
+Wave 4 (2026-11-25), the small and medium items that were left:
+- Buttons (WP3 leftovers): the window controls, `SidebarToggle`, the sort button, the Markdown toolbar, `.due-chip` and the task-detail and Add a task
+  buttons are `IconButton` / `Button` (variants `tool` and `danger`, `aria-disabled`), so they press and focus alike; `.app__win-btn` is gone.
+- The sidebar tree (WP4 leftover, X15): `role="tree"` with the arrow keys, Right / Left and Home / End (`lib/treeNav.ts`); the menu key opens the
+  highlighted folder's menu; a folder's "+" offers a new note, new code or subfolder; note rows have a hover "..." with the row's menu; the Tasks
+  list heading has a "..." menu (`listMenu`); Search, New and Settings stay beside the toggle while the sidebar is hidden. The first version put the
+  button in every row: at 20k that was 292k DOM nodes, window visible 2678 ms and first paint 2749 ms (against 192k, 2199 and 2054), so `ItemRow`
+  mounts it on the row's first `pointerenter` and a pseudo-element keeps its width. Measured again, median of 3 at 20k: 192,261 nodes, visible 2112
+  ms, first paint 2033, `bodies-read` 4963, JS heap 305 MB, so the cost is gone (1k: 9,500 nodes at rest, 14,855 with the button in every row).
+- Vault safety (WP7 leftovers): a vault that vanishes while it is open is noticed by the rescan (`lib/vaultGone.ts`): with nothing unsaved the app shows
+  `VaultUnavailable` and loads the vault by itself once the folder is back, with unsaved text `VaultMissingBar` goes over the working app, keeps the
+  editor and retries every 3 s; the MCP server refuses to make a missing vault folder (`requireVault`); the sidebar no longer says "0 notes"; the open
+  note's file is looked at every 3 s (`lib/noteStamp.ts`, capability `fs:allow-stat`), so the conflict bar no longer waits for a focus; the app's own
+  writes restamp the file, so the next rescan reads nothing of ours; the trash is listed by Rust `scan_trash` (no texts, read on restore); Delete forever
+  removes the pictures only that note used (`ownImagesIn`).
+- Save paths (WP1 leftovers): closing, the updater and a vault switch, add or remove flush first and are held back once when a note or task could not be
+  saved (`lib/leaveGate.ts`); a failed task write keeps the window open once; the update does not install over unsaved text.
+- Images: pictures load when they are within 600 px of the view and come from an LRU cache (64 pictures, 64 MB); a pasted or dropped PNG, JPEG or WebP
+  over 2000 px is scaled down (a 4000 x 3000 PNG of 5.4 MB became 843 KB).
+- Small: Ctrl+Z straight after Del works (an untouched draft's textarea is `data-pristine`); the search palette's lower-cased copies of the notes are
+  dropped 30 s after it closes (they were kept for the whole session).
+- Checked by hand in the built app (1k synthetic vault over CDP, 20k for startup): the tree keys, the folder "+", the row "..." (both themes), the header
+  actions with the sidebar hidden, the list heading menu, Ctrl+Z after Del, the 3 s outside-edit poll, picture loading, Delete forever (only the
+  app-named, unused pictures went), the trash list and a restore, paste scaling, a vault renamed away and back with nothing unsaved and with unsaved
+  text (the bar stayed, the text was saved after the folder came back), a vault switch and a window close with a failing save (held back once, let
+  through the second time), and rescans after our own save (one `scan_vault`, no `read_notes`) and after an outside edit (one `read_notes`).
+- Still open: the image cache is keyed by path only (a file replaced under the same name keeps its old picture until a restart; the stat is allowed now
+  but would cost a call per picture), and an animated WebP over 2000 px becomes one frame; the poll cannot see an outside write that keeps the same time
+  and size; `useTasks` of a vault that vanished may read as no tasks while the bar shows; `.app__sidebar` has the same hidden-visibility transition the
+  task details pane had (P14: sidebar width animation); the update dialog's unsaved-text hold was not driven (no update was available); a theme pass
+  by eye over the snapped sizes and tints in both themes is still the user's; 5k and 50k startup were not measured again. Left out on purpose: the first
+  render of every row (480k nodes at 50k), a virtualised tree, a chunked read view (P5) and a Rust search index (WP8).
+
+Left open from wave 1:
+- WP0: the startup baseline is measured, in [00-baseline.md](00-baseline.md) (release build, 1k to 50k notes: 3.5 s to first paint at 1k, 8.1 s at 5k, 27.7 s at 20k, 71 s at 50k; reading the note bodies is 40 to 82% of it); the `wordCount` bench waits for its extraction (WP6).
+- WP1: closed in a follow-up: a failed save at window close keeps the window open once per run, the focus rescan keeps a note whose write
+  failed, a failed trash drops its Undo toast, "Delete group" asks first. Still open: the "Add a step" and "Add a task" boxes commit on
+  Enter only (left on purpose); failed task writes do not keep the window open; the updater install proceeds past a failed note; a vault
+  switch drops the list of unsaved notes (those three were closed in wave 4); `writeQueue` (per note) overlaps the serial `tracked` queue and may be simplified.
+- WP2: the Switzer Regular and SemiBold files are now in `public/fonts` (converted from the user's OTFs) with their `@font-face` and
+  preloads, so 400 and 600 render for real: the UI is visibly lighter where it declared 400. U11: the bar is now a thin custom one (6px wide; on the panes that scroll up and down `lib/scrollbars.ts` draws a faint 3px thumb that grows to 6px under the pointer, since a native thumb cannot animate) with a reserved gutter (`scrollbar-gutter: stable`), so nothing shifts and it can be grabbed; WebView2's `fluentOverlay`
+  style was tried and dropped because it fades after about a second and cannot be grabbed. The
+  `799px` sidebar breakpoint in `App.tsx` remains, and the snapped values (font sizes, gaps, tints) and the new weights and
+  scrollbars have not been looked at in both themes.
 
 Related plans: [02-android-app.md](02-android-app.md), [03-cloud-sync-and-collaboration.md](03-cloud-sync-and-collaboration.md).
 
