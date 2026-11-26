@@ -1,7 +1,7 @@
 // src/components/settings/AboutPanel.tsx
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { Updater } from "../../hooks/useUpdater";
-import { IS_ANDROID } from "../../lib/platform";
+import { IS_ANDROID, PRIVATE_VAULT_NOTICE } from "../../lib/platform";
 import { RELEASES_PAGE } from "../../lib/releaseNotes";
 import Button from "../ui/Button";
 
@@ -32,6 +32,13 @@ function AboutPanel({ updater, onShowUpdate }: AboutPanelProps) {
           {version ? `Version ${version}` : "Version unknown"}
         </p>
       </section>
+
+      {IS_ANDROID && (
+        <section className="settings__field">
+          <h3 className="settings__label">Your notes</h3>
+          <p className="settings__text">{PRIVATE_VAULT_NOTICE}</p>
+        </section>
+      )}
 
       {update && (
         <p className="settings__notice">

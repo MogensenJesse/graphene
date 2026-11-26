@@ -3,3 +3,7 @@
 
 export const IS_ANDROID =
   typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+
+// What a person on a phone should know: the vault is inside the app, and nothing else keeps a copy (Settings, Vaults and About)
+export const PRIVATE_VAULT_NOTICE =
+  "Your notes are stored inside this app. Uninstalling the app, or clearing its storage, deletes them.";

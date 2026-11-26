@@ -2,7 +2,7 @@
 
 Status: plan, started 2026-11-26. The app runs on the Android emulator (API 37) with its own default vault, no window buttons and safe-area
 padding, and the soft keyboard works with the editor there (not yet tried on a phone). Touch: bigger targets, no tips or key hints, long-press menus (they already worked), a phone-sized header and the Back key (it closes the newest open menu, dialog or pane, and leaves the app when
-none is open), the app icon, the first round of audit fixes and the editor's keyboard fix (the page's window ends at the keyboard, a formatting row on top of it with undo, redo, indent and outdent) are done; dragging by touch, the phone navigation (a full-screen list as home and a bottom bar; direction agreed, see "Phone navigation"), the real-phone test and the APK signing are still to do. A UI and UX audit of the emulator build (2026-11-26, 32 findings) is in `docs/audits/2026-11-26-android-ui-ux-audit.md`. Written 2026-11-21.
+none is open), the app icon, the first round of audit fixes, the editor's keyboard fix (the page's window ends at the keyboard, a formatting row on top of it with undo, redo, indent and outdent) Settings as a full screen with the one private vault shown as a name and a warning that uninstalling deletes the notes, and the phone navigation (a full-screen list as home, a bottom bar, Back from a screen to the list, a "+" for a new note; see "Phone navigation") are done; dragging by touch, the list's `[...]` menu, a live search field, the real-phone test and the APK signing are still to do. A UI and UX audit of the emulator build (2026-11-26, 32 findings) is in `docs/audits/2026-11-26-android-ui-ux-audit.md`. Written 2026-11-21.
 
 Related plan: [03-cloud-sync-and-collaboration.md](03-cloud-sync-and-collaboration.md). The audit-fix plan that these plans used to point at is done and was removed from the tree; it is in commit `7df88a1` (`git show 7df88a1:docs/plans/01-audit-fixes.md`), and AGENTS.md keeps its startup numbers and open items.
 
@@ -106,7 +106,7 @@ The app is built for mouse and keyboard today, so these are real work, not polis
   Useful, but after the basics.
 - **Quick capture and widgets:** native Kotlin writing into an inbox note. Deferred.
 
-## Phone navigation (proposed 2026-11-26, direction agreed, not built)
+## Phone navigation (built 2026-11-26, except the `[...]` menu, a live search field and a Tasks "+"; see "Built")
 
 The drawer is a desktop idea made to fit: on a phone the main actions (Notes | Tasks, Search, New note) are rows at the top of a panel
 that covers 61% of the screen, the header carries the title, a folder chip and three buttons, and the first screen at launch is a blank
@@ -174,6 +174,22 @@ Back on the list leaves the app, as Back does today.
 The Tasks tab works the same way: its list screen shows Search, My Day, Important and the lists; a list opens as a screen (today's Tasks
 pane), and a task's details as one more screen above it, each with Back and the bottom bar.
 
+**Built (2026-11-26, in the working tree):** on a touch screen under 600 px (`PHONE_QUERY` in `App.tsx`; `pointer: coarse`, so a narrow
+desktop window keeps the drawer, and landscape, at 914 px, keeps the docked sidebar) the sidebar is the list screen: it fills the body
+(`app__sidebar--screen`), is where the app starts, and the note, the editor, the Trash, the tasks and a task's details are screens above it
+(`compactOpen` means "the list is showing"). Back goes from a screen to the list (`useBack(showList, phone && !compactOpen)`) and, on the
+list, leaves the app. Notes | Tasks is a bottom bar on the list and on every screen (`BottomBar`; each tab goes to that tab's list; hidden
+while a field has the focus), the back arrow replaces the sidebar toggle, a round "+" (`NewFab`) starts a note, Search is the one row left
+above the list (a field that opens the palette), and the note's folder chip is gone: "Move to" is in its "..." menu (the title has about 130 px
+more). The Undo bars sit above the list (the list takes over after a delete). A task's details are full width. The effect that closed the
+drawer on every selection is off on a phone: a screen is entered by an explicit `closeFloating()` (pick, new, edit, Trash, search, a task
+list), so a screen can also open the list over itself without being closed again. Checked on the emulator (default, small, dark; Back through
+note, editor and keyboard; the Trash; task lists and details; cold start on the last tab): screenshots `41` to `46` in the audit.
+
+**Left from the proposal:** the list's `[...]` menu (Settings and Trash stay as the footer row of the list; the vault chip is plain text, so
+"Vaults" has nowhere to go and does not need to), a search field that filters in place (it opens the palette), a "+" on the Tasks list
+screen (the lists screen keeps its own "+" for a list and a group, and a task is added inside a list), and swipes. Not tried on a real phone.
+
 **Decided (2026-11-26):**
 
 - The bottom bar (Notes | Tasks) is on the note screen too, not only on the list.
@@ -206,8 +222,8 @@ keyboard), and #3 for good (Copy, folder and the other header buttons move into 
 - Swipe between the two tabs, or from the note edge for Back: after the basics.
 
 **Order of work:** the editor first (done 2026-11-26: the keyboard resize, the toolbar above the keyboard with undo, redo and indent: audit #1 and
-#6, independent of the rest); then the list as home with the bottom bar and the Back model; then the note header and its `[...]` menu; then the search field, the
-"+" button and the Tasks screens. The effort is L overall, but each step can ship on its own.
+#6, independent of the rest); then the list as home with the bottom bar, the Back model, the note header and the "+" button (done 2026-11-26,
+without a `[...]` menu); what is left is the list's `[...]` menu, the search field and a Tasks "+", and none of them blocks the rest.
 
 ## Code changes outside the UI
 
@@ -279,5 +295,5 @@ organisation account is exempt [V]. F-Droid is plausible because the repository 
 3. Which share-target approach (community plugin or a small Kotlin intent filter)?
 4. When to add the signed-APK CI job (needs an Android SDK and NDK runner setup).
 5. Whether the sideload developer-verification rules affect the tester group (check before widening it).
-6. Phone navigation: the direction is agreed (see "Phone navigation", which lists what is still open: "+" on the Tasks list screen, the
-   `[...]` menu's contents, the bottom bar while the keyboard is up).
+6. Phone navigation: built (see "Phone navigation"). Still open: a "+" on the Tasks list screen, whether the list needs a `[...]` menu at
+   all, a live search field, swipes. The bottom bar hides while a field has the focus.

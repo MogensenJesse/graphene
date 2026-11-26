@@ -38,6 +38,12 @@ function MarkdownPre({ children }: { children?: ReactNode }) {
 
 export const MARKDOWN_COMPONENTS: Components = {
   pre: ({ children }) => <MarkdownPre>{children}</MarkdownPre>,
+  // A table wider than the column scrolls sideways inside its own box instead of crushing the cells (see _NoteDetail)
+  table: ({ children }) => (
+    <div className="md-table">
+      <table>{children}</table>
+    </div>
+  ),
   a: ({ href, children }) => (
     <a
       href={href}

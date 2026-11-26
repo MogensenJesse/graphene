@@ -1,5 +1,6 @@
 // src/components/sidebar/VaultSwitcher.tsx
 import type { Vaults } from "../../hooks/useVaults";
+import { IS_ANDROID } from "../../lib/platform";
 import { pickVaultPath } from "../../lib/vault";
 import { vaultProblemText } from "../../lib/vaultList";
 import type { OpenSettings } from "../dialogs/SettingsDialog";
@@ -65,6 +66,14 @@ function VaultSwitcher({ vaults, onOpenSettings }: VaultSwitcherProps) {
       },
     ]);
   };
+
+  // The one vault inside the app: there is nothing to switch to or add (no folder picker), so its name is just a title
+  if (IS_ANDROID && vaults.vaults.length <= 1)
+    return (
+      <span className="sidebar__vault sidebar__vault--static">
+        <span>{current?.name ?? "Vault"}</span>
+      </span>
+    );
 
   return (
     <Tooltip label={`Vault: ${current?.name ?? ""}`}>

@@ -1,0 +1,86 @@
+// src/assets/styles/components/_PhoneNav.scss
+// A phone (see App, `phone`): the sidebar is the list screen, the home of the app. It fills the body instead of floating beside the
+// note as a drawer, and the note, the editor, the Trash and the tasks are screens above it. Notes | Tasks is at the bottom (BottomBar)
+// and a round "+" starts a note (NewFab). All of it is behind classes that only a phone gets, so none of it reaches a computer.
+@use '../base/variables' as v;
+
+.app__sidebar--screen {
+  --sidebar-width: 100%;
+  top: 0; // the whole body: there is no toggle's line to keep clear, the way back is in the note's own header
+  border: none;
+  box-shadow: none;
+  clip-path: none;
+
+  // The Notes | Tasks switch is the bottom bar. Of the rows above the list only Search stays, as a field; New note and New code are the "+"
+  // (code notes are not something to start on a phone)
+  .sidebar__tabs,
+  .sidebar__nav-item--new {
+    display: none;
+  }
+
+  .sidebar__nav {
+    padding-bottom: 6px;
+  }
+
+  .sidebar__nav-item:first-child {
+    background: var(--color-background-field);
+    border-radius: var(--border-radius-md);
+    color: var(--color-text-secondary);
+  }
+}
+
+// The note's header: the folder is in its "…" menu (Move to), so the title has the room
+.app--phone .item-header .folder-picker {
+  display: none;
+}
+
+// The Undo bar of a delete: the list takes over after it, and the bar is above that
+.app--phone .toast {
+  z-index: calc(#{v.z('sidebar-float')} + 2);
+  bottom: 20px;
+}
+
+// A task's details are a screen above the tasks, not a sliver of list beside a pane (Back closes it)
+.app--phone .tasks-pane__details {
+  width: 100%;
+}
+
+.bottom-bar {
+  flex-shrink: 0;
+  margin-top: 10px;
+  padding: 6px;
+  background: var(--surface-main);
+  border-radius: var(--radius-lg);
+
+  .segments {
+    width: 100%;
+  }
+
+  .segments__item {
+    flex: 1;
+    min-height: 44px;
+  }
+
+  // Not while typing: the keyboard takes the room, and the editor has its own row of buttons there
+  .app:has(textarea:focus, input:focus) & {
+    display: none;
+  }
+}
+
+.new-fab {
+  position: absolute;
+  right: 18px;
+  bottom: 64px; // above the list's footer (Trash and Settings)
+  z-index: calc(#{v.z('sidebar-float')} + 1); // over the list, which is the sidebar's layer
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  color: var(--color-text-info);
+  background: var(--color-background-info);
+  border: 0.5px solid var(--color-border-info);
+  border-radius: 50%;
+  box-shadow: var(--shadow-popover);
+  cursor: pointer;
+}

@@ -30,6 +30,7 @@ import Sidebar, { type SidebarTab } from "./components/sidebar/Sidebar";
 import TaskLists from "./components/sidebar/TaskLists";
 import { commitTaskFields } from "./components/tasks/TaskDetail";
 import TasksPane from "./components/tasks/TasksPane";
+import BottomBar from "./components/ui/BottomBar";
 import type { MenuEntry } from "./components/ui/ContextMenu";
 import ContextMenuProvider, {
   useContextMenu,
@@ -41,15 +42,20 @@ import {
   ClipboardIcon,
   CopyIcon,
   ExternalLinkIcon,
+  FolderIcon,
+  FolderInputIcon,
   GearIcon,
+  NoFolderIcon,
   PlusIcon,
   SearchIcon,
   TrashIcon,
 } from "./components/ui/Icon";
+import NewFab from "./components/ui/NewFab";
 import { newItemEntries } from "./components/ui/newKinds";
 import SidebarToggle from "./components/ui/SidebarToggle";
 import UndoToast from "./components/ui/UndoToast";
 import WindowControls from "./components/ui/WindowControls";
+import { useBack } from "./hooks/useBack";
 import { useEscape } from "./hooks/useEscape";
 import { useFileDrop } from "./hooks/useFileDrop";
 import { useFolders } from "./hooks/useFolders";
@@ -86,6 +92,7 @@ import {
 import { DEFAULT_LIST_ID, orderedLists, type Task } from "./lib/taskStore";
 import { toggleTaskAt } from "./lib/tasks";
 import { isTextField } from "./lib/textMenu";
+import { compareNames, flattenFolders } from "./lib/utils";
 import { shownWhenGone, type VaultShown } from "./lib/vaultGone";
 import { showWindow } from "./lib/windowShow";
 import type { Item, ItemKind } from "./types";
@@ -101,6 +108,8 @@ type Mode = "new" | "detail" | "edit" | "trash";
 
 // Below this window width the sidebar starts out hidden, and opens over the note instead of beside it
 const COMPACT_QUERY = "(max-width: 799px)";
+// A phone: a touch screen narrower than this has the list as a screen of its own (see `phone` below), not a drawer
+const PHONE_QUERY = "(max-width: 599px) and (pointer: coarse)";
 const SIDEBAR_HIDDEN_KEY = "graphene.sidebarHidden";
 const SIDEBAR_TAB_KEY = "graphene.sidebarTab";
 const TASK_VIEW_KEY = "graphene.taskView";
@@ -333,22 +342,35 @@ function MainApp({
   // A wide window keeps the sidebar the way the user left it; a small one hides it, and the toggle opens it
   // for as long as the window stays small
   const compact = useMediaQuery(COMPACT_QUERY);
+  // On a phone the sidebar is the list screen, the home of the app: it fills the window, and the note, the editor, the Trash and the
+  // tasks are screens above it (`compactOpen` is "the list is showing"). The app starts on it; Back goes from a screen to it, and from it out
+  // of the app
+  const phone = useMediaQuery(PHONE_QUERY);
   const [wideHidden, setWideHidden] = useState(
     () => readPref(SIDEBAR_HIDDEN_KEY) === "1",
   );
-  const [compactOpen, setCompactOpen] = useState(false);
+  const [compactOpen, setCompactOpen] = useState(phone);
   // The open sidebar covers the note, so it closes when a note or view is picked, on Escape (unless a field
   // is being typed in) and on a click outside it (the scrim)
   const floating = compact && compactOpen;
   const closeFloating = useCallback(() => setCompactOpen(false), []);
+  const showList = useCallback(() => {
+    // The screen being left keeps no focus: its field would hold the keyboard up (and the bottom bar down) under the list
+    if (document.activeElement instanceof HTMLElement)
+      document.activeElement.blur();
+    setCompactOpen(true);
+  }, []);
   // biome-ignore lint/correctness/useExhaustiveDependencies: picking another note or view is the trigger
   useEffect(() => {
-    if (compact) setCompactOpen(false);
+    // Not on a phone: there the list stays up until a screen is asked for (it comes back by Back too, with nothing picked)
+    if (compact && !phone) setCompactOpen(false);
   }, [compact, selectedId, mode]);
   useEscape(closeFloating, {
-    active: floating,
+    active: floating && !phone,
     when: () => !isTextField(document.activeElement),
   });
+  // Back from a screen shows the list; on the list it is not registered, so Back leaves the app
+  useBack(showList, phone && !compactOpen);
   const sidebarHidden = compact ? !compactOpen : wideHidden;
   const toggleSidebar = () => {
     if (compact) {
@@ -378,7 +400,14 @@ function MainApp({
     returnToId: string | null;
     // false: the blank draft is not focused when it appears (it came back behind the open drawer of a phone: see handleTab)
     focus?: boolean;
-  }>({ key: 0, kind: "note", folderId: null, returnToId: null });
+  }>({
+    key: 0,
+    kind: "note",
+    folderId: null,
+    returnToId: null,
+    // A phone starts on the list: the blank draft behind it must not raise the keyboard
+    focus: !phone,
+  });
   const [isDirtyEdit, setIsDirtyEdit] = useState(false);
   // Item the open editor writes to; null = unsaved draft. A ref so a flush before re-render still sees it
   const editingIdRef = useRef<string | null>(null);
@@ -387,14 +416,17 @@ function MainApp({
     if (selectedId && !items.some((i) => i.id === selectedId)) {
       setSelectedId(null);
       setMode("new");
+      // On a phone the list takes over, and a blank draft behind it must not raise the keyboard
       setDraft((d) => ({
         key: d.key + 1,
         kind: "note",
         folderId: null,
         returnToId: null,
+        ...(phone ? { focus: false } : {}),
       }));
+      if (phone) setCompactOpen(true);
     }
-  }, [items, selectedId]);
+  }, [items, selectedId, phone]);
 
   const selectedItem = useMemo(
     () => items.find((i) => i.id === selectedId),
@@ -448,6 +480,7 @@ function MainApp({
   // The note that was open when the Trash view opened, for Escape to go back to
   const trashReturnId = useRef<string | null>(null);
   const handleOpenTrash = useStable(() => {
+    closeFloating(); // a phone: the Trash is a screen above the list
     const from = leaveEditor() ?? selectedId;
     if (mode !== "trash") trashReturnId.current = from;
     setSelectedId(null);
@@ -457,9 +490,11 @@ function MainApp({
 
   // Escape in the Trash view: back to the note that was open (its reading view), or a blank draft when there was none or it is gone
   const handleLeaveTrash = useStable(() => {
-    if (floating) return; // the open sidebar takes this Escape (closeFloating)
+    if (floating && !phone) return; // the open sidebar takes this Escape (closeFloating)
     const id = trashReturnId.current;
     trashReturnId.current = null;
+    // A phone goes back to the list it came from
+    if (phone) setCompactOpen(true);
     if (id && itemsRef.current.some((i) => i.id === id)) {
       setSelectedId(id);
       setMode("detail");
@@ -472,6 +507,7 @@ function MainApp({
       kind: "note",
       folderId: null,
       returnToId: null,
+      ...(phone ? { focus: false } : {}),
     }));
   });
 
@@ -509,7 +545,7 @@ function MainApp({
       flushRef.current?.();
       showNotes();
       // The blank draft comes back behind the open drawer of a phone: focusing it would raise the keyboard over the list
-      if (floating && mode === "new")
+      if ((floating || phone) && mode === "new")
         setDraft((d) => ({ ...d, key: d.key + 1, focus: false }));
       return;
     }
@@ -816,6 +852,7 @@ function MainApp({
   // Open an item straight in the editor (sidebar menu). The editor may already be open on
   // something else, so bump the key to remount it on this item.
   const handleEditItem = useStable((id: string) => {
+    closeFloating(); // a phone: the editor is a screen above the list
     leaveEditor();
     setSelectedId(id);
     setSelectedFolderId(null);
@@ -868,6 +905,38 @@ function MainApp({
   // The "…" button of the open item, and the end of its right-click menu. A draft that is not saved yet has no item to act on.
   const moreEntries = useMemo<MenuEntry[]>(
     () => [
+      // A phone's header has no folder chip (the title needs the room): the folder is moved from here, in the reading view
+      ...(phone && mode === "detail" && selectedItem
+        ? [
+            {
+              label: "Move to",
+              icon: <FolderInputIcon size={14} />,
+              submenu: [
+                {
+                  id: null,
+                  name: "No folder",
+                  icon: <NoFolderIcon size={14} />,
+                  depth: 0,
+                },
+                ...flattenFolders(folders, (a, b) =>
+                  compareNames(a.name, b.name),
+                ).map(({ folder, depth }) => ({
+                  id: folder.id,
+                  name: folder.name,
+                  icon: <FolderIcon size={14} />,
+                  depth,
+                })),
+              ].map(({ id, name, icon, depth }) => ({
+                label: name,
+                icon,
+                indent: depth,
+                checked: selectedItem.folderId === id,
+                disabled: selectedItem.folderId === id,
+                onSelect: () => moveItem(selectedItem.id, id),
+              })),
+            },
+          ]
+        : []),
       {
         label: "Duplicate",
         icon: <CopyIcon size={14} />,
@@ -905,6 +974,10 @@ function MainApp({
       },
     ],
     [
+      phone,
+      mode,
+      folders,
+      moveItem,
       selectedItem,
       selectedId,
       flushRef,
@@ -1115,10 +1188,46 @@ function MainApp({
     },
   ];
 
+  // The Undo bars: "Moved to trash" and "Deleted a list or task"
+  const toasts = (
+    <>
+      {trashToast && (
+        <UndoToast
+          key={trashToast.id}
+          message={
+            <>
+              Moved &ldquo;
+              <span className="toast__title">
+                {trashToast.title || "Untitled"}
+              </span>
+              &rdquo; to trash
+            </>
+          }
+          onUndo={handleUndoDelete}
+          onClose={closeTrashToast}
+        />
+      )}
+      {undoToast && (
+        <UndoToast
+          key={undoToast.key}
+          message={
+            <>
+              Deleted {undoToast.what}&ldquo;
+              <span className="toast__title">{undoToast.title}</span>
+              &rdquo;
+            </>
+          }
+          onUndo={handleUndo}
+          onClose={() => setUndoToast(null)}
+        />
+      )}
+    </>
+  );
+
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: right-click is a mouse shortcut; every entry has a shortcut or button elsewhere
     <div
-      className="app"
+      className={`app${phone ? " app--phone" : ""}`}
       data-tauri-drag-region
       onContextMenu={(e) => open(e, appEntries)}
     >
@@ -1133,8 +1242,12 @@ function MainApp({
         </div>
       )}
       <div className="app__body">
+        {/* A new note, straight away: on the list of notes, in the thumb's reach */}
+        {phone && compactOpen && !inTasks && !loadFailed && (
+          <NewFab label="New note" onClick={() => handleNew("note")} />
+        )}
         <div
-          className={`app__sidebar${compact ? " app__sidebar--float" : ""}${sidebarHidden ? " app__sidebar--hidden" : ""}`}
+          className={`app__sidebar${compact ? " app__sidebar--float" : ""}${phone ? " app__sidebar--screen" : ""}${sidebarHidden ? " app__sidebar--hidden" : ""}`}
         >
           <Sidebar
             items={rows}
@@ -1183,7 +1296,11 @@ function MainApp({
           className={`app__main${sidebarHidden ? " app__main--quick" : ""}`}
         >
           <div className="app__drag-strip" data-tauri-drag-region />
-          <SidebarToggle hidden={sidebarHidden} onToggle={toggleSidebar} />
+          <SidebarToggle
+            hidden={sidebarHidden}
+            back={phone}
+            onToggle={toggleSidebar}
+          />
           <HeaderActions
             shown={sidebarHidden}
             inTasks={inTasks}
@@ -1192,7 +1309,7 @@ function MainApp({
             onNew={startNew}
             onSettings={onOpenSettings}
           />
-          {compact && (
+          {compact && !phone && (
             // biome-ignore lint/a11y/noStaticElementInteractions: clicking the backdrop is a mouse shortcut for Escape, which useEscape above already covers
             <div
               className={`app__scrim${floating ? " app__scrim--on" : ""}`}
@@ -1208,39 +1325,22 @@ function MainApp({
               onManage={() => onOpenSettings("vaults")}
             />
           )}
-          {trashToast && (
-            <UndoToast
-              key={trashToast.id}
-              message={
-                <>
-                  Moved &ldquo;
-                  <span className="toast__title">
-                    {trashToast.title || "Untitled"}
-                  </span>
-                  &rdquo; to trash
-                </>
-              }
-              onUndo={handleUndoDelete}
-              onClose={closeTrashToast}
-            />
-          )}
+          {!phone && toasts}
           <DragGhost drag={taskDrag.drag} />
-          {undoToast && (
-            <UndoToast
-              key={undoToast.key}
-              message={
-                <>
-                  Deleted {undoToast.what}&ldquo;
-                  <span className="toast__title">{undoToast.title}</span>
-                  &rdquo;
-                </>
-              }
-              onUndo={handleUndo}
-              onClose={() => setUndoToast(null)}
-            />
-          )}
         </main>
+        {/* On a phone the list screen takes over after a delete, and it is above the note's panel: the bar must be above it too */}
+        {phone && toasts}
       </div>
+      {phone && (
+        <BottomBar
+          tab={sidebarTab}
+          // Each tab is that tab's list: from a note it goes back to the list
+          onTab={(tab) => {
+            handleTab(tab);
+            showList();
+          }}
+        />
+      )}
       {!IS_ANDROID && <WindowControls />}
       {/* The boundary stays mounted (only its content comes and goes), so the transition in openSearch can wait for the script */}
       <Suspense fallback={null}>
@@ -1252,10 +1352,11 @@ function MainApp({
             indexing={indexing}
             onOpen={(id) => {
               setSearchOpen(false);
-              handleSelect(id);
+              handlePick(id); // a phone: the note is a screen above the list
             }}
             onOpenTask={(listId, taskId) => {
               setSearchOpen(false);
+              closeFloating();
               handleTab("tasks");
               setTaskView(listId);
               writePref(TASK_VIEW_KEY, listId);

@@ -93,7 +93,7 @@ import SidebarHeader from "./SidebarHeader";
 /** The two halves of the app: the notes, and the to-do lists. */
 export type SidebarTab = "notes" | "tasks";
 
-const TABS: { value: SidebarTab; label: string; icon: ReactNode }[] = [
+export const TABS: { value: SidebarTab; label: string; icon: ReactNode }[] = [
   { value: "notes", label: "Notes", icon: <NoteIcon size={13} /> },
   { value: "tasks", label: "Tasks", icon: <CircleCheckIcon size={13} /> },
 ];
@@ -856,7 +856,7 @@ function Sidebar({
               <Tooltip key={kind} label={`New ${label}`} keys={shortcut}>
                 <button
                   type="button"
-                  className="sidebar__nav-item"
+                  className="sidebar__nav-item sidebar__nav-item--new"
                   disabled={unavailable}
                   onClick={() => onNew(kind)}
                 >

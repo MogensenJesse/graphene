@@ -1,6 +1,7 @@
 // src/components/settings/VaultsPanel.tsx
 import { useEffect, useState } from "react";
 import type { Vaults } from "../../hooks/useVaults";
+import { IS_ANDROID, PRIVATE_VAULT_NOTICE } from "../../lib/platform";
 import { pickVaultPath } from "../../lib/vault";
 import { type VaultEntry, vaultProblemText } from "../../lib/vaultList";
 import Button from "../ui/Button";
@@ -19,7 +20,8 @@ interface VaultsPanelProps {
   onClose: () => void;
 }
 
-// Add, open, rename, order and remove vaults, and choose which ones AI assistants may use
+// Add, open, rename, order and remove vaults, and choose which ones AI assistants may use. On Android there is the one vault
+// inside the app (no folder picker, no assistants, nothing to order or remove), so it is a name and a warning.
 function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
   const { recheck } = vaults;
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -59,9 +61,9 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
   return (
     <>
       <p className="settings__text">
-        A vault is a folder of notes. Switch between them from the top of the
-        sidebar. Vaults cannot overlap: a folder may not be inside another
-        vault.
+        {IS_ANDROID
+          ? PRIVATE_VAULT_NOTICE
+          : "A vault is a folder of notes. Switch between them from the top of the sidebar. Vaults cannot overlap: a folder may not be inside another vault."}
       </p>
 
       <ul className="settings__vaults">
@@ -95,32 +97,38 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
                     </button>
                   </Tooltip>
                 )}
-                {current && <span className="settings__tag">Open</span>}
-                <span className="settings__vault-order">
-                  <Tooltip label="Move up">
-                    <IconButton
-                      size="sm"
-                      aria-label={`Move ${vault.name} up`}
-                      disabled={index === 0}
-                      onClick={() => vaults.move(vault.path, -1)}
-                    >
-                      <ChevronUpIcon size={14} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip label="Move down">
-                    <IconButton
-                      size="sm"
-                      aria-label={`Move ${vault.name} down`}
-                      disabled={index === vaults.vaults.length - 1}
-                      onClick={() => vaults.move(vault.path, 1)}
-                    >
-                      <ChevronDownIcon size={14} />
-                    </IconButton>
-                  </Tooltip>
-                </span>
+                {current && !IS_ANDROID && (
+                  <span className="settings__tag">Open</span>
+                )}
+                {!IS_ANDROID && (
+                  <span className="settings__vault-order">
+                    <Tooltip label="Move up">
+                      <IconButton
+                        size="sm"
+                        aria-label={`Move ${vault.name} up`}
+                        disabled={index === 0}
+                        onClick={() => vaults.move(vault.path, -1)}
+                      >
+                        <ChevronUpIcon size={14} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip label="Move down">
+                      <IconButton
+                        size="sm"
+                        aria-label={`Move ${vault.name} down`}
+                        disabled={index === vaults.vaults.length - 1}
+                        onClick={() => vaults.move(vault.path, 1)}
+                      >
+                        <ChevronDownIcon size={14} />
+                      </IconButton>
+                    </Tooltip>
+                  </span>
+                )}
               </div>
 
-              <p className="settings__vault-path">{vault.path}</p>
+              {!IS_ANDROID && (
+                <p className="settings__vault-path">{vault.path}</p>
+              )}
               {missing && (
                 <p className="settings__error">
                   Folder not found. Connect the drive or remove this vault.
@@ -138,38 +146,40 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
                   onCancel={() => setRemoving(null)}
                 />
               ) : (
-                <div className="settings__vault-foot">
-                  {/* biome-ignore lint/a11y/noLabelWithoutControl: Checkbox renders an <input> */}
-                  <label className="settings__check">
-                    <Checkbox
-                      checked={vault.shared}
-                      onChange={(e) =>
-                        vaults.setShared(vault.path, e.target.checked)
-                      }
-                    />
-                    Share with AI assistants
-                  </label>
-                  <span className="settings__vault-actions">
-                    {!current && (
+                !IS_ANDROID && (
+                  <div className="settings__vault-foot">
+                    {/* biome-ignore lint/a11y/noLabelWithoutControl: Checkbox renders an <input> */}
+                    <label className="settings__check">
+                      <Checkbox
+                        checked={vault.shared}
+                        onChange={(e) =>
+                          vaults.setShared(vault.path, e.target.checked)
+                        }
+                      />
+                      Share with AI assistants
+                    </label>
+                    <span className="settings__vault-actions">
+                      {!current && (
+                        <Button
+                          variant="link"
+                          disabled={missing}
+                          onClick={() => open(vault)}
+                        >
+                          Open
+                        </Button>
+                      )}
                       <Button
                         variant="link"
-                        disabled={missing}
-                        onClick={() => open(vault)}
+                        onClick={() => {
+                          setMessage(null);
+                          setRemoving(vault.path);
+                        }}
                       >
-                        Open
+                        Remove
                       </Button>
-                    )}
-                    <Button
-                      variant="link"
-                      onClick={() => {
-                        setMessage(null);
-                        setRemoving(vault.path);
-                      }}
-                    >
-                      Remove
-                    </Button>
-                  </span>
-                </div>
+                    </span>
+                  </div>
+                )
               )}
             </li>
           );
@@ -182,11 +192,13 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
         </p>
       )}
 
-      <div className="settings__row">
-        <Button variant="primary" onClick={add}>
-          Add vault…
-        </Button>
-      </div>
+      {!IS_ANDROID && (
+        <div className="settings__row">
+          <Button variant="primary" onClick={add}>
+            Add vault…
+          </Button>
+        </div>
+      )}
     </>
   );
 }

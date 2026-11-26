@@ -47,16 +47,16 @@ Conditions: **D** default phone (411x914 dp, light), **K** dark theme, **S** sma
 | # | Sev | Finding | Screen | Seen in | Effort |
 |---|---|---|---|---|---|
 | 1 | Major | Keyboard pans the header and toolbar off the screen (fixed, Round 2) | Editor | D S L | M |
-| 2 | Major | Notes are app-private and deleted on uninstall; nothing says so, no export | About, Vaults | D | S + L |
+| 2 | Major | Notes are app-private and deleted on uninstall; nothing says so, no export (the warning is fixed, Round 3; the export is not) | About, Vaults | D | S + L |
 | 3 | Major | Header buttons shrink to 19-26 px wide | Note header (read, edit) | D S F | S |
-| 4 | Major | Settings is a desktop dialog on a phone; controls clipped | Settings | D S F | M |
+| 4 | Major | Settings is a desktop dialog on a phone; controls clipped (fixed, Round 3) | Settings | D S F | M |
 | 5 | Major | Task checkbox is about 20 px to hit | Tasks | D | S |
 | 6 | Major | Formatting toolbar: 5 of 14 buttons hidden with no cue; no undo, redo or indent (fixed, Round 2) | Editor | D | M |
 | 7 | Major | Touch drag does nothing; tasks cannot be reordered by touch | Drawer, Tasks | D | S + L |
-| 8 | Major | Tables are crushed into the column, words break mid-word | Read view | D | M |
+| 8 | Major | Tables are crushed into the column, words break mid-word (fixed, Round 3) | Read view | D | M |
 | 9 | Major | Task-list rows in the drawer are 28 px high | Drawer (Tasks) | D | S |
-| 10 | Major | Vault controls for a phone with one private vault: dead "Add vault...", Remove, AI share | Drawer, Settings | D | S |
-| 11 | Major | Cold start lands on a blank draft editor | Launch | D | M |
+| 10 | Major | Vault controls for a phone with one private vault: dead "Add vault...", Remove, AI share (fixed, Round 3) | Drawer, Settings | D | S |
+| 11 | Major | Cold start lands on a blank draft editor (fixed, Round 4) | Launch | D | M |
 | 12 | Major | The keyboard opens over the open drawer | Drawer, Editor | D | S |
 | 13 | Major | Back key exits the app after a system font or display size change | System | F | S |
 | 14 | Major | Task checkboxes inside a note are 14 px | Read view | D | S |
@@ -64,7 +64,7 @@ Conditions: **D** default phone (411x914 dp, light), **K** dark theme, **S** sma
 | 16 | Minor | Folder picker dropdown runs off the right edge | Editor header | D | S |
 | 17 | Minor | Task details: small targets, the pane covers the list, calendar cells 30 px high | Tasks | D S | S |
 | 18 | Minor | Completing a task gives no feedback | Tasks | D | S |
-| 19 | Minor | Small phone: the drawer's fixed block takes 55% of the height | Drawer | S | S |
+| 19 | Minor | Small phone: the drawer's fixed block takes 55% of the height (fixed, Round 4) | Drawer | S | S |
 | 20 | Minor | Hover highlights stay after a tap | App-wide | D | S |
 | 21 | Minor | Tertiary text is 3.8:1 in the dark theme | App-wide | K | S |
 | 22 | Minor | "Text width" strips at the screen edge, no touch route | Read view, Editor | D | S |
@@ -436,6 +436,40 @@ note; the caret is at least visible now): whether a touch screen should open an 
 Not checked: a real phone (other keyboards, the IME animation, split-screen), and a computer (the touch-only rules sit behind
 `not (pointer: coarse)`, but the desktop app was not run again).
 
+### Round 3 status: Settings, vaults and tables (2026-11-26)
+
+Done in the working tree (nothing committed) and checked on the emulator after three builds (the first two showed layout mistakes that are
+fixed: tabs as wide as the screen, and the footer lying over the body).
+
+| # | What changed | Checked by |
+|---|---|---|
+| 4 | On a touch screen Settings is a full screen, not a dialog (`_Touch.scss`, no component change): the title and the sections as three tabs across the top (44px), the open section below (full width, 16px padding, scrolls), and a full-width 44px Close at the bottom. The status and gesture bars are the panel's padding | Body 411 px wide (was 195); no segmented control overflows or clips an item on the default phone, the small phone (360 dp) and at 1.3x font after a relaunch (the tabs still fit): screenshots `37`, `40` |
+| 10 | On Android the vault is one name: the drawer's vault chip is plain text (no menu, no "Add vault…"), and Settings, Vaults has no path, order arrows, "Open" tag, "Share with AI assistants", "Remove" or "Add vault…" (`IS_ANDROID` in `VaultSwitcher` and `VaultsPanel`) | Screenshot `38`; `.settings__vault-order` is not in the page |
+| 2 (the warning) | "Your notes are stored inside this app. Uninstalling the app, or clearing its storage, deletes them." at the top of Vaults and as "Your notes" in About (`PRIVATE_VAULT_NOTICE` in `lib/platform.ts`) | Screenshots `38` and the About tab |
+| 8 | A markdown table is wrapped in a scrolling box (`.md-table`, the shared `MARKDOWN_COMPONENTS`), and its cells break between words only (`word-break: normal`, where the note's `break-word` let a column shrink to a letter). This is for every platform | The 7-column table is 455 px in a 352 px box and scrolls (scrollLeft 103 after a swipe, the last column reachable): screenshot `39`; "Alexandra Montgomery" and "In progress" break at the space |
+
+Not done: **#2's export** (a product decision, still open in plan 02). Not checked: the desktop app (the table change and the `IS_ANDROID` checks
+are the only rules that reach it, and the Settings screen is behind `pointer: coarse`), and a real phone. The drawer stays open behind Settings and
+is there again after Close, as before.
+
+### Round 4 status: the phone navigation (2026-11-26)
+
+Done in the working tree (nothing committed) and checked on the emulator after four builds. The design is the "Phone navigation" section of
+plan 02 (agreed 2026-11-26): on a phone the sidebar is a full-screen list, Notes | Tasks is a bottom bar, and every screen has a back arrow.
+
+| # | What changed | Checked by |
+|---|---|---|
+| 11 | The app starts on the list, on the tab used last (`compactOpen` starts true on a phone; the blank draft behind it is not focused) | Cold start on Tasks: the lists, no keyboard; on Notes: the notes, "+" and the bar (`41`) |
+| 19 | On the list only Search stays above the notes (a field); the Notes / Tasks switch is the bottom bar, New note is the "+", New code is gone from the phone | Small phone and dark: `46` |
+| 12, 15, 26 | No drawer: the list is the home and Back is the way back, so there is nothing to swipe and the keyboard cannot open over it; its rows have the full width | Back from a note, the editor (the keyboard first), the Trash, task details and the tasks pane each reached the list; Back on the list left the app |
+| 3 | The note header has no folder chip ("Move to" is in "..."), so the title has about 130 px more | Title 132 px wider (`42`, `43`) |
+| 17 (details) | A task's details are full width, with Back closing them | Details 391 px wide: `45` |
+
+Found while building: the Undo bar of a delete was behind the list (it lives in the note's panel, which the list now covers), so on a phone the
+bars are drawn above it; a search result and "Edit" from a row's menu now close the list explicitly; the list's focus is dropped on Back, or a
+blank draft under it keeps the keyboard up and the bottom bar hidden. Not done: the list's `[...]` menu (Settings and Trash stay as the list's
+footer row), live filtering in the search field, a "+" for tasks, swipes, landscape (914 px keeps the docked sidebar), a real phone, the desktop app.
+
 ## 4. Method, conditions and limits
 
 **Method.** A synthetic vault (about 40 notes in nested folders from `scripts/gen-synthetic-vault.mjs`, plus hand-made cases: a very long note,
@@ -517,3 +551,13 @@ app data.
 | 34 | [34-editor-keyboard-small.png](android-2026-11-26/34-editor-keyboard-small.png) | Round 2: the same on the small phone (326px window) | #1 |
 | 35 | [35-editor-keyboard-landscape.png](android-2026-11-26/35-editor-keyboard-landscape.png) | Round 2: landscape with the keyboard up, title bar hidden, about 3 lines and the row | #1 |
 | 36 | [36-editor-toolbar-scrolled.png](android-2026-11-26/36-editor-toolbar-scrolled.png) | Round 2: the row scrolled to Outdent and Indent; fade at the left | #6 |
+| 37 | [37-settings-full-screen.png](android-2026-11-26/37-settings-full-screen.png) | Round 3: Settings as a full screen, sections as tabs, Close at the bottom | #4 |
+| 38 | [38-settings-vaults-private.png](android-2026-11-26/38-settings-vaults-private.png) | Round 3: the Vaults tab with the one vault and the notice | #2, #10 |
+| 39 | [39-table-scrolled.png](android-2026-11-26/39-table-scrolled.png) | Round 3: the wide table scrolled to its last columns | #8 |
+| 40 | [40-settings-small-phone.png](android-2026-11-26/40-settings-small-phone.png) | Round 3: Settings on the small phone | #4 |
+| 41 | [41-phone-list-undo.png](android-2026-11-26/41-phone-list-undo.png) | Round 4: the list screen with the search field, "+", bottom bar and the Undo bar after a delete | #11, #19 |
+| 42 | [42-phone-note-screen.png](android-2026-11-26/42-phone-note-screen.png) | Round 4: a note with the back arrow and the bottom bar | #3 |
+| 43 | [43-phone-note-menu.png](android-2026-11-26/43-phone-note-menu.png) | Round 4: the note's "..." menu with Move to | #3 |
+| 44 | [44-phone-tasks-screen.png](android-2026-11-26/44-phone-tasks-screen.png) | Round 4: a task list as a screen | #11 |
+| 45 | [45-phone-task-details.png](android-2026-11-26/45-phone-task-details.png) | Round 4: a task's details, full width | #17 |
+| 46 | [46-phone-list-small-dark.png](android-2026-11-26/46-phone-list-small-dark.png) | Round 4: the list on the small phone and in the dark theme | #19 |
