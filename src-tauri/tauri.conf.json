@@ -30,7 +30,7 @@
       }
     ],
     "security": {
-      "capabilities": ["default", "desktop"],
+      "capabilities": ["default", "desktop", "mobile"],
       "csp": null
     }
   },

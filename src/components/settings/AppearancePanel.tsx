@@ -175,7 +175,8 @@ function AppearancePanel() {
           onChange={chooseTheme}
         />
         <p className="settings__muted">
-          System follows Windows and changes with it.
+          System follows the device&apos;s light or dark setting and changes
+          with it.
         </p>
       </section>
 

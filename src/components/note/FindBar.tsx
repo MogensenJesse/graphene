@@ -1,5 +1,6 @@
 // src/components/note/FindBar.tsx
 import { useEffect, useRef } from "react";
+import { useBack } from "../../hooks/useBack";
 import type { Finder } from "../../hooks/useFind";
 import { ChevronDownIcon, ChevronUpIcon, XIcon } from "../ui/Icon";
 import IconButton from "../ui/IconButton";
@@ -23,6 +24,7 @@ function FindBar({
   focusKey,
 }: FindBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  useBack(onClose);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: focusKey is the trigger
   useEffect(() => {

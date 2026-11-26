@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- The logo for the foreground layer of the Android adaptive icon (see icon-manifest.json): app-icon.svg at 68% of its size, because
+       only the middle 66% of the layer is always visible and the launcher's mask (a circle, a squircle) cuts the rest -->
+  <g transform="translate(512 512) scale(27) translate(-12 -12)" fill="none" stroke="#c8ccd6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+  </g>
+</svg>

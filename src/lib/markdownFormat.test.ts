@@ -152,3 +152,19 @@ test("formatText and activeFormats", () => {
   assert.deepEqual(on("- a\n\n- b", 0, 8), ["ul"]); // blank lines skipped
   assert.deepEqual(on("**a\nb**", 1, 6), []); // spans never cross lines
 });
+
+test("indent and outdent are the Tab key for a screen without one", () => {
+  const list = formatText("- a\n- b", 7, 7, "indent");
+  assert.equal(list.value, "- a\n  - b"); // a list line moves in
+  assert.equal(list.ss, 9);
+  assert.equal(formatText("- a\n  - b", 9, 9, "outdent").value, "- a\n- b");
+  assert.equal(formatText("- a", 3, 3, "outdent").value, "- a"); // nothing to take out
+  const plain = formatText("abc", 1, 1, "indent");
+  assert.deepEqual(plain, { value: "a  bc", ss: 3, se: 3 }); // not a list: two spaces
+  assert.deepEqual(formatText("abc", 1, 2, "indent").value, "a  c"); // they replace a selection, like Tab does
+  assert.deepEqual(formatText("abc", 1, 1, "outdent"), {
+    value: "abc",
+    ss: 1,
+    se: 1,
+  });
+});

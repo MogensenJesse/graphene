@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+- The theme hint in Settings no longer says "Windows"
+
+### Fixes
+- The folder list in a note's header opens from the button's right edge, so it no longer runs off a narrow window
+
 ## v1.7.0
 
 ### New

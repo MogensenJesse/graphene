@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useBack } from "../../hooks/useBack";
 import { useClipboard } from "../../hooks/useClipboard";
 import { useCodeWrap } from "../../hooks/useCodeWrap";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
@@ -39,7 +40,10 @@ import CodeLanguagePicker from "./CodeLanguagePicker";
 import CopyNoteButton from "./CopyNoteButton";
 import FindBar from "./FindBar";
 import ItemHeader from "./ItemHeader";
-import MarkdownToolbar, { formatMenuEntry } from "./MarkdownToolbar";
+import MarkdownToolbar, {
+  formatMenuEntry,
+  type HistoryCommand,
+} from "./MarkdownToolbar";
 import WordCount from "./WordCount";
 
 // The count under the note follows the text this long after the last key: on a note of megabytes counting takes
@@ -73,6 +77,9 @@ interface NoteEditorProps {
   onDirtyChange?: (isDirty: boolean) => void;
   onDone: () => void;
   canLeave: boolean;
+  // Focus the text on mount, so typing can start (default). Off for a blank draft that appears behind the open drawer of a phone:
+  // the soft keyboard would rise over the list the person is choosing from
+  focusOnMount?: boolean;
   // Parent calls flushRef.current() before navigating away so pending edits are saved
   flushRef: React.RefObject<(() => void) | null>;
   // Goes up on each Ctrl+F; the find bar opens when it changes
@@ -99,6 +106,7 @@ function NoteEditor({
   onDirtyChange,
   onDone,
   canLeave,
+  focusOnMount = true,
   flushRef,
   findSignal,
   insertImagesRef,
@@ -124,6 +132,11 @@ function NoteEditor({
   const panelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const applyFormat = useMarkdownFormat(textareaRef);
+  // The toolbar's undo and redo walk the same history as Ctrl+Z (the edits above go through execCommand to keep it)
+  const applyHistory = useCallback((command: HistoryCommand) => {
+    textareaRef.current?.focus();
+    document.execCommand(command);
+  }, []);
   const { open, openText } = useContextMenu();
   const { copy } = useClipboard();
   const find = useFindState(findSignal);
@@ -182,7 +195,7 @@ function NoteEditor({
     if (!el) return;
     const start =
       !initialItem && newKind === "code" ? CODE_SEED_CARET : el.value.length;
-    el.focus();
+    if (focusOnMount) el.focus();
     el.setSelectionRange(start, start);
     trackSelection(el);
   }, []);
@@ -266,6 +279,10 @@ function NoteEditor({
     onKeepMine();
     save();
   };
+
+  // The Android Back key does what Done does: back to the read view. A new draft with no note to go back to has no Done, so Back
+  // leaves the app from there
+  useBack(onDone, canLeave);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -470,6 +487,7 @@ function NoteEditor({
         <div className="note-editor__editor-wrap">
           <MarkdownToolbar
             onFormat={applyFormat}
+            onHistory={applyHistory}
             active={active}
             disabled={!!block}
           >

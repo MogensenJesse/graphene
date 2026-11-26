@@ -176,6 +176,13 @@
   &__trailing {
     margin-left: auto;
   }
+
+  // Undo, redo, indent and outdent: for a screen with no Ctrl+Z and no Tab key
+  @media not (pointer: coarse) {
+    &__touch {
+      display: none;
+    }
+  }
 }
 
 // ── Code block language chip (shown while the caret is inside a fenced block) ──

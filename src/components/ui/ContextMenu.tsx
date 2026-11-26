@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useBack } from "../../hooks/useBack";
 import { CheckIcon, ChevronRightIcon } from "./Icon";
 
 interface ActionEntry {
@@ -236,6 +237,7 @@ const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta"]);
 function ContextMenu({ x, y, entries, keepFocus, onClose }: ContextMenuProps) {
   // Read during the first render, before the menu takes focus, so closing can hand it back
   const previous = useRef(document.activeElement);
+  useBack(onClose);
 
   useEffect(() => {
     const onPointerDown = (e: PointerEvent) => {

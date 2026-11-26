@@ -161,6 +161,7 @@
 
     // The list's dropdown has the folder picker's look (see _ItemHeader.scss), as wide as the row
     .folder-picker__dropdown {
+      left: 0;
       right: 0;
     }
   }

@@ -21,7 +21,8 @@ body {
 .app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  // The window's height, not 100vh: on a phone the soft keyboard shrinks the window (see MainActivity), and vh may not follow
+  height: 100%;
   width: 100vw;
   background: var(--surface-app);
   overflow: hidden;

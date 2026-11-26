@@ -4,6 +4,39 @@
 // The rows and buttons read the variables below with their desktop size as the fallback (the menu-item mixin, .item-row,
 // .folder-row, .sidebar__nav-item, .btn--sm).
 
+// The ends of the formatting row fade out where there is more of it to scroll to: the left one once it has moved, the right one
+// until its end. Driven by the row's own scroll position; a browser without scroll-driven animations shows no fade at all.
+@property --fade-start {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --fade-end {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@keyframes toolbar-edges {
+  0% {
+    --fade-start: 0px;
+    --fade-end: 28px;
+  }
+
+  4% {
+    --fade-start: 28px;
+  }
+
+  96% {
+    --fade-end: 28px;
+  }
+
+  100% {
+    --fade-end: 0px;
+  }
+}
+
 @media (pointer: coarse) {
   :root {
     --row-menu: 44px;
@@ -75,10 +108,105 @@
     padding-right: 10px;
   }
 
-  // The formatting buttons stay in one row that scrolls sideways, instead of three rows that push the text down
+  // The formatting buttons stay in one row that scrolls sideways, instead of three rows that push the text down. The row is under
+  // the text, so with the keyboard up it sits right on top of it, within reach of the thumb that types
   .markdown-toolbar {
+    order: 1;
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
+    padding: 6px 0 4px;
+    border-bottom: none;
+    border-top: 0.5px solid var(--color-border-tertiary);
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 var(--fade-start),
+      #000 calc(100% - var(--fade-end)),
+      transparent
+    );
+    animation: toolbar-edges linear both;
+    animation-timeline: scroll(self inline);
+  }
+
+  .note-editor__body {
+    padding-bottom: 8px;
+  }
+
+  // A phone on its side with the keyboard up leaves 150px of window: while the text has the cursor, the title bar, the word count
+  // and the sidebar button give way, so the text and the formatting row have the room (Back closes the keyboard, and they return)
+  @media (max-height: 300px) {
+    .app:has(.note-editor__textarea:focus) {
+      .item-header,
+      .word-count,
+      .app__sidebar-toggle {
+        display: none;
+      }
+
+      .note-editor__body {
+        padding-top: 4px;
+        padding-bottom: 4px;
+      }
+
+      .markdown-toolbar {
+        padding: 2px 0;
+
+        .icon-btn--tool {
+          --icon-btn-size: 32px;
+        }
+      }
+    }
+  }
+
+  // A checkbox is drawn 14-18px, but a tap counts within 44px of it: an invisible box around it that belongs to the input (the
+  // tasks' round boxes, the ones inside a note, the steps). The row's own button next to it is a few px away; the box wins there.
+  .checkbox {
+    position: relative;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: calc((100% - 44px) / 2);
+    }
+  }
+
+  // The vault name in the drawer's header, and every row of buttons of which one is pressed (the Notes | Tasks switch, Settings)
+  .sidebar__vault {
+    height: var(--btn-sm);
+  }
+
+  .segments__item {
+    min-height: 40px;
+  }
+
+  // The header's "Edit" is a button with its word hidden in a narrow panel: as wide as the square icon buttons beside it
+  .item-header__actions .btn {
+    min-width: var(--btn-sm);
+  }
+
+  // No pointer to drag the text column's edges with, and the right one sits in the system's Back gesture zone: the column is the
+  // screen's width
+  .column-resizer__edge {
+    display: none;
+  }
+
+  // A folder's contents step in 15px a level, not 27px, so a title three levels down still has room
+  .folder-row__children {
+    margin-left: 8px;
+
+    .folder-row,
+    .item-row,
+    .task-list-row {
+      padding-left: 6px;
+    }
+  }
+
+  // Trash: "Delete forever" is red, and 20px from Restore, so a thumb does not hit the wrong one
+  .trash-view__row-main {
+    gap: 20px;
+
+    .btn--quiet {
+      color: var(--color-text-danger);
+    }
   }
 }

@@ -14,7 +14,9 @@ export type FormatType =
   | "blockquote"
   | "codeblock"
   | "hr"
-  | "link";
+  | "link"
+  | "indent"
+  | "outdent";
 
 /** New text plus where the selection sits in it. */
 export interface TextEdit {
@@ -334,6 +336,18 @@ export function formatText(
   switch (type) {
     case "codeblock":
       return wrapInFence(value, ss, se);
+    case "indent":
+    case "outdent": {
+      // The Tab key's work, for a screen with no Tab key: a list line moves in or out; indent anywhere else writes two spaces
+      const moved = shiftListIndent(value, ss, se, type === "outdent");
+      if (moved) return moved;
+      if (type === "outdent") return { value, ss, se };
+      return {
+        value: `${value.slice(0, ss)}  ${value.slice(se)}`,
+        ss: ss + 2,
+        se: ss + 2,
+      };
+    }
     case "hr": {
       // Text directly above "---" would turn into a heading, so keep a blank line between
       const head = value.slice(0, se);

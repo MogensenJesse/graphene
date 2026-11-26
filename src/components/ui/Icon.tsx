@@ -417,6 +417,40 @@ export function UndoIcon(props: IconProps) {
   );
 }
 
+// lucide: redo-2
+export function RedoIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m15 14 5-5-5-5" />
+      <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13" />
+    </Svg>
+  );
+}
+
+// lucide: list-indent-increase
+export function IndentIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M21 12H11" />
+      <path d="M21 18H11" />
+      <path d="M21 6H11" />
+      <path d="m3 8 4 4-4 4" />
+    </Svg>
+  );
+}
+
+// lucide: list-indent-decrease
+export function OutdentIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M21 12H11" />
+      <path d="M21 18H11" />
+      <path d="M21 6H11" />
+      <path d="m7 8-4 4 4 4" />
+    </Svg>
+  );
+}
+
 // lucide: clipboard
 export function ClipboardIcon(props: IconProps) {
   return (

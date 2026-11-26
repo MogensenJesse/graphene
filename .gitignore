@@ -1,6 +1,9 @@
 # ─── Rust / Tauri ────────────────────────────────────────────────────────────
 src-tauri/target/
-src-tauri/gen/
+# gen/android is kept (its manifest and icons are edited by hand; it has its own .gitignore for build output); only what the CLI regenerates is not
+src-tauri/gen/schemas/
+src-tauri/gen/android/.kotlin/
+src-tauri/gen/android/app/src/main/assets/mcp/
 
 # ─── Node ────────────────────────────────────────────────────────────────────
 node_modules/

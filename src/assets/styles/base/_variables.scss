@@ -202,6 +202,16 @@ $cq-details-float: 739px;   // the task details pane floats over the list instea
   --transition-fast: 0.1s ease;
 }
 
+// A phone has no acrylic window behind the tints above: they lay over a mid-grey, which made the dark theme a grey one (tertiary
+// text 3.8:1 on it). So the dark surfaces are opaque there. main.tsx sets data-platform.
+:root[data-platform='android']:not([data-theme='light']) {
+  --surface-app:      #{$night};
+  --surface-main:     #15161b;
+  --surface-backdrop: #{$night};
+  --surface-card:     #1a1b21;
+  --color-text-tertiary: rgba(200, 204, 214, 0.64); // 4.5:1 or better on the drawer's fields and counts too (0.58 gave 4.26)
+}
+
 :root[data-theme='light'] {
   color-scheme: light;
 

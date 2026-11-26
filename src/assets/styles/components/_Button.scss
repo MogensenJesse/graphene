@@ -54,9 +54,9 @@
   font-size: var(--fs-lg);
 }
 
-// A square with just an icon, at sm size
+// A square with just an icon, at sm size (36px on a touch screen, where the sm height is)
 .btn--icon {
-  width: 24px;
+  width: var(--btn-sm, 24px);
   padding: 0;
 }
 

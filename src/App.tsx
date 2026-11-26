@@ -1,4 +1,5 @@
 // src/App.tsx
+import { exit, onBackButtonPress } from "@tauri-apps/api/app";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { readFile } from "@tauri-apps/plugin-fs";
@@ -64,6 +65,7 @@ import { useUpdater } from "./hooks/useUpdater";
 import { useVaultRefresh } from "./hooks/useVaultRefresh";
 import { useVaults, type Vaults } from "./hooks/useVaults";
 import { saveImage, VaultPathContext } from "./lib/attachmentStore";
+import { runBack } from "./lib/backStack";
 import { conflictCopyTitle } from "./lib/editConflict";
 import { DROP_HINT, DROP_HINT_PICTURES, DROP_HINT_TASKS } from "./lib/fileDrop";
 import type { RestorePlan } from "./lib/folderOps";
@@ -374,6 +376,8 @@ function MainApp({
     kind: ItemKind;
     folderId: string | null;
     returnToId: string | null;
+    // false: the blank draft is not focused when it appears (it came back behind the open drawer of a phone: see handleTab)
+    focus?: boolean;
   }>({ key: 0, kind: "note", folderId: null, returnToId: null });
   const [isDirtyEdit, setIsDirtyEdit] = useState(false);
   // Item the open editor writes to; null = unsaved draft. A ref so a flush before re-render still sees it
@@ -421,6 +425,9 @@ function MainApp({
   // folderId omitted = wherever the selection is (folder, else the open item's folder); null = no folder
   const handleNew = useStable((kind: ItemKind, folderId?: string | null) => {
     if (loadFailed) return; // a vault that cannot be opened takes no new note (the buttons are off too)
+    // A blank draft is already open then, so no mode change closes the drawer of a phone: it would stay over the draft, with the
+    // soft keyboard rising over it
+    closeFloating();
     if (mode === "new" && isDirtyEdit) return; // keep a draft that has content
     showNotes();
     leaveEditor();
@@ -501,6 +508,9 @@ function MainApp({
       // Ctrl+Shift+T leaves a task field with the caret in it, and the pane unmounts: commit what was typed first
       flushRef.current?.();
       showNotes();
+      // The blank draft comes back behind the open drawer of a phone: focusing it would raise the keyboard over the list
+      if (floating && mode === "new")
+        setDraft((d) => ({ ...d, key: d.key + 1, focus: false }));
       return;
     }
     // Leaving the notes saves what is being typed. The note comes back in the reading view, a blank draft blank.
@@ -513,7 +523,7 @@ function MainApp({
       } else {
         setSelectedId(null);
         setMode("new");
-        setDraft((d) => ({ ...d, key: d.key + 1 }));
+        setDraft((d) => ({ ...d, key: d.key + 1, focus: true }));
       }
     }
     setSidebarTab("tasks");
@@ -1061,6 +1071,7 @@ function MainApp({
         onDirtyChange={setIsDirtyEdit}
         onDone={handleDone}
         canLeave={mode === "edit" || draft.returnToId !== null}
+        focusOnMount={mode !== "new" || draft.focus !== false}
         flushRef={editorFlush}
         findSignal={findSignal}
         insertImagesRef={insertImagesRef}
@@ -1331,6 +1342,37 @@ function App() {
       unlisten.then((fn) => fn()).catch(console.error);
     };
   }, [flushPendingSave]);
+
+  // Android: the Back key closes the innermost thing that is open (see backStack), and with nothing open it leaves the app the way
+  // closing the window does: after the pending save, held back once when something could not be saved
+  useEffect(() => {
+    if (!IS_ANDROID) return;
+    const listener = onBackButtonPress(async () => {
+      if (runBack()) return;
+      const gate = leaveGate(await flushPendingSave(), keptOpen.current);
+      keptOpen.current = gate.warned;
+      if (gate.go) await exit(0);
+    });
+    return () => {
+      listener.then((l) => l.unregister()).catch(console.error);
+    };
+  }, [flushPendingSave]);
+
+  // Android: a backgrounded app can be killed at any moment, so what is typed is saved as soon as the page is hidden (Home, the app
+  // switcher, the screen going off) instead of when the autosave delay ends
+  useEffect(() => {
+    if (!IS_ANDROID) return;
+    const save = () => void flushNow();
+    const onVisibility = () => {
+      if (document.hidden) save();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", save);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", save);
+    };
+  }, [flushNow]);
 
   // Up here, not in MainApp: switching vaults remounts that, and the update check must not start over
   const updater = useUpdater(flushPendingSave);

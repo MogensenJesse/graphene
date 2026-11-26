@@ -1,0 +1,8 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema/acl-manifests.json",
+  "identifier": "mobile",
+  "description": "What only a phone needs: the Back key leaves the app when nothing is open, which takes the exit permission",
+  "windows": ["main"],
+  "platforms": ["android", "iOS"],
+  "permissions": ["core:app:allow-exit"]
+}

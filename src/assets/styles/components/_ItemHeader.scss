@@ -120,15 +120,18 @@
 
   &__actions {
     order: 2; // after the folder chip, when that sits in the bar (see .folder-picker)
+    flex-shrink: 0; // the title and the chip give way, not the buttons
     display: flex;
     align-items: center;
     gap: 6px;
 
     // Interactive items inside the drag strip sit above it and opt out of dragging
+    // They keep their size: a long title or folder name gives way before they do (they had shrunk to 19px wide on a phone)
     .btn,
     .icon-btn {
       position: relative;
       z-index: v.z('header-control');
+      flex-shrink: 0;
       -webkit-app-region: no-drag;
     }
 
@@ -207,9 +210,12 @@
   &__dropdown {
     position: absolute;
     top: calc(100% + 4px);
-    left: 0;
+    // The chip sits beside the buttons at the right, so the list opens leftwards from its right edge (it ran off the screen on a
+    // phone); in the left gutter of a wide panel it opens rightwards (below)
+    right: 0;
     z-index: v.z('dropdown');
     min-width: 180px;
+    max-width: calc(100vw - 20px);
     padding: var(--space-2);
     animation: var(--anim-pop);
     @include mixins.popover-surface;
@@ -257,6 +263,11 @@
       calc(var(--text-left) - var(--chrome-left, var(--pane-pad)) - 12px)
     ); // 12px before the title
   }
+
+  .item-header .folder-picker__dropdown {
+    right: auto;
+    left: 0;
+  }
 }
 
 // A column dragged wider than the default leaves the gutter too little room: the chip stays beside the buttons (see lib/columnWidth)
@@ -265,4 +276,9 @@ html[data-note-wide='true'] .item-header .folder-picker {
   left: auto;
   top: auto;
   max-width: none;
+
+  .folder-picker__dropdown {
+    left: auto;
+    right: 0;
+  }
 }
