@@ -12,6 +12,7 @@ import type { DragStore } from "../../lib/dragStore";
 import { namesUnder, validateFolderName } from "../../lib/folderName";
 import { isInside } from "../../lib/folderOps";
 import { perfRender } from "../../lib/perf";
+import { IS_ANDROID } from "../../lib/platform";
 import {
   isFolderCollapsed,
   setFolderCollapsed,
@@ -251,16 +252,21 @@ function FolderRow({
         icon: <FolderInputIcon size={14} />,
         submenu: moveToEntries(),
       },
-      {
-        label: "Show in Explorer",
-        icon: <ExternalLinkIcon size={14} />,
-        onSelect: () => onReveal(folder.id),
-      },
-      {
-        label: "Copy path",
-        icon: <ClipboardIcon size={14} />,
-        onSelect: () => onCopyPath(folder.id),
-      },
+      // Android keeps its notes in the app's own storage, which no file manager shows
+      ...(IS_ANDROID
+        ? []
+        : [
+            {
+              label: "Show in Explorer",
+              icon: <ExternalLinkIcon size={14} />,
+              onSelect: () => onReveal(folder.id),
+            },
+            {
+              label: "Copy path",
+              icon: <ClipboardIcon size={14} />,
+              onSelect: () => onCopyPath(folder.id),
+            },
+          ]),
       "separator",
       {
         label: "Delete folder",

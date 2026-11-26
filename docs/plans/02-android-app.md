@@ -1,8 +1,8 @@
 # Android app
 
 Status: plan, started 2026-11-26. The app runs on the Android emulator (API 37) with its own default vault, no window buttons and safe-area
-padding, and the soft keyboard works with the editor there (not yet tried on a phone). Touch changes, the real-phone test and the APK
-signing are still to do. Written 2026-11-21.
+padding, and the soft keyboard works with the editor there (not yet tried on a phone). Touch: bigger targets, no tips or key hints, long-press menus (they already worked) and a phone-sized header are done; the Back key,
+dragging by touch, the real-phone test and the APK signing are still to do. Written 2026-11-21.
 
 Related plan: [03-cloud-sync-and-collaboration.md](03-cloud-sync-and-collaboration.md). The audit-fix plan that these plans used to point at is done and was removed from the tree; it is in commit `7df88a1` (`git show 7df88a1:docs/plans/01-audit-fixes.md`), and AGENTS.md keeps its startup numbers and open items.
 

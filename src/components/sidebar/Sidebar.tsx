@@ -32,6 +32,7 @@ import {
   placeNear,
 } from "../../lib/order";
 import { perfRender } from "../../lib/perf";
+import { IS_ANDROID } from "../../lib/platform";
 import {
   isFolderCollapsed,
   readPref,
@@ -741,16 +742,21 @@ function Sidebar({
         icon: <FolderInputIcon size={14} />,
         submenu: moveEntries(item),
       },
-      {
-        label: "Show in Explorer",
-        icon: <ExternalLinkIcon size={14} />,
-        onSelect: () => onRevealItem(item),
-      },
-      {
-        label: "Copy path",
-        icon: <ClipboardIcon size={14} />,
-        onSelect: () => onCopyItemPath(item),
-      },
+      // Android keeps its notes in the app's own storage, which no file manager shows
+      ...(IS_ANDROID
+        ? []
+        : [
+            {
+              label: "Show in Explorer",
+              icon: <ExternalLinkIcon size={14} />,
+              onSelect: () => onRevealItem(item),
+            },
+            {
+              label: "Copy path",
+              icon: <ClipboardIcon size={14} />,
+              onSelect: () => onCopyItemPath(item),
+            },
+          ]),
       "separator",
       {
         label: "Move to trash",
@@ -842,7 +848,9 @@ function Sidebar({
             >
               <SearchIcon size={16} />
               <span>Search</span>
-              <span className="sidebar__nav-count">Ctrl+K</span>
+              <span className="sidebar__nav-count sidebar__nav-count--keys">
+                Ctrl+K
+              </span>
             </button>
             {NEW_KINDS.map(({ kind, label, Icon, shortcut }) => (
               <Tooltip key={kind} label={`New ${label}`} keys={shortcut}>

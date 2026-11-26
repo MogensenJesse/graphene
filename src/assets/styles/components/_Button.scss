@@ -44,7 +44,7 @@
 }
 
 .btn--sm {
-  height: 24px;
+  height: var(--btn-sm, 24px);
   padding: 0 var(--space-4);
   font-size: var(--fs-sm);
 }

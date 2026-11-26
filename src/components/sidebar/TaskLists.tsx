@@ -352,7 +352,9 @@ function TaskLists({
         >
           <SearchIcon size={16} />
           <span>Search</span>
-          <span className="sidebar__nav-count">Ctrl+K</span>
+          <span className="sidebar__nav-count sidebar__nav-count--keys">
+            Ctrl+K
+          </span>
         </button>
         {(["my-day", "important"] as const).map((key) => {
           const count = smartCount(key);

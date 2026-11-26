@@ -1,0 +1,84 @@
+// src/assets/styles/components/_Touch.scss
+// What changes for a finger (the Android app): bigger targets, and nothing that waits for a hover or a key. `pointer: coarse` means
+// the main input is a touch screen, so a laptop with a touch screen and a mouse keeps the desktop sizes. Loaded last, so its rules win.
+// The rows and buttons read the variables below with their desktop size as the fallback (the menu-item mixin, .item-row,
+// .folder-row, .sidebar__nav-item, .btn--sm).
+
+@media (pointer: coarse) {
+  :root {
+    --row-menu: 44px;
+    --row-tree: 44px;
+    --row-nav: 44px;
+    --btn-sm: 36px;
+  }
+
+  // Icon buttons, whatever their desktop size
+  .icon-btn,
+  .icon-btn--sm,
+  .icon-btn--md,
+  .icon-btn--lg,
+  .icon-btn--tool {
+    --icon-btn-size: 40px;
+  }
+
+  // A long press opens a row's menu: it should not also select the row's text, or flash grey where it was pressed. The text of a
+  // note and what is typed in stay selectable.
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .note-detail__markdown,
+  input,
+  textarea,
+  [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  // No pointer to hover with, so no tips, and no hints for keys that are not there
+  .tooltip,
+  .context-menu__keys,
+  .sidebar__nav-count--keys {
+    display: none;
+  }
+
+  // The "…" of a row and the buttons of a folder are there at rest, not only when it is pointed at
+  .item-row__more,
+  .folder-row__actions {
+    opacity: 1;
+  }
+
+  // The header: the sidebar toggle (now 40px) has the left corner, and Search, New and Settings are in the drawer, so the title
+  // starts after the toggle and the buttons end at the screen's edge. The note's own text uses the screen's width.
+  .app__main {
+    --pane-pad: 14px;
+    --chrome-left: 58px;
+  }
+
+  .app__main--quick,
+  .app__main--quick .item-header {
+    --chrome-left: 58px;
+  }
+
+  .app__quick {
+    display: none;
+  }
+
+  .app__sidebar-toggle {
+    top: calc((var(--bar-height) - 40px) / 2);
+  }
+
+  .item-header {
+    padding-right: 10px;
+  }
+
+  // The formatting buttons stay in one row that scrolls sideways, instead of three rows that push the text down
+  .markdown-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+}

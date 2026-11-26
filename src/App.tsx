@@ -868,18 +868,22 @@ function MainApp({
           handleDuplicate(selectedId);
         },
       },
-      {
-        label: "Show in Explorer",
-        icon: <ExternalLinkIcon size={14} />,
-        disabled: !selectedItem,
-        onSelect: () => selectedItem && handleRevealItem(selectedItem),
-      },
-      {
-        label: "Copy path",
-        icon: <ClipboardIcon size={14} />,
-        disabled: !selectedItem,
-        onSelect: () => selectedItem && handleCopyItemPath(selectedItem),
-      },
+      ...(IS_ANDROID
+        ? []
+        : [
+            {
+              label: "Show in Explorer",
+              icon: <ExternalLinkIcon size={14} />,
+              disabled: !selectedItem,
+              onSelect: () => selectedItem && handleRevealItem(selectedItem),
+            },
+            {
+              label: "Copy path",
+              icon: <ClipboardIcon size={14} />,
+              disabled: !selectedItem,
+              onSelect: () => selectedItem && handleCopyItemPath(selectedItem),
+            },
+          ]),
       "separator",
       {
         label: "Move to trash",
