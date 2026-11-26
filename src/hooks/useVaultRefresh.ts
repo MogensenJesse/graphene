@@ -1,5 +1,4 @@
 // src/hooks/useVaultRefresh.ts
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   type Dispatch,
   type RefObject,
@@ -8,6 +7,7 @@ import {
   useEffect,
   useRef,
 } from "react";
+import { onAppFocus } from "../lib/appFocus";
 import { outsideChange } from "../lib/editConflict";
 import {
   itemsFromRescan,
@@ -173,15 +173,13 @@ export function useVaultRefresh(options: VaultRefreshOptions): () => void {
     };
     refreshNow.current = refresh;
 
-    const unlisten = getCurrentWindow().onFocusChanged(
-      ({ payload: focused }) => {
-        if (!focused || !rescanDue(lastRefresh.current, Date.now())) return;
-        lastRefresh.current = Date.now();
-        // VaultUnavailable is showing: coming back to the window is the moment to look for the folder again
-        if (latest.current.unavailable) latest.current.onRetryLoad();
-        else refresh();
-      },
-    );
+    const stopFocus = onAppFocus(() => {
+      if (!rescanDue(lastRefresh.current, Date.now())) return;
+      lastRefresh.current = Date.now();
+      // VaultUnavailable is showing: coming back to the window is the moment to look for the folder again
+      if (latest.current.unavailable) latest.current.onRetryLoad();
+      else refresh();
+    });
 
     // The window stays focused while another program writes the open note: look at its file now and then (see the header)
     let polling = false;
@@ -230,7 +228,7 @@ export function useVaultRefresh(options: VaultRefreshOptions): () => void {
     const timer = setInterval(poll, POLL_MS);
     return () => {
       clearInterval(timer);
-      unlisten.then((fn) => fn()).catch(console.error);
+      stopFocus();
     };
   }, [latest]);
 

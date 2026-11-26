@@ -61,7 +61,6 @@
       "allow": [{ "path": "$RESOURCE/**" }]
     },
     "clipboard-manager:allow-write-text",
-    "clipboard-manager:allow-read-text",
-    "updater:default"
+    "clipboard-manager:allow-read-text"
   ]
 }

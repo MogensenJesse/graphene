@@ -30,7 +30,7 @@
       }
     ],
     "security": {
-      "capabilities": ["default"],
+      "capabilities": ["default", "desktop"],
       "csp": null
     }
   },
@@ -52,6 +52,9 @@
     "active": true,
     "createUpdaterArtifacts": true,
     "targets": ["nsis", "dmg", "deb", "appimage"],
+    "android": {
+      "minSdkVersion": 31
+    },
     "resources": {
       "../dist-mcp/graphene-mcp.mjs": "mcp/graphene-mcp.mjs",
       "../dist-mcp/graphene.mcpb": "mcp/graphene.mcpb"

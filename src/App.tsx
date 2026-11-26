@@ -71,6 +71,7 @@ import { leaveGate } from "./lib/leaveGate";
 import { sameItem } from "./lib/mergeScan";
 import { extOf, nativePath } from "./lib/paths";
 import { perfMark, perfMarkAfterPaint, perfRender } from "./lib/perf";
+import { IS_ANDROID } from "./lib/platform";
 import { readPref, writePref } from "./lib/prefs";
 import { reportError, reportNotice } from "./lib/reportError";
 import { restoreNotice } from "./lib/restoreNotice";
@@ -1225,7 +1226,7 @@ function MainApp({
           )}
         </main>
       </div>
-      <WindowControls />
+      {!IS_ANDROID && <WindowControls />}
       {/* The boundary stays mounted (only its content comes and goes), so the transition in openSearch can wait for the script */}
       <Suspense fallback={null}>
         {searchOpen && (

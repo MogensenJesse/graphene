@@ -2,6 +2,7 @@
 import { type ReactNode, useState } from "react";
 import type { Updater } from "../../hooks/useUpdater";
 import type { Vaults } from "../../hooks/useVaults";
+import { IS_ANDROID } from "../../lib/platform";
 import AboutPanel from "../settings/AboutPanel";
 import AppearancePanel from "../settings/AppearancePanel";
 import AssistantsPanel from "../settings/AssistantsPanel";
@@ -16,7 +17,7 @@ export type SettingsTab = "appearance" | "vaults" | "assistants" | "about";
 export type OpenSettings = (tab?: SettingsTab, message?: string) => void;
 
 // The rows of the list on the left; FolderIcon is what the vault menu uses for a vault too
-const SECTIONS: { value: SettingsTab; label: string; icon: ReactNode }[] = [
+const ALL_SECTIONS: { value: SettingsTab; label: string; icon: ReactNode }[] = [
   { value: "appearance", label: "Appearance", icon: <PaletteIcon size={16} /> },
   { value: "vaults", label: "Vaults", icon: <FolderIcon size={16} /> },
   {
@@ -26,6 +27,11 @@ const SECTIONS: { value: SettingsTab; label: string; icon: ReactNode }[] = [
   },
   { value: "about", label: "About", icon: <InfoIcon size={16} /> },
 ];
+
+// The assistants connect through a program on the computer (the MCP server), which Android cannot run
+const SECTIONS = ALL_SECTIONS.filter(
+  ({ value }) => !(IS_ANDROID && value === "assistants"),
+);
 
 interface SettingsDialogProps {
   initialTab: SettingsTab;

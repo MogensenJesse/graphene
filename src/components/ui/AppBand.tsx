@@ -1,4 +1,5 @@
 // src/components/ui/AppBand.tsx
+import { IS_ANDROID } from "../../lib/platform";
 import WindowControls from "./WindowControls";
 
 /**
@@ -7,6 +8,7 @@ import WindowControls from "./WindowControls";
  * In the app the buttons float over the notch of the main panel instead (see _app).
  */
 function AppBand() {
+  if (IS_ANDROID) return null; // no window buttons, and the system draws the bar
   return (
     <div className="app-band" data-tauri-drag-region>
       <WindowControls />

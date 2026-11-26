@@ -14,13 +14,18 @@ fn allow_vault_folders(app: &tauri::App) {
     let Ok(dir) = app.path().app_data_dir() else {
         return;
     };
+    let scope = app.fs_scope();
+    // Android: the app's own storage is not under a home folder, and holds both the config and the first vault (src/lib/vault.ts)
+    #[cfg(mobile)]
+    if let Err(err) = scope.allow_directory(&dir, true) {
+        eprintln!("could not allow the app's own folder: {err}");
+    }
     let Ok(text) = std::fs::read_to_string(boot::config_file(&dir)) else {
         return;
     };
     let Ok(config) = serde_json::from_str::<serde_json::Value>(&text) else {
         return;
     };
-    let scope = app.fs_scope();
     for path in boot::vault_paths(&config) {
         if let Err(err) = scope.allow_directory(path, true) {
             eprintln!("could not allow the vault folder {path}: {err}");

@@ -1,5 +1,6 @@
 // src/lib/vault.ts
 import { invoke } from "@tauri-apps/api/core";
+import { appDataDir, join } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   BaseDirectory,
@@ -9,6 +10,7 @@ import {
   writeTextFile,
 } from "@tauri-apps/plugin-fs";
 import {
+  addVault,
   EMPTY_CONFIG,
   parseVaultConfig,
   pathKey,
@@ -96,6 +98,26 @@ export function saveVaultConfig(config: VaultConfig): Promise<void> {
   const result = saving.then(write);
   saving = result.catch(() => undefined);
   return result;
+}
+
+/**
+ * Android has no folder picker, so the first start makes a vault in the app's own storage (`allow_vault_folders` in lib.rs lets
+ * the page use it) and opens it. When that fails the config stays as it was and the first-run screen shows.
+ */
+export async function withPrivateVault(
+  config: VaultConfig,
+): Promise<VaultConfig> {
+  try {
+    const path = await join(await appDataDir(), "Notes");
+    await mkdir(path, { recursive: true });
+    const made = addVault(config, path);
+    if ("kind" in made) return config;
+    await saveVaultConfig(made.config);
+    return made.config;
+  } catch (err) {
+    console.error("[vault] could not make the app's own vault:", err);
+    return config;
+  }
 }
 
 /** Whether the vault's folder is there. One that cannot be looked at counts as missing. */

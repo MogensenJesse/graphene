@@ -2,15 +2,20 @@
 // loadVaultConfig over a stand-in for the Rust command `boot_config` (src-tauri/src/boot.rs, tested in src-tauri/tests/boot_config.rs).
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import { pathKey } from "./vaultList";
+import { EMPTY_CONFIG, pathKey } from "./vaultList";
 
 const tauri = vi.hoisted(() => ({
   invoke: vi.fn<(command: string) => Promise<unknown>>(),
   writeTextFile: vi.fn<(path: string, text: string) => Promise<void>>(),
   fsCalls: vi.fn(),
+  appDataDir: vi.fn<() => Promise<string>>(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: tauri.invoke }));
+vi.mock("@tauri-apps/api/path", () => ({
+  appDataDir: tauri.appDataDir,
+  join: async (...parts: string[]) => parts.join("/"),
+}));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
 vi.mock("@tauri-apps/plugin-fs", () => ({
   BaseDirectory: { AppData: 14 },
@@ -22,7 +27,7 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   writeTextFile: tauri.writeTextFile,
 }));
 
-const { loadVaultConfig } = await import("./vault");
+const { loadVaultConfig, withPrivateVault } = await import("./vault");
 
 const config = {
   active: "D:/Notes",
@@ -37,6 +42,24 @@ beforeEach(() => {
   tauri.invoke.mockReset();
   tauri.writeTextFile.mockReset().mockResolvedValue(undefined);
   tauri.fsCalls.mockReset();
+  tauri.appDataDir.mockReset().mockResolvedValue("/data/app");
+});
+
+test("Android's first start makes the vault in the app's own storage, opens it and saves the list", async () => {
+  const made = await withPrivateVault(EMPTY_CONFIG);
+  assert.deepEqual(
+    made.vaults.map((v) => [v.path, v.name]),
+    [["/data/app/Notes", "Notes"]],
+  );
+  assert.equal(made.active, "/data/app/Notes");
+  assert.equal(tauri.writeTextFile.mock.calls.length, 1);
+});
+
+test("when the vault cannot be made the list stays as it was", async () => {
+  tauri.appDataDir.mockRejectedValue(new Error("no such folder"));
+  const made = await withPrivateVault(EMPTY_CONFIG);
+  assert.equal(made, EMPTY_CONFIG);
+  assert.equal(tauri.writeTextFile.mock.calls.length, 0);
 });
 
 test("the whole start is one call to Rust, and no fs plugin call", async () => {

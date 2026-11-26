@@ -1,0 +1,8 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema/acl-manifests.json",
+  "identifier": "desktop",
+  "description": "What only exists on a computer: the updater plugin is not built for Android",
+  "windows": ["main"],
+  "platforms": ["windows", "macOS", "linux"],
+  "permissions": ["updater:default"]
+}

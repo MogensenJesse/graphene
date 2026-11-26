@@ -8,6 +8,7 @@ import { applyCodeWrap } from "./lib/codeWrap";
 import { applyNoteWidth } from "./lib/columnWidth";
 import { applyFontPrefs } from "./lib/fontPrefs";
 import { observeIpc, observeLongFrames, perfMark } from "./lib/perf";
+import { IS_ANDROID } from "./lib/platform";
 import { initScrollbars } from "./lib/scrollbars";
 import { initTheme } from "./lib/theme";
 
@@ -20,6 +21,7 @@ initTheme();
 applyFontPrefs();
 applyCodeWrap();
 applyNoteWidth();
+if (IS_ANDROID) document.documentElement.dataset.platform = "android";
 initScrollbars();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

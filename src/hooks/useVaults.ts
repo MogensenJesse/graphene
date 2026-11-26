@@ -1,11 +1,13 @@
 // src/hooks/useVaults.ts
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { perfMark } from "../lib/perf";
+import { IS_ANDROID } from "../lib/platform";
 import { startVault } from "../lib/startVault";
 import {
   loadVaultConfig,
   saveVaultConfig,
   vaultFolderExists,
+  withPrivateVault,
 } from "../lib/vault";
 import {
   addVault,
@@ -103,7 +105,11 @@ export function useVaults(
     let cancelled = false;
     // One call to Rust gives the file and which folders are there: no round trip per vault after it
     loadVaultConfig().then(
-      ({ config: loaded, corrupt: bad, missing: gone }) => {
+      async ({ config: read, corrupt: bad, missing: gone }) => {
+        const loaded =
+          IS_ANDROID && !bad && read.vaults.length === 0
+            ? await withPrivateVault(read)
+            : read;
         if (cancelled) return;
         const { config: start, fellBack: fell } = startVault(loaded, gone);
         configRef.current = start;

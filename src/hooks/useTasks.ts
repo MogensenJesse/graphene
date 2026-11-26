@@ -1,7 +1,7 @@
 // src/hooks/useTasks.ts
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { onAppFocus } from "../lib/appFocus";
 import { reportError } from "../lib/reportError";
 import { rescanDue } from "../lib/rescanGate";
 import { changeIndex, changeTasks, dropTasks, readAll } from "../lib/taskFiles";
@@ -78,19 +78,12 @@ export function useTasks(vaultPath: string) {
   const lastReload = useRef(Date.now());
   useEffect(() => {
     reload();
-    const unlisten = getCurrentWindow().onFocusChanged(
-      ({ payload: focused }) => {
-        if (!focused) return;
-        setToday(store.localDate());
-        if (loaded.current && !rescanDue(lastReload.current, Date.now()))
-          return;
-        lastReload.current = Date.now();
-        reload();
-      },
-    );
-    return () => {
-      unlisten.then((fn) => fn()).catch(console.error);
-    };
+    return onAppFocus(() => {
+      setToday(store.localDate());
+      if (loaded.current && !rescanDue(lastReload.current, Date.now())) return;
+      lastReload.current = Date.now();
+      reload();
+    });
   }, [reload]);
 
   /** Resolves once every write of ours has landed or failed: the window waits for it before it closes. */

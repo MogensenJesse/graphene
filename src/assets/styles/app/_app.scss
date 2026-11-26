@@ -26,7 +26,9 @@ body {
   background: var(--surface-app);
   overflow: hidden;
   position: relative; // anchors the window buttons
-  padding: 10px;
+  // The 10px frame, or the system's bars when they are wider (the status and gesture bars of a phone; 0 on a computer)
+  padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom))
+    max(10px, env(safe-area-inset-left));
   box-sizing: border-box;
 }
 
@@ -140,6 +142,16 @@ body {
   );
 }
 
+// Android has no window buttons, so the main panel has no notch for them (platform.ts; main.tsx sets the attribute)
+html[data-platform='android'] {
+  --notch-w: 0px;
+  --notch-d: 0px;
+
+  .app__main {
+    clip-path: none;
+  }
+}
+
 // A 24px icon button (ui/IconButton) in the header's left corner, so it keeps its place whether the sidebar is showing or not
 .app__sidebar-toggle {
   position: absolute;
@@ -202,6 +214,7 @@ body {
   align-items: center;
   justify-content: center;
   background: var(--surface-backdrop);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 // The band (ui/AppBand) has the window buttons and moves the window, over the card

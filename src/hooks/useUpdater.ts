@@ -2,6 +2,7 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { IS_ANDROID } from "../lib/platform";
 import { fetchReleaseNotes, type ReleaseNote } from "../lib/releaseNotes";
 
 export type UpdateStatus =
@@ -81,7 +82,7 @@ export function useUpdater(flushPendingSave: () => Promise<boolean>) {
   );
 
   useEffect(() => {
-    if (import.meta.env.DEV) return; // a dev build must never replace itself with a release
+    if (import.meta.env.DEV || IS_ANDROID) return; // a dev build must never replace itself with a release; Android has no updater
     const timer = setTimeout(() => void run(true), AUTO_CHECK_DELAY_MS);
     return () => clearTimeout(timer);
   }, [run]);
@@ -128,7 +129,7 @@ export function useUpdater(flushPendingSave: () => Promise<boolean>) {
     progress,
     error,
     unsaved,
-    canInstall: !import.meta.env.DEV,
+    canInstall: !import.meta.env.DEV && !IS_ANDROID,
     checkNow: useCallback(() => run(false), [run]),
     install,
   };

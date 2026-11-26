@@ -1,6 +1,7 @@
 // src/components/settings/AboutPanel.tsx
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { Updater } from "../../hooks/useUpdater";
+import { IS_ANDROID } from "../../lib/platform";
 import { RELEASES_PAGE } from "../../lib/releaseNotes";
 import Button from "../ui/Button";
 
@@ -41,22 +42,27 @@ function AboutPanel({ updater, onShowUpdate }: AboutPanelProps) {
         </p>
       )}
 
-      <div className="settings__row settings__row--center">
-        <Button disabled={busy} onClick={updater.checkNow}>
-          Check for updates
-        </Button>
-        {result && (
-          <span className="settings__muted" role="status">
-            {result}
-          </span>
-        )}
-      </div>
+      {/* Android has no updater: a new APK is installed over the old one */}
+      {!IS_ANDROID && (
+        <>
+          <div className="settings__row settings__row--center">
+            <Button disabled={busy} onClick={updater.checkNow}>
+              Check for updates
+            </Button>
+            {result && (
+              <span className="settings__muted" role="status">
+                {result}
+              </span>
+            )}
+          </div>
 
-      <p className="settings__muted">
-        {canInstall
-          ? "Graphene also checks a few seconds after it starts."
-          : "This is a development build: it never updates itself."}
-      </p>
+          <p className="settings__muted">
+            {canInstall
+              ? "Graphene also checks a few seconds after it starts."
+              : "This is a development build: it never updates itself."}
+          </p>
+        </>
+      )}
 
       <div className="settings__row">
         <Button
