@@ -64,8 +64,10 @@
     resize: none;
     field-sizing: content;
 
-    &:hover {
-      background: var(--color-background-hover);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--color-background-hover);
+      }
     }
 
     &:focus {
@@ -185,8 +187,10 @@
     height: 36px;
     text-align: left;
 
-    &:hover:not(:disabled) {
-      text-decoration: none;
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        text-decoration: none;
+      }
     }
 
     &--on,
@@ -239,8 +243,10 @@
   &__delete {
     color: var(--color-text-tertiary);
 
-    &:hover:not(:disabled) {
-      color: var(--color-text-danger);
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        color: var(--color-text-danger);
+      }
     }
   }
 }

@@ -16,8 +16,10 @@
   cursor: pointer;
   transition: background var(--transition-fast), border-color var(--transition-fast);
 
-  &:hover {
-    border-color: var(--color-text-secondary);
+  @media (hover: hover) {
+    &:hover {
+      border-color: var(--color-text-secondary);
+    }
   }
 
   @include mixins.focus-ring(2px);

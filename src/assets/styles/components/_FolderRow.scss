@@ -17,9 +17,14 @@
   transition: background var(--transition-fast);
   @include mixins.row-surface;
 
-  &:hover .folder-row__actions,
   &:focus-within .folder-row__actions {
     opacity: 1;
+  }
+
+  @media (hover: hover) {
+    &:hover .folder-row__actions {
+      opacity: 1;
+    }
   }
 
   &--drag-over {
@@ -44,8 +49,10 @@
     border: none;
     cursor: pointer;
 
-    &:hover .folder-row__chevron {
-      color: var(--color-text-secondary);
+    @media (hover: hover) {
+      &:hover .folder-row__chevron {
+        color: var(--color-text-secondary);
+      }
     }
 
     @include mixins.focus-ring(2px) {

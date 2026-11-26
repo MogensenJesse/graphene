@@ -802,6 +802,8 @@ function MainApp({
   const [trashToast, setTrashToast] = useState<{
     id: string;
     title: string;
+    // Deleted from the note's own screen on a phone (the list takes over): its Undo goes back to the note, not to the list
+    fromScreen: boolean;
   } | null>(null);
   const closeTrashToast = useCallback(() => setTrashToast(null), []);
 
@@ -820,15 +822,17 @@ function MainApp({
       if (!trashed) setTrashToast((t) => (t?.id === id ? null : t));
     });
     setUndoToast(null);
-    setTrashToast({ id, title: item.title });
+    setTrashToast({ id, title: item.title, fromScreen: phone && !compactOpen });
   });
 
   const handleUndoDelete = async () => {
-    const id = trashToast?.id;
+    const toast = trashToast;
     setTrashToast(null);
-    if (!id) return;
-    await restoreItem(id);
-    if (itemsRef.current.some((i) => i.id === id)) handleSelect(id);
+    if (!toast) return;
+    await restoreItem(toast.id);
+    if (!itemsRef.current.some((i) => i.id === toast.id)) return;
+    handleSelect(toast.id);
+    if (toast.fromScreen) closeFloating();
   };
 
   // The toast's Undo would find nothing once the trash is empty
@@ -1144,7 +1148,7 @@ function MainApp({
         onDirtyChange={setIsDirtyEdit}
         onDone={handleDone}
         canLeave={mode === "edit" || draft.returnToId !== null}
-        focusOnMount={mode !== "new" || draft.focus !== false}
+        focusOnMount={mode === "new" ? draft.focus !== false : !phone}
         flushRef={editorFlush}
         findSignal={findSignal}
         insertImagesRef={insertImagesRef}

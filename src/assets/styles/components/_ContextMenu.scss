@@ -49,13 +49,17 @@
   }
 
   // A menu that never takes focus (text fields): the pointer, not focus, drives the highlight
-  &--static &__item:hover:not(:disabled) {
-    @include mixins.menu-item-lit;
+  @media (hover: hover) {
+    &--static &__item:hover:not(:disabled) {
+      @include mixins.menu-item-lit;
+    }
   }
 
-  &--static &__item--danger:hover:not(:disabled) {
-    color: var(--color-text-danger);
-    background: var(--color-background-danger);
+  @media (hover: hover) {
+    &--static &__item--danger:hover:not(:disabled) {
+      color: var(--color-text-danger);
+      background: var(--color-background-danger);
+    }
   }
 
   &__icon {

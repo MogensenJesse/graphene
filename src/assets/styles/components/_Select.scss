@@ -16,9 +16,14 @@
   @include mixins.inline-field(0 var(--space-5), var(--border-radius-md));
   transition: border-color var(--transition-fast);
 
-  &:hover,
   &--open {
     border-color: var(--color-text-tertiary);
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      border-color: var(--color-text-tertiary);
+    }
   }
 
   @include mixins.focus-ring;
@@ -102,9 +107,14 @@
     }
 
     // The keyboard's row is lit like the pointer's
-    &:hover:not(:disabled),
     &--active {
       @include mixins.menu-item-lit;
+    }
+
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        @include mixins.menu-item-lit;
+      }
     }
 
     // The list clips, so the ring sits within the row

@@ -65,10 +65,10 @@ Conditions: **D** default phone (411x914 dp, light), **K** dark theme, **S** sma
 | 17 | Minor | Task details: small targets, the pane covers the list, calendar cells 30 px high | Tasks | D S | S |
 | 18 | Minor | Completing a task gives no feedback | Tasks | D | S |
 | 19 | Minor | Small phone: the drawer's fixed block takes 55% of the height (fixed, Round 4) | Drawer | S | S |
-| 20 | Minor | Hover highlights stay after a tap | App-wide | D | S |
+| 20 | Minor | Hover highlights stay after a tap (fixed, Round 5) | App-wide | D | S |
 | 21 | Minor | Tertiary text is 3.8:1 in the dark theme | App-wide | K | S |
 | 22 | Minor | "Text width" strips at the screen edge, no touch route | Read view, Editor | D | S |
-| 23 | Minor | The editor opens with the keyboard up and the caret at the end of a long note | Editor | D | S |
+| 23 | Minor | The editor opens with the keyboard up and the caret at the end of a long note (fixed, Round 5) | Editor | D | S |
 | 24 | Minor | Settings copy says "follows Windows" | Settings | D | S |
 | 25 | Minor | Trash: "Delete forever" has no danger styling, 14 px from "Restore" | Trash | D | S |
 | 26 | Minor | Deep folders truncate note titles | Drawer | D | S |
@@ -78,7 +78,7 @@ Conditions: **D** default phone (411x914 dp, light), **K** dark theme, **S** sma
 | 30 | Polish | The long-press menu opens under the finger and covers the row | Menus | D | S |
 | 31 | Polish | Floating-panel chrome costs 20 px of width; mid-grey frame in the dark theme | App-wide | D K | S |
 | 32 | Polish | Meta text is 11-12 px | App-wide | D | S |
-| 33 | Minor | Status bar icons follow the phone's light/dark mode, not the app's Theme setting (found while fixing #21) | App-wide | D K | M |
+| 33 | Minor | Status bar icons follow the phone's light/dark mode, not the app's Theme setting (found while fixing #21; fixed, Round 5) | App-wide | D K | M |
 
 ### 1. Keyboard pans the header and toolbar off the screen: Major, M
 
@@ -470,6 +470,19 @@ bars are drawn above it; a search result and "Edit" from a row's menu now close 
 blank draft under it keeps the keyboard up and the bottom bar hidden. Not done: the list's `[...]` menu (Settings and Trash stay as the list's
 footer row), live filtering in the search field, a "+" for tasks, swipes, landscape (914 px keeps the docked sidebar), a real phone, the desktop app.
 
+### Round 5 status: polish (2026-11-26)
+
+Done in the working tree (nothing committed) and checked on the emulator after one build.
+
+| # | What changed | Checked by |
+|---|---|---|
+| 20 | Every `:hover` rule that is a highlight sits in `@media (hover: hover)` (47 blocks in 20 SCSS files: 29 wrapped by a script, the rest by hand where a hover shared a rule with a state such as `--open` or `--active`). What stays outside it: the native scrollbar thumbs, and the "selected" and "active" overrides, which look the same as the state | A tap on Bold leaves `:hover` true but its background transparent (it was `rgba(27,29,36,.05)`); `matchMedia('(hover: hover)')` is false on the emulator. The compiled CSS of HEAD and of the tree, with the wrappers removed, has the same 1005 selector and declaration pairs |
+| 23 | On a phone Edit opens the editor unfocused, as the note was read: no keyboard, the text from the top. The first tap in the text raises it. A new note ("+") is still focused | Edit: `activeElement` is the body, `mInputShown=false` (`47`); a tap in the text: TEXTAREA, keyboard up |
+| 33 | The page tells `MainActivity` its theme (`window.grapheneBars.setDark`, a JavaScript interface; `lib/theme.ts` calls it whenever the theme is applied), and the bars' icons follow it, with a keep rule for release builds | Theme Dark on a light phone: light icons (`48`); Theme Light on a night-mode phone: `LIGHT_STATUS_BARS` in `dumpsys window`; Theme System follows a live switch of the phone's mode both ways |
+| (Round 4 leftover) | Undo of a note's delete on the note's own screen goes back to that note; from the list it stays on the list | Both, on the emulator |
+
+Not checked: the desktop app (the hover guard is plain CSS and is identical in structure; the bridge and the focus change are Android and phone only), a release build with R8, and a mouse on a tablet.
+
 ## 4. Method, conditions and limits
 
 **Method.** A synthetic vault (about 40 notes in nested folders from `scripts/gen-synthetic-vault.mjs`, plus hand-made cases: a very long note,
@@ -561,3 +574,5 @@ app data.
 | 44 | [44-phone-tasks-screen.png](android-2026-11-26/44-phone-tasks-screen.png) | Round 4: a task list as a screen | #11 |
 | 45 | [45-phone-task-details.png](android-2026-11-26/45-phone-task-details.png) | Round 4: a task's details, full width | #17 |
 | 46 | [46-phone-list-small-dark.png](android-2026-11-26/46-phone-list-small-dark.png) | Round 4: the list on the small phone and in the dark theme | #19 |
+| 47 | [47-editor-opens-without-keyboard.png](android-2026-11-26/47-editor-opens-without-keyboard.png) | Round 5: Edit opens the editor with no keyboard | #23 |
+| 48 | [48-dark-theme-light-phone-status-bar.png](android-2026-11-26/48-dark-theme-light-phone-status-bar.png) | Round 5: Theme Dark on a light phone, with light status bar icons | #33 |

@@ -78,8 +78,10 @@
       color: var(--color-text-tertiary);
     }
 
-    &:hover {
-      opacity: 0.8;
+    @media (hover: hover) {
+      &:hover {
+        opacity: 0.8;
+      }
     }
 
     @include mixins.focus-ring(2px);
@@ -182,10 +184,16 @@
     outline: none;
     transition: border-color var(--transition-fast), color var(--transition-fast);
 
-    &:hover,
     &--open {
       border-color: var(--color-border-primary);
       color: var(--color-text-primary);
+    }
+
+    @media (hover: hover) {
+      &:hover {
+        border-color: var(--color-border-primary);
+        color: var(--color-text-primary);
+      }
     }
 
     @include mixins.focus-ring;
@@ -235,8 +243,10 @@
       background: var(--color-background-hover);
     }
 
-    &:hover:not(:disabled) {
-      @include mixins.menu-item-lit;
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        @include mixins.menu-item-lit;
+      }
     }
 
     // Inside the dropdown, which clips: the ring sits within the row

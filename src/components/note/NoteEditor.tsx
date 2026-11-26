@@ -77,8 +77,8 @@ interface NoteEditorProps {
   onDirtyChange?: (isDirty: boolean) => void;
   onDone: () => void;
   canLeave: boolean;
-  // Focus the text on mount, so typing can start (default). Off for a blank draft that appears behind the open drawer of a phone:
-  // the soft keyboard would rise over the list the person is choosing from
+  // Focus the text on mount, so typing can start (default). Off on a phone for a blank draft behind the list (the soft keyboard
+  // would rise over it) and for an existing note (Edit opens it as it was read; the first tap in the text raises the keyboard)
   focusOnMount?: boolean;
   // Parent calls flushRef.current() before navigating away so pending edits are saved
   flushRef: React.RefObject<(() => void) | null>;

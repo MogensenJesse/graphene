@@ -2,6 +2,13 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { readPref, writePref } from "./prefs";
 
+declare global {
+  interface Window {
+    // Android only (MainActivity's BarsBridge): the status and navigation bars' icons follow the page's theme, not the phone's mode
+    grapheneBars?: { setDark(dark: boolean): void };
+  }
+}
+
 export type ThemePref = "system" | "light" | "dark";
 
 export const THEME_PREFS: ThemePref[] = ["system", "light", "dark"];
@@ -23,6 +30,7 @@ const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
 function applyTheme(pref: ThemePref): void {
   const dark = pref === "system" ? systemDark.matches : pref === "dark";
   document.documentElement.dataset.theme = dark ? "dark" : "light";
+  window.grapheneBars?.setDark(dark);
   getCurrentWindow()
     .setTheme(pref === "system" ? null : pref)
     .catch(console.error);

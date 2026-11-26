@@ -80,8 +80,10 @@
     color: inherit;
     text-decoration: underline;
 
-    &:hover:not(:disabled) {
-      color: inherit;
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        color: inherit;
+      }
     }
   }
 }

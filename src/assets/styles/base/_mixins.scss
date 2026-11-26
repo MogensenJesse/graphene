@@ -107,10 +107,13 @@
 }
 
 // A row in a list that can be hovered and selected (notes, folders, lists, the sidebar's nav rows). $selected is the
-// modifier that marks the chosen one. Selected beats hover, so it stays put under the pointer.
+// modifier that marks the chosen one. Selected beats hover, so it stays put under the pointer. Every :hover rule sits in
+// @media (hover: hover): a touch screen keeps :hover on whatever was tapped last, so the highlight would stay on.
 @mixin row-surface($selected: '--selected') {
-  &:hover {
-    background: var(--color-background-hover);
+  @media (hover: hover) {
+    &:hover {
+      background: var(--color-background-hover);
+    }
   }
 
   &#{$selected},
@@ -193,7 +196,9 @@
     text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
     text-underline-offset: 2px;
 
-    &:hover { text-decoration-color: currentColor; }
+    @media (hover: hover) {
+      &:hover { text-decoration-color: currentColor; }
+    }
   }
 
   hr {

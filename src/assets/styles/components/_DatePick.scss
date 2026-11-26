@@ -66,9 +66,11 @@
     cursor: pointer;
     transition: background var(--transition-fast), color var(--transition-fast);
 
-    &:hover {
-      color: var(--color-text-primary);
-      background: var(--color-background-hover);
+    @media (hover: hover) {
+      &:hover {
+        color: var(--color-text-primary);
+        background: var(--color-background-hover);
+      }
     }
 
     // The days of the months either side that fill the first and last week

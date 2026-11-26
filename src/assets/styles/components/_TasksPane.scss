@@ -69,8 +69,10 @@
     border-radius: var(--border-radius-sm);
     cursor: text;
 
-    &:hover {
-      background: var(--color-background-hover);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--color-background-hover);
+      }
     }
 
     @include mixins.focus-ring;
@@ -146,8 +148,10 @@
       color: var(--color-text-tertiary);
     }
 
-    &:hover {
-      color: var(--color-text-primary);
+    @media (hover: hover) {
+      &:hover {
+        color: var(--color-text-primary);
+      }
     }
 
     @include mixins.focus-ring;

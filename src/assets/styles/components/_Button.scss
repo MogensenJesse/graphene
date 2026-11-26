@@ -20,9 +20,11 @@
   transition: background var(--transition-fast), color var(--transition-fast),
     border-color var(--transition-fast);
 
-  &:hover:not(:disabled) {
-    color: var(--color-text-primary);
-    background: var(--color-background-hover);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      color: var(--color-text-primary);
+      background: var(--color-background-hover);
+    }
   }
 
   // A press: one pixel down
@@ -64,8 +66,10 @@
 .btn--default.btn--sm {
   border-color: var(--color-border-secondary);
 
-  &:hover:not(:disabled) {
-    border-color: var(--color-border-primary);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      border-color: var(--color-border-primary);
+    }
   }
 }
 
@@ -75,9 +79,11 @@
   background: var(--color-background-info);
   border-color: var(--color-border-info);
 
-  &:hover:not(:disabled) {
-    color: var(--color-text-info);
-    background: var(--color-background-info-hover);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      color: var(--color-text-info);
+      background: var(--color-background-info-hover);
+    }
   }
 }
 
@@ -87,8 +93,10 @@
   font-weight: var(--fw-medium);
   background: var(--color-background-active);
 
-  &:hover:not(:disabled) {
-    background: var(--color-background-hover-strong);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background: var(--color-background-hover-strong);
+    }
   }
 }
 
@@ -96,9 +104,11 @@
   color: var(--color-text-danger);
   border-color: var(--color-border-danger);
 
-  &:hover:not(:disabled) {
-    color: var(--color-text-danger);
-    background: var(--color-background-danger);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      color: var(--color-text-danger);
+      background: var(--color-background-danger);
+    }
   }
 }
 
@@ -106,8 +116,10 @@
 .btn--danger.btn--sm {
   border-color: transparent;
 
-  &:hover:not(:disabled) {
-    border-color: var(--color-border-danger);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      border-color: var(--color-border-danger);
+    }
   }
 }
 
@@ -115,8 +127,10 @@
 .btn--quiet {
   border-color: transparent;
 
-  &:hover:not(:disabled) {
-    border-color: var(--color-border-primary);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      border-color: var(--color-border-primary);
+    }
   }
 }
 
@@ -131,9 +145,11 @@
   border: none;
   border-radius: 0;
 
-  &:hover:not(:disabled) {
-    background: none;
-    text-decoration: underline;
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background: none;
+      text-decoration: underline;
+    }
   }
 
   @include mixins.focus-ring(2px);
@@ -158,9 +174,11 @@
   transition: background var(--transition-fast), color var(--transition-fast);
 
   // aria-disabled is a button that is off but stays focusable (a tooltip still shows): it reacts to nothing, as a disabled one
-  &:hover:not(:disabled, [aria-disabled='true']) {
-    color: var(--color-text-secondary);
-    background: var(--color-background-hover);
+  @media (hover: hover) {
+    &:hover:not(:disabled, [aria-disabled='true']) {
+      color: var(--color-text-secondary);
+      background: var(--color-background-hover);
+    }
   }
 
   &:active:not(:disabled, [aria-disabled='true']) {
@@ -196,9 +214,11 @@
   transition: background var(--transition-fast), color var(--transition-fast),
     border-color var(--transition-fast);
 
-  &:hover:not(:disabled, [aria-disabled='true']) {
-    color: var(--color-text-primary);
-    border-color: var(--color-border-secondary);
+  @media (hover: hover) {
+    &:hover:not(:disabled, [aria-disabled='true']) {
+      color: var(--color-text-primary);
+      border-color: var(--color-border-secondary);
+    }
   }
 
   // The format is on where the caret is; pressing the button takes it off
@@ -210,7 +230,9 @@
 }
 
 // Goes red when pointed at: the window's Close
-.icon-btn--danger:hover:not(:disabled, [aria-disabled='true']) {
-  color: var(--color-text-danger);
-  background: var(--color-background-danger-hover);
+@media (hover: hover) {
+  .icon-btn--danger:hover:not(:disabled, [aria-disabled='true']) {
+    color: var(--color-text-danger);
+    background: var(--color-background-danger-hover);
+  }
 }

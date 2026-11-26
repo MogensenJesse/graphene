@@ -45,9 +45,14 @@
       transition: opacity var(--transition-fast);
     }
 
-    &:hover::after,
     &:focus-visible::after {
       opacity: 1;
+    }
+
+    @media (hover: hover) {
+      &:hover::after {
+        opacity: 1;
+      }
     }
 
     &--drag::after {

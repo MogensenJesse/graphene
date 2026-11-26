@@ -44,8 +44,10 @@
     animation: var(--anim-pop);
     transition: background var(--transition-fast);
 
-    &:hover {
-      background: var(--color-background-info-hover);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--color-background-info-hover);
+      }
     }
 
     @include mixins.focus-ring;
@@ -78,9 +80,11 @@
       color: var(--color-text-tertiary);
     }
 
-    &:hover {
-      color: var(--color-text-primary);
-      background: var(--color-background-hover-strong);
+    @media (hover: hover) {
+      &:hover {
+        color: var(--color-text-primary);
+        background: var(--color-background-hover-strong);
+      }
     }
 
     // Only the one vault: a name, not a button
@@ -145,10 +149,15 @@
 
     @include mixins.row-surface('--active');
 
-    &:hover,
     &--active,
     &--active:hover {
       color: var(--color-text-primary);
+    }
+
+    @media (hover: hover) {
+      &:hover {
+        color: var(--color-text-primary);
+      }
     }
 
     @include mixins.focus-ring(-2px);
@@ -206,10 +215,15 @@
     // The Trash view is open
     @include mixins.row-surface('--active');
 
-    &:hover,
     &--active,
     &--active:hover {
       color: var(--color-text-primary);
+    }
+
+    @media (hover: hover) {
+      &:hover {
+        color: var(--color-text-primary);
+      }
     }
 
     // A note is being dragged: the button grows to the whole row, and tints when the note is over it
@@ -384,8 +398,13 @@
       color var(--transition-fast);
   }
 
-  &:hover &__more,
   &:focus-within &__more {
     opacity: 1;
+  }
+
+  @media (hover: hover) {
+    &:hover &__more {
+      opacity: 1;
+    }
   }
 }

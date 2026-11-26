@@ -204,10 +204,16 @@
     cursor: pointer;
     transition: border-color var(--transition-fast), color var(--transition-fast);
 
-    &:hover,
     &--open {
       border-color: var(--color-border-primary);
       color: var(--color-text-primary);
+    }
+
+    @media (hover: hover) {
+      &:hover {
+        border-color: var(--color-border-primary);
+        color: var(--color-text-primary);
+      }
     }
 
     @include mixins.focus-ring;
@@ -269,9 +275,14 @@
     }
 
     // The keyboard's row (the input takes the arrow keys) is lit like the pointer's
-    &:hover:not(:disabled),
     &--active {
       @include mixins.menu-item-lit;
+    }
+
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        @include mixins.menu-item-lit;
+      }
     }
 
     // Inside the dropdown, which clips: the ring sits within the row
