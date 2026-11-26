@@ -52,7 +52,7 @@ Conditions: **D** default phone (411x914 dp, light), **K** dark theme, **S** sma
 | 4 | Major | Settings is a desktop dialog on a phone; controls clipped (fixed, Round 3) | Settings | D S F | M |
 | 5 | Major | Task checkbox is about 20 px to hit | Tasks | D | S |
 | 6 | Major | Formatting toolbar: 5 of 14 buttons hidden with no cue; no undo, redo or indent (fixed, Round 2) | Editor | D | M |
-| 7 | Major | Touch drag does nothing; tasks cannot be reordered by touch | Drawer, Tasks | D | S + L |
+| 7 | Major | Touch drag does nothing; tasks cannot be reordered by touch (fixed, Round 6) | Drawer, Tasks | D | S + L |
 | 8 | Major | Tables are crushed into the column, words break mid-word (fixed, Round 3) | Read view | D | M |
 | 9 | Major | Task-list rows in the drawer are 28 px high | Drawer (Tasks) | D | S |
 | 10 | Major | Vault controls for a phone with one private vault: dead "Add vault...", Remove, AI share (fixed, Round 3) | Drawer, Settings | D | S |
@@ -483,6 +483,34 @@ Done in the working tree (nothing committed) and checked on the emulator after o
 
 Not checked: the desktop app (the hover guard is plain CSS and is identical in structure; the bridge and the focus change are Android and phone only), a release build with R8, and a mouse on a tablet.
 
+### Round 6 status: touch dragging (2026-11-26)
+
+Done in the working tree and checked on the emulator after one build. The audit's "S" fix was already there: the task menu has "Move up" and
+"Move down" (`TasksPane.tsx`, for the open tasks of a list's own view), as folders, lists, groups and notes do. The "L" fix is built:
+a finger drags a row of the sidebar or the tasks, in the one place that all drags share (`useDragToFolder`).
+
+How it works: a finger that rests on a row for 400 ms picks it up (the drag ghost shows above the finger). One that moves more than 10 px before
+that is scrolling, and the browser keeps the touch. After the pick-up a blocking `touchmove` handler holds the scroll back (the browser would
+otherwise cancel the pointer), and the row's long-press `contextmenu`, which comes at about 500 ms, is held back too. A finger that lifts without
+having moved gets that menu then (a synthetic `contextmenu` on the row), so a long press still opens it. Near the top or bottom edge of the list
+the list scrolls under the finger (`lib/dragScroll.ts`, with a test). A mouse and a pen take the old path unchanged.
+
+| What | Checked by |
+|---|---|
+| A swipe over a row still scrolls, a tap still opens the note | scrollTop 0 to 258; the tap opened the note |
+| Hold, lift: the menu | The ghost shows while held and no menu; after the release the menu opens |
+| A note moved above another (manual order) | "Meeting sync" went before "Meeting pipeline", with the drop line on it (`49`) and no menu after the drop |
+| A note dropped on a folder | The folder is tinted, the note is inside it afterwards |
+| A folder moved above its sibling | "Test folder" before "Client Planning" |
+| A task moved above another, in a list | "Move auth in" before "Merge backup not" (`50`); neither the menu nor the details opened |
+| A to-do list moved to the top of the lists | "Roadmap" first |
+| A long list: the finger at the bottom edge | The list scrolled from 184 to 1488 while held, and the drop landed at the line under the finger |
+| A mouse | A drag started with Android's mouse input source shows the ghost and drops (the old path) |
+
+Not done: a haptic tick on the pick-up (the ghost is the only cue), a lift animation on the row, moving a task to another list by drag (the lists are on
+another screen on a phone: "Move to list" in the menu does it), a drag on a tablet with a pen, and a real phone. GitNexus rates `useDragToFolder` HIGH (the
+sidebar and the tasks both use it): every new rule is behind `pointerType === "touch"`.
+
 ## 4. Method, conditions and limits
 
 **Method.** A synthetic vault (about 40 notes in nested folders from `scripts/gen-synthetic-vault.mjs`, plus hand-made cases: a very long note,
@@ -576,3 +604,5 @@ app data.
 | 46 | [46-phone-list-small-dark.png](android-2026-11-26/46-phone-list-small-dark.png) | Round 4: the list on the small phone and in the dark theme | #19 |
 | 47 | [47-editor-opens-without-keyboard.png](android-2026-11-26/47-editor-opens-without-keyboard.png) | Round 5: Edit opens the editor with no keyboard | #23 |
 | 48 | [48-dark-theme-light-phone-status-bar.png](android-2026-11-26/48-dark-theme-light-phone-status-bar.png) | Round 5: Theme Dark on a light phone, with light status bar icons | #33 |
+| 49 | [49-touch-drag-note.png](android-2026-11-26/49-touch-drag-note.png) | Round 6: a note held and moved, with the drop line and the Trash zone | #7 |
+| 50 | [50-touch-drag-task.png](android-2026-11-26/50-touch-drag-task.png) | Round 6: a task held and moved | #7 |

@@ -7,6 +7,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { clearDropMarks, markDrop, swallowNextClick } from "../lib/dragDrop";
+import { edgeStep, scrollParentOf } from "../lib/dragScroll";
 import {
   AT_REST,
   createDragStore,
@@ -81,6 +82,10 @@ function locate(
 }
 
 const DRAG_THRESHOLD_PX = 6;
+// A finger picks a row up by resting on it for this long (the row's long-press menu comes at about 500 ms, so this is first)
+const HOLD_MS = 400;
+// A finger that moves this far before that is scrolling; after it, this far is a drag (less is a finger that rested)
+const HOLD_SLOP_PX = 10;
 
 /**
  * Reads one part of a drag's view (the drop target a row draws, whether a note is being dragged): the component re-renders only
@@ -120,12 +125,24 @@ export function useDragToFolder(onDrop: DropHandler): {
   const startDrag = useCallback(
     (e: React.PointerEvent, source: DragSource) => {
       if (e.button !== 0) return;
-      e.preventDefault();
+      // A finger keeps its own behaviour (the scroll, the tap) until the row is picked up
+      const touch = e.pointerType === "touch";
+      if (!touch) e.preventDefault();
 
+      const pointerId = e.pointerId;
+      const row = e.currentTarget;
       const start = { x: e.clientX, y: e.clientY };
+      let at = start;
       let active = false;
       // Escape was pressed: the drag is over, but the button is still down until it is released
       let cancelled = false;
+      // Touch: the finger has rested long enough, so the row is picked up (a mouse is "held" at once)
+      let held = !touch;
+      // Touch: the finger has moved since the row was picked up. One that rested and lifted made a long press: the row's own menu
+      let dragged = false;
+      let holdTimer: number | null = null;
+      let edgeRaf: number | null = null;
+      let scroller: HTMLElement | null = null;
 
       // Back to rest: no ghost, no tint, no line, no grabbing cursor
       const reset = () => {
@@ -150,44 +167,91 @@ export function useDragToFolder(onDrop: DropHandler): {
         reset();
       };
 
-      const handleMove = (ev: PointerEvent) => {
-        if (cancelled) return;
-        if (!active) {
-          if (
-            Math.hypot(ev.clientX - start.x, ev.clientY - start.y) <
-            DRAG_THRESHOLD_PX
-          )
-            return;
-          active = true;
-          document.body.style.cursor = "grabbing";
-          document.body.style.userSelect = "none";
-          // The pointer first: the ghost mounts with the view and starts where it is
-          drag.movePointer(ev.clientX, ev.clientY);
-          drag.set({ source, overId: undefined });
-          window.addEventListener("keydown", handleKey, true);
-        }
+      // The drag runs: the ghost, the grabbing cursor and the key that cancels it
+      const begin = (x: number, y: number) => {
+        active = true;
+        document.body.style.cursor = "grabbing";
+        document.body.style.userSelect = "none";
+        // The pointer first: the ghost mounts with the view and starts where it is
+        drag.movePointer(x, y);
+        drag.set({ source, overId: undefined });
+        window.addEventListener("keydown", handleKey, true);
+      };
 
-        if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-        const x = ev.clientX;
-        const y = ev.clientY;
-        rafRef.current = requestAnimationFrame(() => {
-          rafRef.current = null;
-          drag.movePointer(x, y);
-          const { target, near, mark } = locate(x, y, source);
-          markDrop(near ? mark : null, near?.after);
-          drag.set({
-            source,
-            overId: !siblingsOnly(source.kind) && !near ? target : undefined,
-          });
+      // The ghost, the drop line and the tint follow the pointer (also when the list moved under a finger that did not)
+      const place = (x: number, y: number) => {
+        drag.movePointer(x, y);
+        const { target, near, mark } = locate(x, y, source);
+        markDrop(near ? mark : null, near?.after);
+        drag.set({
+          source,
+          overId: !siblingsOnly(source.kind) && !near ? target : undefined,
         });
       };
 
+      // A finger near the top or bottom of the list moves it, a frame at a time while it stays there
+      const edgeScroll = () => {
+        edgeRaf = null;
+        if (!active || cancelled || !scroller) return;
+        const box = scroller.getBoundingClientRect();
+        const step = edgeStep(at.y, box.top, box.bottom);
+        if (!step) return;
+        const before = scroller.scrollTop;
+        scroller.scrollTop += step;
+        if (scroller.scrollTop === before) return;
+        place(at.x, at.y);
+        edgeRaf = requestAnimationFrame(edgeScroll);
+      };
+
+      const handleMove = (ev: PointerEvent) => {
+        if (cancelled || (touch && ev.pointerId !== pointerId)) return;
+        at = { x: ev.clientX, y: ev.clientY };
+        if (!held) {
+          // The finger moved before it had rested long enough: it is scrolling, and the row is not for dragging
+          if (Math.hypot(at.x - start.x, at.y - start.y) > HOLD_SLOP_PX) stop();
+          return;
+        }
+        if (!active) {
+          if (Math.hypot(at.x - start.x, at.y - start.y) < DRAG_THRESHOLD_PX)
+            return;
+          begin(at.x, at.y);
+        }
+        if (touch) {
+          if (Math.hypot(at.x - start.x, at.y - start.y) > HOLD_SLOP_PX)
+            dragged = true;
+          if (edgeRaf === null) edgeRaf = requestAnimationFrame(edgeScroll);
+        }
+
+        if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+        const { x, y } = at;
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null;
+          place(x, y);
+        });
+      };
+
+      // Picked up: the finger rested on the row, so the touch is the drag's from here (the scroll is held back, and so is
+      // the long-press menu: its event comes about 100 ms later)
+      const blockScroll = (ev: TouchEvent) => {
+        if (held && ev.cancelable) ev.preventDefault();
+      };
+      const blockMenu = (ev: Event) => {
+        if (!held) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+      };
+
       const stop = () => {
+        if (holdTimer !== null) clearTimeout(holdTimer);
+        if (edgeRaf !== null) cancelAnimationFrame(edgeRaf);
+        holdTimer = edgeRaf = null;
         window.removeEventListener("pointermove", handleMove);
         window.removeEventListener("pointerup", handleUp);
         window.removeEventListener("pointercancel", abort);
         window.removeEventListener("blur", abort);
         window.removeEventListener("keydown", handleKey, true);
+        window.removeEventListener("touchmove", blockScroll);
+        window.removeEventListener("contextmenu", blockMenu, true);
         cleanupRef.current = null;
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
@@ -195,23 +259,53 @@ export function useDragToFolder(onDrop: DropHandler): {
       };
 
       // The release was lost (the system took the pointer, the window lost the focus): end the drag, drop nothing
-      const abort = () => {
+      const abort = (ev?: Event) => {
+        if (touch && ev instanceof PointerEvent && ev.pointerId !== pointerId)
+          return;
         reset();
         stop();
       };
 
       const handleUp = (ev: PointerEvent) => {
+        if (touch && ev.pointerId !== pointerId) return;
         reset();
+        let menu = false;
         if (active && !cancelled) {
-          const { target, near } = locate(ev.clientX, ev.clientY, source);
-          if (near || (!siblingsOnly(source.kind) && target !== undefined))
-            onDropRef.current(source, target, near);
+          if (touch && !dragged) menu = true;
+          else {
+            const { target, near } = locate(ev.clientX, ev.clientY, source);
+            if (near || (!siblingsOnly(source.kind) && target !== undefined))
+              onDropRef.current(source, target, near);
+          }
         }
         // The click that follows the release would open or select what the drag started on
         if (active) swallowNextClick();
         stop();
+        // The long press that was held back for the drag: now the row's own menu
+        if (menu)
+          row.dispatchEvent(
+            new MouseEvent("contextmenu", {
+              bubbles: true,
+              cancelable: true,
+              button: 2,
+              clientX: ev.clientX,
+              clientY: ev.clientY,
+              view: window,
+            }),
+          );
       };
 
+      if (touch) {
+        holdTimer = window.setTimeout(() => {
+          holdTimer = null;
+          held = true;
+          scroller = scrollParentOf(row as Element);
+          begin(at.x, at.y);
+        }, HOLD_MS);
+        // Blocking (not passive), or the browser scrolls before the page can say no
+        window.addEventListener("touchmove", blockScroll, { passive: false });
+        window.addEventListener("contextmenu", blockMenu, true);
+      }
       window.addEventListener("pointermove", handleMove);
       window.addEventListener("pointerup", handleUp);
       window.addEventListener("pointercancel", abort);

@@ -2,7 +2,7 @@
 
 Status: plan, started 2026-11-26. The app runs on the Android emulator (API 37) with its own default vault, no window buttons and safe-area
 padding, and the soft keyboard works with the editor there (not yet tried on a phone). Touch: bigger targets, no tips or key hints, long-press menus (they already worked), a phone-sized header and the Back key (it closes the newest open menu, dialog or pane, and leaves the app when
-none is open), the app icon, the first round of audit fixes, the editor's keyboard fix (the page's window ends at the keyboard, a formatting row on top of it with undo, redo, indent and outdent) Settings as a full screen with the one private vault shown as a name and a warning that uninstalling deletes the notes, the phone navigation (a full-screen list as home, a bottom bar, Back from a screen to the list, a "+" for a new note; see "Phone navigation") and a polish round (hover styles only where a mouse hovers, status-bar icons that follow the app's Theme, Edit opening without the keyboard) are done; dragging by touch, the list's `[...]` menu, a live search field, the real-phone test and the APK signing are still to do. A UI and UX audit of the emulator build (2026-11-26, 32 findings) is in `docs/audits/2026-11-26-android-ui-ux-audit.md`. Written 2026-11-21.
+none is open), the app icon, the first round of audit fixes, the editor's keyboard fix (the page's window ends at the keyboard, a formatting row on top of it with undo, redo, indent and outdent) Settings as a full screen with the one private vault shown as a name and a warning that uninstalling deletes the notes, the phone navigation (a full-screen list as home, a bottom bar, Back from a screen to the list, a "+" for a new note; see "Phone navigation") a polish round (hover styles only where a mouse hovers, status-bar icons that follow the app's Theme, Edit opening without the keyboard) and dragging by touch (rest a finger on a row, then move it) are done; the list's `[...]` menu, a live search field, the real-phone test and the APK signing are still to do. A UI and UX audit of the emulator build (2026-11-26, 32 findings) is in `docs/audits/2026-11-26-android-ui-ux-audit.md`. Written 2026-11-21.
 
 Related plan: [03-cloud-sync-and-collaboration.md](03-cloud-sync-and-collaboration.md). The audit-fix plan that these plans used to point at is done and was removed from the tree; it is in commit `7df88a1` (`git show 7df88a1:docs/plans/01-audit-fixes.md`), and AGENTS.md keeps its startup numbers and open items.
 
@@ -93,8 +93,9 @@ The app is built for mouse and keyboard today, so these are real work, not polis
   800 px.
 - **Right-click menus become long-press plus visible "..." buttons.** There are about 26 `onContextMenu` sites [C] and no hover
   actions on note rows.
-- **Drag and drop:** ship "Move to..." in the menus first. Touch dragging then needs long-press arming and `touch-action` handling in
-  `useDragToFolder`, which can wait.
+- **Drag and drop:** the menus have "Move to..." and "Move up / Move down" for notes, folders, tasks, lists and groups. **Touch dragging done
+  2026-11-26** (audit #7): a finger that rests on a row for 400 ms picks it up, and one that lifts without moving gets the row's menu, so a
+  long press still opens it. See "Round 6" in the audit for how it works and what was checked.
 - **Soft keyboard:** **done 2026-11-26** (audit #1 and #6): the textarea editor stays above the keyboard, with the formatting toolbar
   sitting just above it. `MainActivity` pads the content view by the IME inset; the `interactive-widget` meta was not tried (a runtime
   change of it did nothing, and the WebView does not resize by itself). Landscape with the keyboard up leaves about 3 lines (the title
