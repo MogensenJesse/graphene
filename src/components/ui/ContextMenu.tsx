@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { useBack } from "../../hooks/useBack";
+import { IS_TOUCH } from "../../lib/platform";
 import {
   placeAtPoint,
   placeBeside,
@@ -195,7 +196,8 @@ function MenuList({
                   action.onSelect();
                   onDone();
                 } else {
-                  setOpenSub({ index: i, focus: !keepFocus });
+                  // Focus goes to the submenu's first row for the keys; a finger has none, and the row would stay lit as if hovered
+                  setOpenSub({ index: i, focus: !keepFocus && !IS_TOUCH });
                 }
               }}
             >

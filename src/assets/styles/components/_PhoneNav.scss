@@ -27,6 +27,31 @@
     border-radius: var(--border-radius-md);
     color: var(--color-text-secondary);
   }
+
+  // The list is a screen of its own, not a panel beside what is open: what was opened last is not "selected" on it, and a row that
+  // stays lit after a tap and a Back looks like a hover that got stuck. (As a drawer or on a computer the row still marks what is open.)
+  .item-row--selected,
+  .folder-row--selected,
+  .task-list-row--selected,
+  .sidebar__nav-item--active,
+  .sidebar__trash--active {
+    background: none;
+  }
+
+  .item-row--selected .item-row__title,
+  .task-list-row--selected .task-list-row__name {
+    font-weight: inherit;
+    color: var(--color-text-secondary);
+  }
+
+  .item-row--selected .item-row__type-icon {
+    color: var(--color-text-tertiary);
+  }
+
+  .sidebar__nav-item--active,
+  .sidebar__trash--active {
+    color: var(--color-text-secondary);
+  }
 }
 
 // The note's header: the folder is in its "…" menu (Move to), so the title has the room

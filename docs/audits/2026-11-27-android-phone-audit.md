@@ -165,5 +165,13 @@ list on this phone is empty ("No font has that name"); it stays open and is plac
 right part can still be tapped). A submenu does not follow a parent that is scrolled while it is open. The text menu is placed from the point that was
 pressed, not from the selection's own rectangle, and a menu that scrolls has no scroll hint.
 
+**After the first use of the build (a report, not a finding of the audit).** Two more things showed on the phone, both on the list screen. (1) A note's
+"…" was only drawn after a pointer had entered its row (`ItemRow` mounts it on the first hover, for big vaults), and a tap is the only "hover" a finger
+has: so only the note that had been opened and left had it. Reproduced: two notes, none with a button; open one, Back: that one has it. Every note
+is `armed` from the start on a touch screen now. (Task list and folder rows always had theirs: opacity 1 on touch.) (2) The note, list, folder, My Day,
+Important or Trash row that was opened last stayed lit (`--selected`, `--active`) after Back, which looked like a stuck hover; a task row did not (the
+details slide away and the selection clears). The list is a screen of its own on a phone, so `_PhoneNav.scss` shows no selection on it. A tapped
+submenu also focused its first row, which then stayed lit ("No color" in `06`); a touch screen does not do that any more.
+
 Screenshots: `06` the Color submenu, `07` a note's menu and its Move to, `08` the editor's text menu (the keyboard is cropped out), `09` the calendar
 after one tap with the keyboard up, `10` the font list over the keyboard (cropped).

@@ -1,6 +1,7 @@
 // src/components/sidebar/ItemRow.tsx
 import { memo, useState } from "react";
 import { perfRender } from "../../lib/perf";
+import { IS_TOUCH } from "../../lib/platform";
 import { treeItemId } from "../../lib/treeNav";
 import type { ItemKind } from "../../types";
 import { EllipsisIcon, KindIcon } from "../ui/Icon";
@@ -44,8 +45,9 @@ function ItemRow({
 }: ItemRowProps) {
   perfRender("ItemRow");
   // The "…" button is only drawn once the pointer has been over the row: thousands of rows would otherwise each carry its button
-  // (about 5 more nodes a row, 100k at 20,000 notes). Until then the row only keeps the button's width free (a CSS pseudo-element)
-  const [armed, setArmed] = useState(false);
+  // (about 5 more nodes a row, 100k at 20,000 notes). Until then the row only keeps the button's width free (a CSS pseudo-element).
+  // A touch screen has no hover to wait for and shows the button at rest (`_Touch.scss`), so there every row has it from the start
+  const [armed, setArmed] = useState(IS_TOUCH);
 
   return (
     // biome-ignore lint/a11y/useFocusableInteractive: the tree container is the single tab stop and takes the arrow keys, so rows are not focusable

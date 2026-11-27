@@ -12,6 +12,7 @@
 - On a phone, menus and their submenus (Color, Move to, Format) stay on the screen and above the navigation bar instead of running off the left edge or under it, and a menu taller than the room scrolls
 - On a phone, the font list in Settings stays open instead of closing as it opens, and the calendar opens at the first tap even with the keyboard up
 - On a phone, buttons, the rows of a task's details and the note's title are 44 px tall, and the small text is a little bigger
+- On a phone, every note has its "…" button from the start (it appeared only after a note had been opened), and the list no longer keeps the last opened note, list or folder lit after you go back, or a submenu's first row lit after you open it
 
 ## v1.7.0
 
