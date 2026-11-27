@@ -60,7 +60,7 @@ $z: (
 }
 
 // ─── Container-query widths ─────────────────────────────────────────────────
-// SCSS only: a custom property cannot sit inside a query. (The sidebar's own breakpoint, 799px, is in App.tsx.)
+// SCSS only: a custom property cannot sit inside a query. (The sidebar's own breakpoint, 799px, is `COMPACT_QUERY` in lib/platform.ts.)
 $cq-header-compact: 470px;  // .item-header drops the words of its buttons
 $cq-folder-gutter: 1010px;  // the folder chip moves into the left gutter of the header
 $cq-quick-settings: 640px;  // below this the header's quick buttons (the sidebar is hidden) leave out Settings

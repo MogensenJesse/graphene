@@ -42,6 +42,18 @@ pub fn vault_paths(config: &Value) -> impl Iterator<Item = &str> {
         .chain(config["vaultPath"].as_str())
 }
 
+/// Whether a vault path from the config may be handed to the fs scope: absolute, free of "..", and not a drive's or the file system's
+/// root. The page can write config.json, and the scope is built from it at the next start: an empty path becomes the pattern `/**`
+/// (everything), a relative one matches by accident. The commands that read a vault check the path again (`vault_scan::allowed`).
+pub fn is_safe_vault_path(path: &str) -> bool {
+    let path = Path::new(path);
+    path.is_absolute()
+        && path.parent().is_some()
+        && !path
+            .components()
+            .any(|part| matches!(part, std::path::Component::ParentDir))
+}
+
 /// Reads the config file and looks at each vault folder it names. A missing file is the first run (`text: null`); a file that exists but
 /// cannot be read as text (no permission, not UTF-8) is an error, so it is never mistaken for a first run.
 pub fn read_boot_config(file: &Path) -> Result<BootConfig, String> {

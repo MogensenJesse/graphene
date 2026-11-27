@@ -162,3 +162,28 @@ fn vault_paths_lists_every_vault_and_the_old_style_path() {
     assert_eq!(vault_paths(&json!("a string")).count(), 0);
     assert_eq!(vault_paths(&json!({ "vaults": "nope" })).count(), 0);
 }
+
+#[test]
+fn a_vault_path_for_the_fs_scope_is_absolute_without_dots_and_not_a_root() {
+    // The refused ones are refused on every platform
+    for refused in ["", "vault", "./vault", "../vault", "a/b"] {
+        assert!(!is_safe_vault_path(refused), "{refused:?} must be refused");
+    }
+    #[cfg(windows)]
+    {
+        assert!(is_safe_vault_path(r"D:\notes"));
+        assert!(is_safe_vault_path("D:/notes/inner"));
+        assert!(!is_safe_vault_path(r"D:\"));
+        assert!(!is_safe_vault_path(r"D:\notes\..\other"));
+        assert!(!is_safe_vault_path("/notes"));
+    }
+    #[cfg(unix)]
+    {
+        assert!(is_safe_vault_path(
+            "/data/user/0/com.graphene.app/vaults/abc"
+        ));
+        assert!(is_safe_vault_path("/home/me/notes"));
+        assert!(!is_safe_vault_path("/"));
+        assert!(!is_safe_vault_path("/home/me/../other"));
+    }
+}

@@ -13,6 +13,9 @@
 - On a phone, the font list in Settings stays open instead of closing as it opens, and the calendar opens at the first tap even with the keyboard up
 - On a phone, buttons, the rows of a task's details and the note's title are 44 px tall, and the small text is a little bigger
 - On a phone, every note has its "…" button from the start (it appeared only after a note had been opened), and the list no longer keeps the last opened note, list or folder lit after you go back, or a submenu's first row lit after you open it
+- On a phone, the "…" menu of a note opened while the keyboard is up stays open instead of vanishing as the keyboard hides, and Back cancels a rename or a new name being typed instead of leaving the app
+- On a phone, Settings no longer offers a Custom font (there is no list of fonts to pick from), and the phone app no longer carries the files for AI assistants, which only the computer uses
+- The notes on a phone are no longer included in Android's Google backup, so "uninstalling deletes them" is true
 
 ## v1.7.0
 

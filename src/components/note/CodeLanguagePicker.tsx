@@ -1,7 +1,14 @@
 // src/components/note/CodeLanguagePicker.tsx
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { useEscape } from "../../hooks/useEscape";
+import { placeBelow, visibleBounds } from "../../lib/popoverBounds";
 import { ChevronDownIcon } from "../ui/Icon";
 import Tooltip from "../ui/Tooltip";
 
@@ -105,24 +112,40 @@ function CodeLanguagePicker({
     return () => document.removeEventListener("mousedown", onDown);
   }, [open, onOpenChange]);
 
-  // Placed before the first paint, so it never shows in the wrong place
-  useLayoutEffect(() => {
+  // Inside what the page can show (not under a system bar or the keyboard), with its right edge at the chip's. Placed before the first
+  // paint, so it never shows in the wrong place, and again when the window is resized (a phone's keyboard)
+  const place = useCallback(() => {
     const el = dropRef.current;
     const chip = chipRef.current;
-    if (!open || !el || !chip) return;
-    const anchor = chip.getBoundingClientRect();
-    const below = window.innerHeight - anchor.bottom - GAP - EDGE;
-    const above = anchor.top - GAP - EDGE;
-    const up = below < MIN_ROOM && above > below;
-    el.style.maxHeight = `${Math.max(120, up ? above : below)}px`;
-    el.style.left = `${Math.max(EDGE, Math.min(anchor.right - el.offsetWidth, window.innerWidth - el.offsetWidth - EDGE))}px`;
-    if (up) {
+    if (!el || !chip) return;
+    el.style.maxHeight = ""; // measured at its natural height, not the one an earlier run gave it
+    const a = chip.getBoundingClientRect();
+    const width = el.offsetWidth;
+    const p = placeBelow(
+      { left: a.right - width, right: a.right, top: a.top, bottom: a.bottom },
+      { width, height: el.scrollHeight },
+      visibleBounds(EDGE),
+      GAP,
+      MIN_ROOM,
+    );
+    el.style.maxHeight = `${Math.max(120, p.maxHeight)}px`;
+    el.style.left = `${p.left}px`;
+    if (p.up) {
       el.style.top = "auto";
-      el.style.bottom = `${window.innerHeight - anchor.top + GAP}px`;
+      el.style.bottom = `${window.innerHeight - p.bottom}px`;
     } else {
-      el.style.top = `${anchor.bottom + GAP}px`;
+      el.style.top = `${p.top}px`;
+      el.style.bottom = "auto";
     }
-  }, [open]);
+  }, []);
+  useLayoutEffect(() => {
+    if (open) place();
+  }, [open, place]);
+  useEffect(() => {
+    if (!open) return;
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [open, place]);
 
   useEscape(() => onOpenChange(false), { active: open, capture: true });
 

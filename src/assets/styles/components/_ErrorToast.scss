@@ -7,7 +7,7 @@
 .toast--error,
 .toast--notice {
   position: fixed;
-  bottom: 100px; // above the Undo toast (44px up, 36px high)
+  bottom: 100px; // above the Undo toast
   z-index: v.z('alert');
 
   // A sentence, not a one-line label: it wraps instead of running out of the toast

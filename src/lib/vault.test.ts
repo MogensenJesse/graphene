@@ -74,7 +74,14 @@ test("a private vault's folder is deleted with what is in it", async () => {
 });
 
 test("nothing outside the app's own storage is ever deleted, nor the storage itself", async () => {
-  for (const path of ["D:/Notes", "/data/app", "/data/app2/vaults/x", "/data"])
+  for (const path of [
+    "D:/Notes",
+    "/data/app",
+    "/data/app2/vaults/x",
+    "/data",
+    "/data/app/vaults/../../etc",
+    "/data/app/../x",
+  ])
     await assert.rejects(deletePrivateVaultFolder(path), /own storage/);
   assert.equal(tauri.remove.mock.calls.length, 0);
 });

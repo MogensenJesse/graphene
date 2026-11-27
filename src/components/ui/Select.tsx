@@ -14,6 +14,7 @@ import { createPortal } from "react-dom";
 import { useAnchorRect } from "../../hooks/useAnchorRect";
 import { useEscape } from "../../hooks/useEscape";
 import { filterOptions } from "../../lib/optionFilter";
+import { IS_TOUCH } from "../../lib/platform";
 import { placeBelow, visibleBounds } from "../../lib/popoverBounds";
 import { ChevronDownIcon } from "./Icon";
 
@@ -132,8 +133,7 @@ function SelectPopover<T extends string>({
   // The box that takes the keys: the search field, or the list itself. A touch screen has no keys to send it: the search field
   // would only raise the keyboard over the list, so it is left for a tap
   useEffect(() => {
-    const touch = window.matchMedia("(pointer: coarse)").matches;
-    (searchable && !touch ? inputRef.current : listRef.current)?.focus();
+    (searchable && !IS_TOUCH ? inputRef.current : listRef.current)?.focus();
   }, [searchable]);
 
   // Also when the list is made again: an unchanged index still needs its row brought into view

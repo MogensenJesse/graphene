@@ -15,6 +15,7 @@ import {
   setTextSize,
   TEXT_SIZES,
 } from "../../lib/fontPrefs";
+import { IS_ANDROID } from "../../lib/platform";
 import {
   readThemePref,
   setThemePref,
@@ -35,6 +36,12 @@ const WRAP_OPTIONS: { value: CodeWrap; label: string }[] = [
   { value: "on", label: "Wrap" },
   { value: "off", label: "Scroll" },
 ];
+
+// Android has no list of installed fonts to pick from (the system's font folders are not read there), so it has no Custom choice
+const CHOICES: typeof FONT_CHOICES = {
+  note: FONT_CHOICES.note.filter((c) => !(IS_ANDROID && c.value === "custom")),
+  code: FONT_CHOICES.code.filter((c) => !(IS_ANDROID && c.value === "custom")),
+};
 
 interface FontFieldProps {
   kind: FontKind;
@@ -113,7 +120,7 @@ function FontField({
         label={title}
         className="settings__segments"
         value={pref.choice}
-        options={FONT_CHOICES[kind]}
+        options={CHOICES[kind]}
         onChange={(choice) => update({ ...pref, choice })}
       />
       <p className="settings__muted">{hint}</p>

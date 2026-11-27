@@ -11,13 +11,8 @@
   box-shadow: none;
   clip-path: none;
 
-  // The Notes | Tasks switch is the bottom bar. Of the rows above the list only Search stays, as a field; New note and New code are the "+"
-  // (code notes are not something to start on a phone)
-  .sidebar__tabs,
-  .sidebar__nav-item--new {
-    display: none;
-  }
-
+  // The Notes | Tasks switch is the bottom bar, and New note and New code are the "+" (code notes are not something to start on a phone):
+  // Sidebar draws none of them on a phone, and only Search stays above the list, as a field
   .sidebar__nav {
     padding-bottom: 6px;
   }

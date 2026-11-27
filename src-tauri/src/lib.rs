@@ -27,6 +27,13 @@ fn allow_vault_folders(app: &tauri::App) {
         return;
     };
     for path in boot::vault_paths(&config) {
+        // The page can write this file: a path that is not a plain absolute one (an empty one is the pattern `/**`) allows nothing
+        if !boot::is_safe_vault_path(path) {
+            eprintln!(
+                "not allowing the vault folder {path:?}: it is not an absolute path without \"..\""
+            );
+            continue;
+        }
         if let Err(err) = scope.allow_directory(path, true) {
             eprintln!("could not allow the vault folder {path}: {err}");
         }

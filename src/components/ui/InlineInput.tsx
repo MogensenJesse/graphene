@@ -1,5 +1,6 @@
 // src/components/ui/InlineInput.tsx
 import { useEffect, useId, useRef, useState } from "react";
+import { useBack } from "../../hooks/useBack";
 
 interface InlineInputProps {
   initial?: string;
@@ -62,6 +63,9 @@ function InlineInput({
     if (how !== "escape" && text && !problem) onCommit(text);
     else onCancel();
   };
+
+  // The Android Back key cancels it as Escape does. With the keyboard already hidden it would otherwise leave the app and lose the text
+  useBack(() => finish("escape"));
 
   const input = (
     <input

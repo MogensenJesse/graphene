@@ -833,13 +833,15 @@ function Sidebar({
         onOpenTrash={onOpenTrash}
       />
 
-      <Segmented
-        label="Sidebar"
-        className="sidebar__tabs"
-        value={tab}
-        options={TABS}
-        onChange={onTabChange}
-      />
+      {!phone && (
+        <Segmented
+          label="Sidebar"
+          className="sidebar__tabs"
+          value={tab}
+          options={TABS}
+          onChange={onTabChange}
+        />
+      )}
 
       {tab === "tasks" ? (
         unavailable ? (
@@ -865,19 +867,20 @@ function Sidebar({
                 Ctrl+K
               </span>
             </button>
-            {NEW_KINDS.map(({ kind, label, Icon, shortcut }) => (
-              <Tooltip key={kind} label={`New ${label}`} keys={shortcut}>
-                <button
-                  type="button"
-                  className="sidebar__nav-item sidebar__nav-item--new"
-                  disabled={unavailable}
-                  onClick={() => onNew(kind)}
-                >
-                  <Icon size={16} />
-                  <span>New {label}</span>
-                </button>
-              </Tooltip>
-            ))}
+            {!phone &&
+              NEW_KINDS.map(({ kind, label, Icon, shortcut }) => (
+                <Tooltip key={kind} label={`New ${label}`} keys={shortcut}>
+                  <button
+                    type="button"
+                    className="sidebar__nav-item sidebar__nav-item--new"
+                    disabled={unavailable}
+                    onClick={() => onNew(kind)}
+                  >
+                    <Icon size={16} />
+                    <span>New {label}</span>
+                  </button>
+                </Tooltip>
+              ))}
           </nav>
 
           {/* Folder + tree section */}

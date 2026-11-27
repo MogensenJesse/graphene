@@ -74,8 +74,7 @@
     user-select: text;
   }
 
-  // No pointer to hover with, so no tips, and no hints for keys that are not there
-  .tooltip,
+  // No pointer to hover with, so no hints for keys that are not there (and no tips: `Tooltip` draws none on a touch screen)
   .context-menu__keys,
   .sidebar__nav-count--keys {
     display: none;
@@ -87,7 +86,7 @@
     opacity: 1;
   }
 
-  // The header: the sidebar toggle (now 44px) has the left corner, and Search, New and Settings are in the drawer, so the title
+  // The header: the sidebar toggle (now 44px) has the left corner, and Search, New and Settings are in the sidebar, so the title
   // starts after the toggle and the buttons end at the screen's edge. The note's own text uses the screen's width.
   .app__main {
     --pane-pad: 14px;
@@ -97,10 +96,6 @@
   .app__main--quick,
   .app__main--quick .item-header {
     --chrome-left: 62px;
-  }
-
-  .app__quick {
-    display: none;
   }
 
   .app__sidebar-toggle {
@@ -240,7 +235,7 @@
     }
   }
 
-  // The vault name in the drawer's header, and every row of buttons of which one is pressed (the Notes | Tasks switch, Settings)
+  // The vault name in the sidebar's header, and every row of buttons of which one is pressed (the Notes | Tasks switch, Settings)
   .sidebar__vault {
     height: var(--btn-sm);
   }

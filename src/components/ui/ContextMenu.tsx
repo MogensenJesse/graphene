@@ -45,6 +45,20 @@ const EDGE = 6; // keep this far from the edge of what the page can show
 const FINGER_CLEARANCE = 24; // a text menu opened by a finger keeps this far from the point, so the pressed word stays in sight
 const SUB_MAX_HEIGHT = 320; // the same cap as `.context-menu--sub`, which the inline max-height replaces
 
+// Counts the resizes of the window on a touch screen, where a resize is mostly the keyboard coming or going (a menu opened from a button
+// while a field has the keyboard up is then on screen for a moment before it hides): the menu places itself again instead of closing.
+// With a mouse a resize is the window being dragged, and it closes the menu (see ContextMenu).
+function useResizeTick(): number {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!IS_TOUCH) return;
+    const next = () => setTick((n) => n + 1);
+    window.addEventListener("resize", next);
+    return () => window.removeEventListener("resize", next);
+  }, []);
+  return tick;
+}
+
 interface MenuListProps {
   entries: MenuEntry[];
   /** Cursor position of the top-level menu; submenus position themselves off their parent row */
@@ -67,6 +81,7 @@ function MenuList({
   onBack,
 }: MenuListProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const resized = useResizeTick();
   const [openSub, setOpenSub] = useState<{
     index: number;
     focus: boolean;
@@ -75,6 +90,7 @@ function MenuList({
   // Place it inside what the page can show before the first paint (`visibleBounds`: not under the status bar, the navigation bar or the
   // keyboard). The top-level menu goes at the cursor, or beside a finger; a submenu goes beside its row, on whichever side has the room.
   // One taller than the room scrolls.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `resized` only re-runs it, to place the menu again after a resize
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -83,10 +99,7 @@ function MenuList({
     const bounds = visibleBounds(EDGE);
     if (origin) {
       // The menu of a text field on a touch screen stays off the word that was pressed
-      const clearance =
-        keepFocus && window.matchMedia("(pointer: coarse)").matches
-          ? FINGER_CLEARANCE
-          : 0;
+      const clearance = keepFocus && IS_TOUCH ? FINGER_CLEARANCE : 0;
       const p = placeAtPoint(origin, size, bounds, clearance);
       el.style.left = `${p.left}px`;
       el.style.top = `${p.top}px`;
@@ -99,7 +112,7 @@ function MenuList({
     el.style.left = `${p.left}px`;
     el.style.top = `${p.top}px`;
     el.style.maxHeight = `${Math.min(p.maxHeight, SUB_MAX_HEIGHT)}px`;
-  }, [origin, keepFocus]);
+  }, [origin, keepFocus, resized]);
 
   // The top-level menu takes focus itself so the arrow keys work without highlighting a row
   useEffect(() => {
@@ -278,7 +291,8 @@ function ContextMenu({ x, y, entries, keepFocus, onClose }: ContextMenuProps) {
     document.addEventListener("scroll", onScroll, true);
     document.addEventListener("keydown", onKeyDown, true);
     window.addEventListener("blur", onClose);
-    window.addEventListener("resize", onClose);
+    // Not on a touch screen: the keyboard resizes the window, and the menu places itself again (`useResizeTick`)
+    if (!IS_TOUCH) window.addEventListener("resize", onClose);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown, true);
       document.removeEventListener("scroll", onScroll, true);

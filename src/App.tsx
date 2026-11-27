@@ -64,6 +64,7 @@ import { useItems } from "./hooks/useItems";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useStable } from "./hooks/useLatest";
 import { useMediaQuery } from "./hooks/useMediaQuery";
+import { usePhone } from "./hooks/usePhone";
 import { useRowItems } from "./hooks/useRowItems";
 import { useTaskDrag } from "./hooks/useTaskDrag";
 import { useTasks } from "./hooks/useTasks";
@@ -79,7 +80,7 @@ import { leaveGate } from "./lib/leaveGate";
 import { sameItem } from "./lib/mergeScan";
 import { extOf, nativePath } from "./lib/paths";
 import { perfMark, perfMarkAfterPaint, perfRender } from "./lib/perf";
-import { IS_ANDROID, PHONE_QUERY } from "./lib/platform";
+import { COMPACT_QUERY, IS_ANDROID, IS_TOUCH } from "./lib/platform";
 import { readPref, writePref } from "./lib/prefs";
 import { reportError, reportNotice } from "./lib/reportError";
 import { restoreNotice } from "./lib/restoreNotice";
@@ -106,8 +107,6 @@ const UpdateDialog = lazy(() => import("./components/dialogs/UpdateDialog"));
 
 type Mode = "new" | "detail" | "edit" | "trash";
 
-// Below this window width the sidebar starts out hidden, and opens over the note instead of beside it
-const COMPACT_QUERY = "(max-width: 799px)";
 const SIDEBAR_HIDDEN_KEY = "graphene.sidebarHidden";
 const SIDEBAR_TAB_KEY = "graphene.sidebarTab";
 const TASK_VIEW_KEY = "graphene.taskView";
@@ -343,7 +342,7 @@ function MainApp({
   // On a phone the sidebar is the list screen, the home of the app: it fills the window, and the note, the editor, the Trash and the
   // tasks are screens above it (`compactOpen` is "the list is showing"). The app starts on it; Back goes from a screen to it, and from it out
   // of the app
-  const phone = useMediaQuery(PHONE_QUERY);
+  const phone = usePhone();
   const [wideHidden, setWideHidden] = useState(
     () => readPref(SIDEBAR_HIDDEN_KEY) === "1",
   );
@@ -396,7 +395,7 @@ function MainApp({
     kind: ItemKind;
     folderId: string | null;
     returnToId: string | null;
-    // false: the blank draft is not focused when it appears (it came back behind the open drawer of a phone: see handleTab)
+    // false: the blank draft is not focused when it appears (it came back behind the open list of a phone: see handleTab)
     focus?: boolean;
   }>({
     key: 0,
@@ -455,7 +454,7 @@ function MainApp({
   // folderId omitted = wherever the selection is (folder, else the open item's folder); null = no folder
   const handleNew = useStable((kind: ItemKind, folderId?: string | null) => {
     if (loadFailed) return; // a vault that cannot be opened takes no new note (the buttons are off too)
-    // A blank draft is already open then, so no mode change closes the drawer of a phone: it would stay over the draft, with the
+    // A blank draft is already open then, so no mode change closes the list of a phone: it would stay over the draft, with the
     // soft keyboard rising over it
     closeFloating();
     if (mode === "new" && isDirtyEdit) return; // keep a draft that has content
@@ -542,7 +541,7 @@ function MainApp({
       // Ctrl+Shift+T leaves a task field with the caret in it, and the pane unmounts: commit what was typed first
       flushRef.current?.();
       showNotes();
-      // The blank draft comes back behind the open drawer of a phone: focusing it would raise the keyboard over the list
+      // The blank draft comes back behind the open list of a phone: focusing it would raise the keyboard over the list
       if ((floating || phone) && mode === "new")
         setDraft((d) => ({ ...d, key: d.key + 1, focus: false }));
       return;
@@ -1302,16 +1301,18 @@ function MainApp({
           <SidebarToggle
             hidden={sidebarHidden}
             back={phone}
-            onToggle={toggleSidebar}
+            onToggle={phone ? showList : toggleSidebar}
           />
-          <HeaderActions
-            shown={sidebarHidden}
-            inTasks={inTasks}
-            newDisabled={loadFailed}
-            onSearch={openSearch}
-            onNew={startNew}
-            onSettings={onOpenSettings}
-          />
+          {!IS_TOUCH && (
+            <HeaderActions
+              shown={sidebarHidden}
+              inTasks={inTasks}
+              newDisabled={loadFailed}
+              onSearch={openSearch}
+              onNew={startNew}
+              onSettings={onOpenSettings}
+            />
+          )}
           {compact && !phone && (
             // biome-ignore lint/a11y/noStaticElementInteractions: clicking the backdrop is a mouse shortcut for Escape, which useEscape above already covers
             <div

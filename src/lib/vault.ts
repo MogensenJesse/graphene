@@ -143,7 +143,11 @@ export async function makePrivateVaultFolder(id: string): Promise<string> {
  * computer is never deleted by the app, whatever the caller asks.
  */
 export async function deletePrivateVaultFolder(path: string): Promise<void> {
-  if (!isInside(path, await appDataDir()))
+  // A ".." would leave the storage while still starting with its name
+  if (
+    /(^|[\\/])\.\.([\\/]|$)/.test(path) ||
+    !isInside(path, await appDataDir())
+  )
     throw new Error(`not in the app's own storage: ${path}`);
   await remove(path, { recursive: true });
 }

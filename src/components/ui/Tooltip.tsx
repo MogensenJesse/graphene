@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { IS_TOUCH } from "../../lib/platform";
 
 const SHOW_DELAY_MS = 350;
 const GAP = 8; // between the button and the tip
@@ -73,7 +74,7 @@ function Bubble({
  * on keyboard focus (not on the focus a mouse click gives), and goes away on a click. The tip is
  * portalled to the body, so no overflow in the editor clips it.
  */
-function Tooltip({ label, keys, hint, children }: TooltipProps) {
+function HoverTooltip({ label, keys, hint, children }: TooltipProps) {
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -147,6 +148,11 @@ function Tooltip({ label, keys, hint, children }: TooltipProps) {
         )}
     </>
   );
+}
+
+// A touch screen has nothing to hover with: the button as it is, with no timer, listeners or portal for a tip that would never show
+function Tooltip(props: TooltipProps) {
+  return IS_TOUCH ? props.children : <HoverTooltip {...props} />;
 }
 
 export default Tooltip;

@@ -2,9 +2,8 @@
 import { useRef, useState } from "react";
 import { useClickOutside } from "../../hooks/useClickOutside";
 import { useEscape } from "../../hooks/useEscape";
-import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { usePhone } from "../../hooks/usePhone";
 import type { TasksApi } from "../../hooks/useTasks";
-import { PHONE_QUERY } from "../../lib/platform";
 import { dueLabel } from "../../lib/taskDates";
 import type { Step, Task, TaskList } from "../../lib/taskStore";
 import { isTextField } from "../../lib/textMenu";
@@ -157,7 +156,7 @@ function TaskDetail({
   onDelete,
 }: TaskDetailProps) {
   // A phone: the pane is a screen above the tasks, and its way out is the back arrow every screen has, not the side pane's "›"
-  const phone = useMediaQuery(PHONE_QUERY);
+  const phone = usePhone();
   const [step, setStep] = useState("");
   const dueRow = useRef<HTMLDivElement>(null); // the calendar opens as wide as this row, like the list's dropdown
   const inMyDay = task.myDay === today;
