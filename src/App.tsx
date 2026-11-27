@@ -1,5 +1,4 @@
 // src/App.tsx
-import { exit, onBackButtonPress } from "@tauri-apps/api/app";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { readFile } from "@tauri-apps/plugin-fs";
@@ -55,16 +54,15 @@ import { newItemEntries } from "./components/ui/newKinds";
 import SidebarToggle from "./components/ui/SidebarToggle";
 import UndoToast from "./components/ui/UndoToast";
 import WindowControls from "./components/ui/WindowControls";
-import { useBack } from "./hooks/useBack";
-import { useEscape } from "./hooks/useEscape";
+import { useAndroidLifecycle } from "./hooks/useAndroidLifecycle";
+import { BackCovered } from "./hooks/useBack";
 import { useFileDrop } from "./hooks/useFileDrop";
 import { useFolders } from "./hooks/useFolders";
 import type { AddItemFields, UpdateItemFields } from "./hooks/useItems";
 import { useItems } from "./hooks/useItems";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useStable } from "./hooks/useLatest";
-import { useMediaQuery } from "./hooks/useMediaQuery";
-import { usePhone } from "./hooks/usePhone";
+import { usePhoneNav } from "./hooks/usePhoneNav";
 import { useRowItems } from "./hooks/useRowItems";
 import { useTaskDrag } from "./hooks/useTaskDrag";
 import { useTasks } from "./hooks/useTasks";
@@ -72,7 +70,6 @@ import { useUpdater } from "./hooks/useUpdater";
 import { useVaultRefresh } from "./hooks/useVaultRefresh";
 import { useVaults, type Vaults } from "./hooks/useVaults";
 import { saveImage, VaultPathContext } from "./lib/attachmentStore";
-import { runBack } from "./lib/backStack";
 import { conflictCopyTitle } from "./lib/editConflict";
 import { DROP_HINT, DROP_HINT_PICTURES, DROP_HINT_TASKS } from "./lib/fileDrop";
 import type { RestorePlan } from "./lib/folderOps";
@@ -81,7 +78,7 @@ import { sameItem } from "./lib/mergeScan";
 import { compareFoldersManual } from "./lib/order";
 import { extOf, nativePath } from "./lib/paths";
 import { perfMark, perfMarkAfterPaint, perfRender } from "./lib/perf";
-import { COMPACT_QUERY, IS_ANDROID, IS_TOUCH } from "./lib/platform";
+import { IS_ANDROID, IS_TOUCH } from "./lib/platform";
 import { readPref, writePref } from "./lib/prefs";
 import { reportError, reportNotice } from "./lib/reportError";
 import { restoreNotice } from "./lib/restoreNotice";
@@ -107,7 +104,6 @@ const UpdateDialog = lazy(() => import("./components/dialogs/UpdateDialog"));
 
 type Mode = "new" | "detail" | "edit" | "trash";
 
-const SIDEBAR_HIDDEN_KEY = "graphene.sidebarHidden";
 const SIDEBAR_TAB_KEY = "graphene.sidebarTab";
 const TASK_VIEW_KEY = "graphene.taskView";
 // The longest the window waits for pending writes before it closes (or the updater installs)
@@ -336,47 +332,19 @@ function MainApp({
     undo: () => void;
   } | null>(null);
 
-  // A wide window keeps the sidebar the way the user left it; a small one hides it, and the toggle opens it
-  // for as long as the window stays small
-  const compact = useMediaQuery(COMPACT_QUERY);
-  // On a phone the sidebar is the list screen, the home of the app: it fills the window, and the note, the editor, the Trash and the
-  // tasks are screens above it (`compactOpen` is "the list is showing"). The app starts on it; Back goes from a screen to it, and from it out
-  // of the app
-  const phone = usePhone();
-  const [wideHidden, setWideHidden] = useState(
-    () => readPref(SIDEBAR_HIDDEN_KEY) === "1",
-  );
-  const [compactOpen, setCompactOpen] = useState(phone);
-  // The open sidebar covers the note, so it closes when a note or view is picked, on Escape (unless a field
-  // is being typed in) and on a click outside it (the scrim)
-  const floating = compact && compactOpen;
-  const closeFloating = useCallback(() => setCompactOpen(false), []);
-  const showList = useCallback(() => {
-    // The screen being left keeps no focus: its field would hold the keyboard up (and the bottom bar down) under the list
-    if (document.activeElement instanceof HTMLElement)
-      document.activeElement.blur();
-    setCompactOpen(true);
-  }, []);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: picking another note or view is the trigger
-  useEffect(() => {
-    // Not on a phone: there the list stays up until a screen is asked for (it comes back by Back too, with nothing picked)
-    if (compact && !phone) setCompactOpen(false);
-  }, [compact, selectedId, mode]);
-  useEscape(closeFloating, {
-    active: floating && !phone,
-    when: () => !isTextField(document.activeElement),
-  });
-  // Back from a screen shows the list; on the list it is not registered, so Back leaves the app
-  useBack(showList, phone && !compactOpen);
-  const sidebarHidden = compact ? !compactOpen : wideHidden;
-  const toggleSidebar = () => {
-    if (compact) {
-      setCompactOpen((open) => !open);
-      return;
-    }
-    setWideHidden(!wideHidden);
-    writePref(SIDEBAR_HIDDEN_KEY, wideHidden ? "0" : "1");
-  };
+  // A wide window keeps the sidebar the way the user left it; a small one hides it, and the toggle opens it for as long as the window
+  // stays small; on a phone it is the list screen (see usePhoneNav)
+  const {
+    compact,
+    phone,
+    floating,
+    sidebarHidden,
+    onScreen,
+    onList,
+    closeFloating,
+    showList,
+    toggleSidebar,
+  } = usePhoneNav(selectedId, mode);
   // A folder picked in the sidebar owns the Del key and asks its question in the sidebar: no folder stays picked
   // while that is out of sight
   useEffect(() => {
@@ -424,9 +392,9 @@ function MainApp({
       setSelectedId(null);
       setMode("new");
       resetDraft();
-      if (phone) setCompactOpen(true);
+      if (phone) showList();
     }
-  }, [items, selectedId, phone, resetDraft]);
+  }, [items, selectedId, phone, resetDraft, showList]);
 
   const selectedItem = useMemo(
     () => items.find((i) => i.id === selectedId),
@@ -494,7 +462,7 @@ function MainApp({
     const id = trashReturnId.current;
     trashReturnId.current = null;
     // A phone goes back to the list it came from
-    if (phone) setCompactOpen(true);
+    if (phone) showList();
     if (id && itemsRef.current.some((i) => i.id === id)) {
       setSelectedId(id);
       setMode("detail");
@@ -816,7 +784,7 @@ function MainApp({
       if (!trashed) setTrashToast((t) => (t?.id === id ? null : t));
     });
     setUndoToast(null);
-    setTrashToast({ id, title: item.title, fromScreen: phone && !compactOpen });
+    setTrashToast({ id, title: item.title, fromScreen: onScreen });
   });
 
   const handleUndoDelete = async () => {
@@ -1215,7 +1183,7 @@ function MainApp({
       )}
       <div className="app__body">
         {/* A new note, straight away: on the list of notes, in the thumb's reach */}
-        {phone && compactOpen && !inTasks && !loadFailed && (
+        {onList && !inTasks && !loadFailed && (
           <NewFab label="New note" onClick={() => handleNew("note")} />
         )}
         <div
@@ -1292,7 +1260,9 @@ function MainApp({
               onClick={closeFloating}
             />
           )}
-          {renderMain()}
+          <BackCovered.Provider value={onList}>
+            {renderMain()}
+          </BackCovered.Provider>
           {vaultMissing && !loadFailed && (
             <VaultMissingBar
               name={vaults.vaults.find((v) => v.path === vaultPath)?.name ?? ""}
@@ -1422,34 +1392,8 @@ function App() {
     };
   }, [tryLeave]);
 
-  // Android: the Back key closes the innermost thing that is open (see backStack), and with nothing open it leaves the app the way
-  // closing the window does: after the pending save, held back once when something could not be saved
-  useEffect(() => {
-    if (!IS_ANDROID) return;
-    const listener = onBackButtonPress(async () => {
-      if (runBack()) return;
-      if (await tryLeave()) await exit(0);
-    });
-    return () => {
-      listener.then((l) => l.unregister()).catch(console.error);
-    };
-  }, [tryLeave]);
-
-  // Android: a backgrounded app can be killed at any moment, so what is typed is saved as soon as the page is hidden (Home, the app
-  // switcher, the screen going off) instead of when the autosave delay ends
-  useEffect(() => {
-    if (!IS_ANDROID) return;
-    const save = () => void flushNow();
-    const onVisibility = () => {
-      if (document.hidden) save();
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide", save);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide", save);
-    };
-  }, [flushNow]);
+  // Android: the Back key and saving when the page is hidden
+  useAndroidLifecycle(tryLeave, flushNow);
 
   // Up here, not in MainApp: switching vaults remounts that, and the update check must not start over
   const updater = useUpdater(flushPendingSave);

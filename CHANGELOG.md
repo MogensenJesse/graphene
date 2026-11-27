@@ -17,6 +17,7 @@
 - On a phone, the "…" menu of a note opened while the keyboard is up stays open instead of vanishing as the keyboard hides, and Back cancels a rename or a new name being typed instead of leaving the app
 - On a phone, Settings no longer offers a Custom font (there is no list of fonts to pick from), and the phone app no longer carries the files for AI assistants, which only the computer uses
 - The notes on a phone are no longer included in Android's Google backup, so "uninstalling deletes them" is true
+- On a phone, after you open a note's editor or the Trash from the list, Back goes to the list and one more leaves the app; it took an extra press that did nothing
 
 ## v1.7.0
 

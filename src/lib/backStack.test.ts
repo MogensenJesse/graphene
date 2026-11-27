@@ -26,6 +26,21 @@ describe("backStack", () => {
     expect(runBack()).toBe(false);
   });
 
+  it("a step the newest one takes off is never run by a later Back", () => {
+    // A phone's list over a screen opened in the same commit: the screen's step registered first, the list's after it. Back runs the
+    // list's, which covers the screen and so takes its step off (and its own: the list has no Back step to give)
+    const screen = vi.fn();
+    const dropScreen = pushBack(screen);
+    const dropList = pushBack(() => {
+      dropScreen();
+      dropList();
+    });
+
+    expect(runBack()).toBe(true);
+    expect(runBack()).toBe(false);
+    expect(screen).not.toHaveBeenCalled();
+  });
+
   it("takes a step off from the middle without touching the others", () => {
     const first = vi.fn();
     const second = vi.fn();
