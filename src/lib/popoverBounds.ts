@@ -42,6 +42,12 @@ export interface BelowPlacement extends Placement {
 const clamp = (n: number, min: number, max: number) =>
   Math.max(min, Math.min(n, max));
 
+/** Where a menu opened from a button starts: at the button's left edge, just under it. For `openAt(...pointBelow(button), entries)`. */
+export function pointBelow(button: Element): [x: number, y: number] {
+  const { left, bottom } = button.getBoundingClientRect();
+  return [left, bottom + 2];
+}
+
 /** The most a menu next to a finger may scroll in: less than this and it takes the whole area instead (and covers the word) */
 const MIN_SCROLL_ROOM = 176;
 /** A submenu starts a little above its row, so its first row lines up with it */

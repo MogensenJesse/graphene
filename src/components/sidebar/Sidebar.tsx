@@ -32,7 +32,7 @@ import {
   placeNear,
 } from "../../lib/order";
 import { perfRender } from "../../lib/perf";
-import { IS_ANDROID } from "../../lib/platform";
+import { pointBelow } from "../../lib/popoverBounds";
 import {
   isFolderCollapsed,
   readPref,
@@ -52,7 +52,7 @@ import {
   treeStep,
   visibleRows,
 } from "../../lib/treeNav";
-import { compareNames, flattenFolders, itemKind } from "../../lib/utils";
+import { compareNames, itemKind } from "../../lib/utils";
 import type { Folder, Item, ItemKind } from "../../types";
 import type { OpenSettings } from "../dialogs/SettingsDialog";
 import Button from "../ui/Button";
@@ -67,13 +67,10 @@ import {
   ClipboardIcon,
   CopyIcon,
   EditIcon,
-  ExternalLinkIcon,
-  FolderIcon,
   FolderInputIcon,
   FolderPlusIcon,
   GearIcon,
   KindIcon,
-  NoFolderIcon,
   NoteIcon,
   PlusIcon,
   SearchIcon,
@@ -83,12 +80,14 @@ import {
 } from "../ui/Icon";
 import IconButton from "../ui/IconButton";
 import InlineInput from "../ui/InlineInput";
+import { folderChoiceEntries, revealEntries } from "../ui/menuEntries";
 import { NEW_KINDS, newItemEntries } from "../ui/newKinds";
 import Segmented from "../ui/Segmented";
 import Tooltip from "../ui/Tooltip";
 import FolderRow from "./FolderRow";
 import ItemRow from "./ItemRow";
 import SidebarHeader from "./SidebarHeader";
+import { trashLabel } from "./trashLabel";
 
 /** The two halves of the app: the notes, and the to-do lists. */
 export type SidebarTab = "notes" | "tasks";
@@ -259,11 +258,7 @@ const SidebarFooter = memo(function SidebarFooter({
           <button
             type="button"
             className={`sidebar__trash${trashOpen ? " sidebar__trash--active" : ""}${noteDragging ? " sidebar__trash--drop" : ""}${overTrash ? " sidebar__trash--over" : ""}`}
-            aria-label={
-              unavailable
-                ? "Trash"
-                : `Trash, ${trashedCount} ${trashedCount === 1 ? "note" : "notes"}`
-            }
+            aria-label={trashLabel(unavailable, trashedCount)}
             disabled={unavailable}
             onClick={onOpenTrash}
             onContextMenu={(e) =>
@@ -462,10 +457,8 @@ function Sidebar({
   };
 
   const openSortMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const r = e.currentTarget.getBoundingClientRect();
     openAt(
-      r.left,
-      r.bottom + 2,
+      ...pointBelow(e.currentTarget),
       SORT_ORDER.map((s) => ({
         label: SORT_LABEL[s],
         checked: s === sortBy,
@@ -659,28 +652,15 @@ function Sidebar({
     },
   ];
 
-  const moveEntries = (item: Item): MenuEntry[] => {
-    const to = (
-      folderId: string | null,
-      label: string,
-      icon: ReactNode,
-      indent = 0,
-    ): MenuEntry => ({
-      label,
-      icon,
-      indent,
-      checked: item.folderId === folderId,
-      disabled: item.folderId === folderId || item.id === editingItemId,
-      onSelect: () => onMoveItem(item.id, folderId),
+  const moveEntries = (item: Item): MenuEntry[] =>
+    folderChoiceEntries({
+      folders,
+      compare: FOLDER_COMPARE[sortBy],
+      rootLabel: "No folder",
+      currentId: item.folderId,
+      disabled: item.id === editingItemId,
+      onPick: (folderId) => onMoveItem(item.id, folderId),
     });
-    return [
-      to(null, "No folder", <NoFolderIcon size={14} />),
-      ...flattenFolders(folders, FOLDER_COMPARE[sortBy]).map(
-        ({ folder, depth }) =>
-          to(folder.id, folder.name, <FolderIcon size={14} />, depth),
-      ),
-    ];
-  };
 
   const itemEntries = (row: Item): MenuEntry[] => {
     // The rows may be older than the note in what they do not show: the text and whether it is read yet
@@ -749,21 +729,10 @@ function Sidebar({
         icon: <FolderInputIcon size={14} />,
         submenu: moveEntries(item),
       },
-      // Android keeps its notes in the app's own storage, which no file manager shows
-      ...(IS_ANDROID
-        ? []
-        : [
-            {
-              label: "Show in Explorer",
-              icon: <ExternalLinkIcon size={14} />,
-              onSelect: () => onRevealItem(item),
-            },
-            {
-              label: "Copy path",
-              icon: <ClipboardIcon size={14} />,
-              onSelect: () => onCopyItemPath(item),
-            },
-          ]),
+      ...revealEntries(
+        () => onRevealItem(item),
+        () => onCopyItemPath(item),
+      ),
       "separator",
       {
         label: "Move to trash",

@@ -5,6 +5,7 @@
 ### Changed
 - Settings is tidier: each setting has its name and control on one line inside a card, and the dialog closes with a ✕ in its header instead of a Close button at the bottom
 - The theme hint in Settings no longer says "Windows"
+- On a phone, "Move to" in a note's "…" menu lists the folders in your own order, like the folder list on a computer, instead of A to Z
 
 ### Fixes
 - A table wider than the note scrolls sideways instead of breaking its words in the middle

@@ -7,6 +7,7 @@ import type { TasksApi } from "../../hooks/useTasks";
 import { VaultPathContext } from "../../lib/attachmentStore";
 import type { DragStore } from "../../lib/dragStore";
 import { perfRender } from "../../lib/perf";
+import { pointBelow } from "../../lib/popoverBounds";
 import { isFolderCollapsed, setFolderCollapsed } from "../../lib/prefs";
 import {
   openCount,
@@ -222,8 +223,7 @@ function TaskLists({
                 aria-label={`Options for ${list.name}`}
                 aria-haspopup="menu"
                 onClick={(e) => {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  openAt(r.left, r.bottom + 2, entriesOf(list));
+                  openAt(...pointBelow(e.currentTarget), entriesOf(list));
                 }}
               >
                 <EllipsisIcon size={13} />
@@ -307,8 +307,7 @@ function TaskLists({
                 aria-label={`Options for ${group.name}`}
                 aria-haspopup="menu"
                 onClick={(e) => {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  openAt(r.left, r.bottom + 2, groupEntries(group));
+                  openAt(...pointBelow(e.currentTarget), groupEntries(group));
                 }}
               >
                 <EllipsisIcon size={13} />

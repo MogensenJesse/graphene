@@ -1,4 +1,5 @@
 // src/components/ui/MoreButton.tsx
+import { pointBelow } from "../../lib/popoverBounds";
 import Button from "./Button";
 import type { MenuEntry } from "./ContextMenu";
 import { useContextMenu } from "./ContextMenuProvider";
@@ -14,8 +15,7 @@ function MoreButton({ entries }: { entries: MenuEntry[] }) {
         size="sm"
         iconOnly
         onClick={(e) => {
-          const r = e.currentTarget.getBoundingClientRect();
-          openAt(r.left, r.bottom + 2, entries);
+          openAt(...pointBelow(e.currentTarget), entries);
         }}
         aria-label="More actions"
         aria-haspopup="menu"

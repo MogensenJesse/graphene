@@ -12,7 +12,7 @@ import type { DragStore } from "../../lib/dragStore";
 import { namesUnder, validateFolderName } from "../../lib/folderName";
 import { isInside } from "../../lib/folderOps";
 import { perfRender } from "../../lib/perf";
-import { IS_ANDROID } from "../../lib/platform";
+import { pointBelow } from "../../lib/popoverBounds";
 import {
   isFolderCollapsed,
   setFolderCollapsed,
@@ -20,7 +20,7 @@ import {
 } from "../../lib/prefs";
 import { type NotesByFolder, notesUnder } from "../../lib/rowItems";
 import { folderLevel, treeItemId } from "../../lib/treeNav";
-import { flattenFolders, itemKind } from "../../lib/utils";
+import { itemKind } from "../../lib/utils";
 import type { Folder, Item, ItemKind } from "../../types";
 import ConfirmBar from "../ui/ConfirmBar";
 import type { MenuEntry } from "../ui/ContextMenu";
@@ -28,19 +28,16 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   ChevronUpIcon,
-  ClipboardIcon,
   EllipsisIcon,
-  ExternalLinkIcon,
-  FolderIcon,
   FolderInputIcon,
   FolderPlusIcon,
-  NoFolderIcon,
   PlusIcon,
   TextCursorInputIcon,
   TrashIcon,
 } from "../ui/Icon";
 import IconButton from "../ui/IconButton";
 import InlineInput from "../ui/InlineInput";
+import { folderChoiceEntries, revealEntries } from "../ui/menuEntries";
 import { newItemEntries } from "../ui/newKinds";
 import Tooltip from "../ui/Tooltip";
 import ItemRow from "./ItemRow";
@@ -182,34 +179,15 @@ function FolderRow({
 
   // Where this folder could go: the top level or any folder that is not itself or inside itself (a name that is taken there is
   // refused with a message when chosen)
-  const moveToEntries = (): MenuEntry[] => {
-    const to = (
-      parentId: string | null,
-      label: string,
-      icon: React.ReactNode,
-      indent = 0,
-    ): MenuEntry => ({
-      label,
-      icon,
-      indent,
-      checked: folder.parentId === parentId,
-      disabled: folder.parentId === parentId,
-      onSelect: () => onMoveTo(folder.id, parentId),
+  const moveToEntries = (): MenuEntry[] =>
+    folderChoiceEntries({
+      folders: allFolders,
+      compare: compareFolders,
+      rootLabel: "Top level",
+      currentId: folder.parentId,
+      skip: (f) => isInside(f.id, folder.id),
+      onPick: (parentId) => onMoveTo(folder.id, parentId),
     });
-    return [
-      to(null, "Top level", <NoFolderIcon size={14} />),
-      ...flattenFolders(allFolders, compareFolders)
-        .filter((row) => !isInside(row.folder.id, folder.id))
-        .map((row) =>
-          to(
-            row.folder.id,
-            row.folder.name,
-            <FolderIcon size={14} />,
-            row.depth,
-          ),
-        ),
-    ];
-  };
 
   // What "+" opens, and the head of the folder's menu: a note or code here, or a subfolder
   const newEntries = (): MenuEntry[] => [
@@ -252,21 +230,10 @@ function FolderRow({
         icon: <FolderInputIcon size={14} />,
         submenu: moveToEntries(),
       },
-      // Android keeps its notes in the app's own storage, which no file manager shows
-      ...(IS_ANDROID
-        ? []
-        : [
-            {
-              label: "Show in Explorer",
-              icon: <ExternalLinkIcon size={14} />,
-              onSelect: () => onReveal(folder.id),
-            },
-            {
-              label: "Copy path",
-              icon: <ClipboardIcon size={14} />,
-              onSelect: () => onCopyPath(folder.id),
-            },
-          ]),
+      ...revealEntries(
+        () => onReveal(folder.id),
+        () => onCopyPath(folder.id),
+      ),
       "separator",
       {
         label: "Delete folder",
@@ -369,8 +336,7 @@ function FolderRow({
             <IconButton
               size="sm"
               onClick={(e) => {
-                const r = e.currentTarget.getBoundingClientRect();
-                onOpenMenu(r.left, r.bottom + 2, newEntries());
+                onOpenMenu(...pointBelow(e.currentTarget), newEntries());
               }}
               aria-label={`New in ${folder.name}`}
               aria-haspopup="menu"
@@ -382,8 +348,7 @@ function FolderRow({
             <IconButton
               size="sm"
               onClick={(e) => {
-                const r = e.currentTarget.getBoundingClientRect();
-                openMenu(r.left, r.bottom + 2);
+                openMenu(...pointBelow(e.currentTarget));
               }}
               aria-label="Folder options"
               aria-haspopup="menu"

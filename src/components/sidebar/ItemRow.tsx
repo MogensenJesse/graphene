@@ -2,6 +2,7 @@
 import { memo, useState } from "react";
 import { perfRender } from "../../lib/perf";
 import { IS_TOUCH } from "../../lib/platform";
+import { pointBelow } from "../../lib/popoverBounds";
 import { treeItemId } from "../../lib/treeNav";
 import type { ItemKind } from "../../types";
 import { EllipsisIcon, KindIcon } from "../ui/Icon";
@@ -112,8 +113,7 @@ function ItemRow({
           onKeyDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
-            const r = e.currentTarget.getBoundingClientRect();
-            onMore(id, r.left, r.bottom + 2);
+            onMore(id, ...pointBelow(e.currentTarget));
           }}
         >
           <EllipsisIcon size={13} />

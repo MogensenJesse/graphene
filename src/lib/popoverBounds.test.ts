@@ -5,6 +5,7 @@ import {
   placeAtPoint,
   placeBelow,
   placeBeside,
+  pointBelow,
 } from "./popoverBounds";
 
 // The phone of the audit: 354 x 792 css px, a 40px status bar and a 44px navigation bar, and a 6px margin
@@ -200,5 +201,12 @@ describe("placeBelow", () => {
     const up = placeBelow(low, list, PHONE, 4, 200);
     expect(up.up).toBe(true);
     expect(up.maxHeight).toBe(650 - 4 - PHONE.top);
+  });
+});
+
+describe("pointBelow", () => {
+  it("is the button's left edge, just under its bottom edge", () => {
+    const button = { getBoundingClientRect: () => ({ left: 120, bottom: 64 }) };
+    expect(pointBelow(button as unknown as Element)).toEqual([120, 66]);
   });
 });

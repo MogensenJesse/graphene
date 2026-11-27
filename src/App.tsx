@@ -39,17 +39,17 @@ import DragGhost from "./components/ui/DragGhost";
 import ErrorToast from "./components/ui/ErrorToast";
 import HeaderActions from "./components/ui/HeaderActions";
 import {
-  ClipboardIcon,
   CopyIcon,
-  ExternalLinkIcon,
-  FolderIcon,
   FolderInputIcon,
   GearIcon,
-  NoFolderIcon,
   PlusIcon,
   SearchIcon,
   TrashIcon,
 } from "./components/ui/Icon";
+import {
+  folderChoiceEntries,
+  revealEntries,
+} from "./components/ui/menuEntries";
 import NewFab from "./components/ui/NewFab";
 import { newItemEntries } from "./components/ui/newKinds";
 import SidebarToggle from "./components/ui/SidebarToggle";
@@ -78,6 +78,7 @@ import { DROP_HINT, DROP_HINT_PICTURES, DROP_HINT_TASKS } from "./lib/fileDrop";
 import type { RestorePlan } from "./lib/folderOps";
 import { leaveGate } from "./lib/leaveGate";
 import { sameItem } from "./lib/mergeScan";
+import { compareFoldersManual } from "./lib/order";
 import { extOf, nativePath } from "./lib/paths";
 import { perfMark, perfMarkAfterPaint, perfRender } from "./lib/perf";
 import { COMPACT_QUERY, IS_ANDROID, IS_TOUCH } from "./lib/platform";
@@ -93,7 +94,6 @@ import {
 import { DEFAULT_LIST_ID, orderedLists, type Task } from "./lib/taskStore";
 import { toggleTaskAt } from "./lib/tasks";
 import { isTextField } from "./lib/textMenu";
-import { compareNames, flattenFolders } from "./lib/utils";
 import { shownWhenGone, type VaultShown } from "./lib/vaultGone";
 import { showWindow } from "./lib/windowShow";
 import type { Item, ItemKind } from "./types";
@@ -408,22 +408,25 @@ function MainApp({
   const [isDirtyEdit, setIsDirtyEdit] = useState(false);
   // Item the open editor writes to; null = unsaved draft. A ref so a flush before re-render still sees it
   const editingIdRef = useRef<string | null>(null);
+  // A blank draft in a fresh editor. On a phone the list takes over, and a blank draft behind it must not raise the keyboard
+  const resetDraft = useStable(() =>
+    setDraft((d) => ({
+      key: d.key + 1,
+      kind: "note",
+      folderId: null,
+      returnToId: null,
+      ...(phone ? { focus: false } : {}),
+    })),
+  );
 
   useEffect(() => {
     if (selectedId && !items.some((i) => i.id === selectedId)) {
       setSelectedId(null);
       setMode("new");
-      // On a phone the list takes over, and a blank draft behind it must not raise the keyboard
-      setDraft((d) => ({
-        key: d.key + 1,
-        kind: "note",
-        folderId: null,
-        returnToId: null,
-        ...(phone ? { focus: false } : {}),
-      }));
+      resetDraft();
       if (phone) setCompactOpen(true);
     }
-  }, [items, selectedId, phone]);
+  }, [items, selectedId, phone, resetDraft]);
 
   const selectedItem = useMemo(
     () => items.find((i) => i.id === selectedId),
@@ -499,13 +502,7 @@ function MainApp({
     }
     setSelectedId(null);
     setMode("new");
-    setDraft((d) => ({
-      key: d.key + 1,
-      kind: "note",
-      folderId: null,
-      returnToId: null,
-      ...(phone ? { focus: false } : {}),
-    }));
+    resetDraft();
   });
 
   // The Restore of the Trash view says where the note went; the Undo toast's own restore opens the note instead
@@ -912,29 +909,14 @@ function MainApp({
             {
               label: "Move to",
               icon: <FolderInputIcon size={14} />,
-              submenu: [
-                {
-                  id: null,
-                  name: "No folder",
-                  icon: <NoFolderIcon size={14} />,
-                  depth: 0,
-                },
-                ...flattenFolders(folders, (a, b) =>
-                  compareNames(a.name, b.name),
-                ).map(({ folder, depth }) => ({
-                  id: folder.id,
-                  name: folder.name,
-                  icon: <FolderIcon size={14} />,
-                  depth,
-                })),
-              ].map(({ id, name, icon, depth }) => ({
-                label: name,
-                icon,
-                indent: depth,
-                checked: selectedItem.folderId === id,
-                disabled: selectedItem.folderId === id,
-                onSelect: () => moveItem(selectedItem.id, id),
-              })),
+              // The order of the note header's own folder list on a computer
+              submenu: folderChoiceEntries({
+                folders,
+                compare: compareFoldersManual,
+                rootLabel: "No folder",
+                currentId: selectedItem.folderId,
+                onPick: (id) => moveItem(selectedItem.id, id),
+              }),
             },
           ]
         : []),
@@ -948,22 +930,11 @@ function MainApp({
           handleDuplicate(selectedId);
         },
       },
-      ...(IS_ANDROID
-        ? []
-        : [
-            {
-              label: "Show in Explorer",
-              icon: <ExternalLinkIcon size={14} />,
-              disabled: !selectedItem,
-              onSelect: () => selectedItem && handleRevealItem(selectedItem),
-            },
-            {
-              label: "Copy path",
-              icon: <ClipboardIcon size={14} />,
-              disabled: !selectedItem,
-              onSelect: () => selectedItem && handleCopyItemPath(selectedItem),
-            },
-          ]),
+      ...revealEntries(
+        () => selectedItem && handleRevealItem(selectedItem),
+        () => selectedItem && handleCopyItemPath(selectedItem),
+        !selectedItem,
+      ),
       "separator",
       {
         label: "Move to trash",
@@ -1437,16 +1408,19 @@ function App() {
   // Retry) instead of losing the text; the next close request always closes it, so a failing disk never traps the window.
   // The check comes after the flush, so of two requests that overlap, one keeps it open and the other closes it.
   const keptOpen = useRef(false);
+  const tryLeave = useCallback(async () => {
+    const gate = leaveGate(await flushPendingSave(), keptOpen.current);
+    keptOpen.current = gate.warned;
+    return gate.go;
+  }, [flushPendingSave]);
   useEffect(() => {
     const unlisten = appWindow.onCloseRequested(async (event) => {
-      const gate = leaveGate(await flushPendingSave(), keptOpen.current);
-      keptOpen.current = gate.warned;
-      if (!gate.go) event.preventDefault();
+      if (!(await tryLeave())) event.preventDefault();
     });
     return () => {
       unlisten.then((fn) => fn()).catch(console.error);
     };
-  }, [flushPendingSave]);
+  }, [tryLeave]);
 
   // Android: the Back key closes the innermost thing that is open (see backStack), and with nothing open it leaves the app the way
   // closing the window does: after the pending save, held back once when something could not be saved
@@ -1454,14 +1428,12 @@ function App() {
     if (!IS_ANDROID) return;
     const listener = onBackButtonPress(async () => {
       if (runBack()) return;
-      const gate = leaveGate(await flushPendingSave(), keptOpen.current);
-      keptOpen.current = gate.warned;
-      if (gate.go) await exit(0);
+      if (await tryLeave()) await exit(0);
     });
     return () => {
       listener.then((l) => l.unregister()).catch(console.error);
     };
-  }, [flushPendingSave]);
+  }, [tryLeave]);
 
   // Android: a backgrounded app can be killed at any moment, so what is typed is saved as soon as the page is hidden (Home, the app
   // switcher, the screen going off) instead of when the autosave delay ends

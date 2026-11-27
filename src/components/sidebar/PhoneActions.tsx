@@ -3,6 +3,7 @@ import type { OpenSettings } from "../dialogs/SettingsDialog";
 import { GearIcon, TrashIcon } from "../ui/Icon";
 import IconButton from "../ui/IconButton";
 import type { SidebarTab } from "./Sidebar";
+import { trashLabel } from "./trashLabel";
 
 interface PhoneActionsProps {
   tab: SidebarTab;
@@ -32,11 +33,7 @@ function PhoneActions({
         <button
           type="button"
           className={`sidebar__trash${trashOpen ? " sidebar__trash--active" : ""}`}
-          aria-label={
-            unavailable
-              ? "Trash"
-              : `Trash, ${trashedCount} ${trashedCount === 1 ? "note" : "notes"}`
-          }
+          aria-label={trashLabel(unavailable, trashedCount)}
           disabled={unavailable}
           onClick={onOpenTrash}
         >

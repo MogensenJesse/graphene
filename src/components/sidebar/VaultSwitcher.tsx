@@ -1,6 +1,7 @@
 // src/components/sidebar/VaultSwitcher.tsx
 import type { Vaults } from "../../hooks/useVaults";
 import { IS_ANDROID } from "../../lib/platform";
+import { pointBelow } from "../../lib/popoverBounds";
 import { pickVaultPath } from "../../lib/vault";
 import { vaultProblemText } from "../../lib/vaultList";
 import type { OpenSettings } from "../dialogs/SettingsDialog";
@@ -42,8 +43,7 @@ function VaultSwitcher({ vaults, onOpenSettings }: VaultSwitcherProps) {
   };
 
   const openMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    openAt(r.left, r.bottom + 2, [
+    openAt(...pointBelow(e.currentTarget), [
       ...vaults.vaults.map((v) => {
         const missing = vaults.isMissing(v.path);
         return {
