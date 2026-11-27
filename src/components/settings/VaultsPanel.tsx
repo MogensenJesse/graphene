@@ -3,7 +3,11 @@ import { useEffect, useState } from "react";
 import type { Vaults } from "../../hooks/useVaults";
 import { IS_ANDROID, PRIVATE_VAULT_NOTICE } from "../../lib/platform";
 import { pickVaultPath } from "../../lib/vault";
-import { type VaultEntry, vaultProblemText } from "../../lib/vaultList";
+import {
+  nameTaken,
+  type VaultEntry,
+  vaultProblemText,
+} from "../../lib/vaultList";
 import Button from "../ui/Button";
 import Checkbox from "../ui/Checkbox";
 import ConfirmBar from "../ui/ConfirmBar";
@@ -20,12 +24,13 @@ interface VaultsPanelProps {
   onClose: () => void;
 }
 
-// Add, open, rename, order and remove vaults, and choose which ones AI assistants may use. On Android there is the one vault
-// inside the app (no folder picker, no assistants, nothing to order or remove), so it is a name and a warning.
+// Add, open, rename, order and remove vaults, and choose which ones AI assistants may use. On Android the vaults are folders the app
+// keeps inside its own storage (no folder picker, no assistants, no order): a new one needs a name, and deleting one deletes its notes.
 function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
   const { recheck } = vaults;
   const [renaming, setRenaming] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [naming, setNaming] = useState(false);
   const [message, setMessage] = useState<string | null>(initialMessage);
 
   // A folder may have been deleted, or a drive connected, since the list was last looked at
@@ -51,6 +56,22 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
     if ((await vaults.switchTo(vault.path)) === "opened") onClose();
   };
 
+  // Android: the name is all a new vault needs; it opens at once, so Settings closes on it as it does for Open
+  const create = async (name: string) => {
+    setNaming(false);
+    const result = await vaults.create(name);
+    if (result === "created") onClose();
+    else if (result === "failed") setMessage("The vault could not be made.");
+  };
+
+  // Android: the last vault has no Delete, so the app always has one
+  const erase = async (vault: VaultEntry) => {
+    if ((await vaults.erase(vault.path)) === "failed")
+      setMessage(
+        `"${vault.name}" is gone from the list, but its files could not be deleted.`,
+      );
+  };
+
   const rename = (vault: VaultEntry, name: string) => {
     setRenaming(null);
     if (name === vault.name) return;
@@ -62,7 +83,7 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
     <>
       <p className="settings__text">
         {IS_ANDROID
-          ? PRIVATE_VAULT_NOTICE
+          ? `A vault is a separate set of notes. Switch between them from the top of the list. ${PRIVATE_VAULT_NOTICE}`
           : "A vault is a folder of notes. Switch between them from the top of the sidebar. Vaults cannot overlap: a folder may not be inside another vault."}
       </p>
 
@@ -97,7 +118,7 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
                     </button>
                   </Tooltip>
                 )}
-                {current && !IS_ANDROID && (
+                {current && (!IS_ANDROID || vaults.vaults.length > 1) && (
                   <span className="settings__tag">Open</span>
                 )}
                 {!IS_ANDROID && (
@@ -137,27 +158,35 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
 
               {removing === vault.path ? (
                 <ConfirmBar
-                  question={`Remove "${vault.name}" from Graphene? The folder and its notes stay on your computer.`}
-                  confirmLabel="Remove"
+                  question={
+                    IS_ANDROID
+                      ? `Delete "${vault.name}" and every note in it? This cannot be undone.`
+                      : `Remove "${vault.name}" from Graphene? The folder and its notes stay on your computer.`
+                  }
+                  confirmLabel={IS_ANDROID ? "Delete" : "Remove"}
                   onConfirm={() => {
                     setRemoving(null);
-                    vaults.remove(vault.path);
+                    if (IS_ANDROID) erase(vault);
+                    else vaults.remove(vault.path);
                   }}
                   onCancel={() => setRemoving(null)}
                 />
               ) : (
-                !IS_ANDROID && (
+                // On Android with one vault there is nothing to open or delete
+                (!IS_ANDROID || vaults.vaults.length > 1) && (
                   <div className="settings__vault-foot">
-                    {/* biome-ignore lint/a11y/noLabelWithoutControl: Checkbox renders an <input> */}
-                    <label className="settings__check">
-                      <Checkbox
-                        checked={vault.shared}
-                        onChange={(e) =>
-                          vaults.setShared(vault.path, e.target.checked)
-                        }
-                      />
-                      Share with AI assistants
-                    </label>
+                    {!IS_ANDROID && (
+                      // biome-ignore lint/a11y/noLabelWithoutControl: Checkbox renders an <input>
+                      <label className="settings__check">
+                        <Checkbox
+                          checked={vault.shared}
+                          onChange={(e) =>
+                            vaults.setShared(vault.path, e.target.checked)
+                          }
+                        />
+                        Share with AI assistants
+                      </label>
+                    )}
                     <span className="settings__vault-actions">
                       {!current && (
                         <Button
@@ -175,7 +204,7 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
                           setRemoving(vault.path);
                         }}
                       >
-                        Remove
+                        {IS_ANDROID ? "Delete" : "Remove"}
                       </Button>
                     </span>
                   </div>
@@ -192,13 +221,38 @@ function VaultsPanel({ vaults, initialMessage, onClose }: VaultsPanelProps) {
         </p>
       )}
 
-      {!IS_ANDROID && (
-        <div className="settings__row">
-          <Button variant="primary" onClick={add}>
-            Add vault…
+      <div className="settings__row">
+        {IS_ANDROID && naming ? (
+          <span data-owns-escape>
+            <InlineInput
+              className="settings__input"
+              placeholder="Name of the vault"
+              ariaLabel="Name of the new vault"
+              validate={(name) =>
+                nameTaken(vaults.vaults, name)
+                  ? `Another vault is already called "${name}".`
+                  : null
+              }
+              onCommit={create}
+              onCancel={() => setNaming(false)}
+            />
+          </span>
+        ) : (
+          <Button
+            variant="primary"
+            onClick={
+              IS_ANDROID
+                ? () => {
+                    setMessage(null);
+                    setNaming(true);
+                  }
+                : add
+            }
+          >
+            {IS_ANDROID ? "New vault…" : "Add vault…"}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </>
   );
 }

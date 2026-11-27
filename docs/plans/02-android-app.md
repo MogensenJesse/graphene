@@ -64,7 +64,7 @@ future sync engine work unchanged.
 
 Consequences:
 
-- A first launch creates a default vault automatically. There is no vault picker, and the multi-vault switcher stays hidden at first.
+- A first launch creates a default vault (`Notes`) automatically. There is no vault picker. More vaults (built 2026-11-27, see "Vaults on a phone" below) are named, empty and private: `vaults/<id>` in the same storage.
 - Getting notes in and out is by import and export (and the share target below). An optional SAF mirror can come later.
 - The phone's notes are not visible to other apps. That is a privacy plus, and it is also why export matters.
 
@@ -180,16 +180,28 @@ desktop window keeps the drawer, and landscape, at 914 px, keeps the docked side
 (`app__sidebar--screen`), is where the app starts, and the note, the editor, the Trash, the tasks and a task's details are screens above it
 (`compactOpen` means "the list is showing"). Back goes from a screen to the list (`useBack(showList, phone && !compactOpen)`) and, on the
 list, leaves the app. Notes | Tasks is a bottom bar on the list and on every screen (`BottomBar`; each tab goes to that tab's list; hidden
-while a field has the focus), the back arrow replaces the sidebar toggle, a round "+" (`NewFab`) starts a note, Search is the one row left
+while a field has the focus), the back arrow replaces the sidebar toggle, a round "+" (`NewFab`, black with a white plus in the light theme, the reverse in the dark one) starts a note, Trash and Settings are at the end of the
+list's header (`PhoneActions`; the sidebar footer draws nothing on a phone, except as the Trash drop zone while a note is dragged), Search is the one row left
 above the list (a field that opens the palette), and the note's folder chip is gone: "Move to" is in its "..." menu (the title has about 130 px
-more). The Undo bars sit above the list (the list takes over after a delete). A task's details are full width. The effect that closed the
+more). The Undo bars sit above the list (the list takes over after a delete). A task's details are full width (the slot and the pane inside it) and their bar button is a left chevron, so it does not look like the list's
+Back. The effect that closed the
 drawer on every selection is off on a phone: a screen is entered by an explicit `closeFloating()` (pick, new, edit, Trash, search, a task
 list), so a screen can also open the list over itself without being closed again. Checked on the emulator (default, small, dark; Back through
-note, editor and keyboard; the Trash; task lists and details; cold start on the last tab): screenshots `41` to `46` in the audit.
+note, editor and keyboard; the Trash; task lists and details; cold start on the last tab): screenshots `41` to `46` in the audit; the header actions,
+Settings' back arrow, the full-width details and the language list above the keyboard are `51` to `55`. Settings itself was redesigned afterwards, on a
+phone and on a computer (cards of settings, text tabs on a phone; audit Round 9, `61` to `63`).
 
-**Left from the proposal:** the list's `[...]` menu (Settings and Trash stay as the footer row of the list; the vault chip is plain text, so
-"Vaults" has nowhere to go and does not need to), a search field that filters in place (it opens the palette), a "+" on the Tasks list
+**Left from the proposal:** the list's `[...]` menu (Settings and Trash are buttons in the list's header now; the vault chip is a menu of the
+vaults and "Manage vaults…" now: see "Vaults on a phone"), a search field that filters in place (it opens the palette), a "+" on the Tasks list
 screen (the lists screen keeps its own "+" for a list and a group, and a task is added inside a list), and swipes. Not tried on a real phone.
+
+**Vaults on a phone (built 2026-11-27):** a phone can have several vaults, all private (no folder picker: Android hands a picked folder over as a
+`content://` address, and the vault code reads real paths; all-files access is restricted on Google Play). The first is `Notes`, the others are
+`vaults/<id>` in the app's storage, where `<id>` is a `nanoid` that is also written to `.graphene/vault.json` inside the vault: the id that
+docs/plans/03's sync keys a vault by, so a rename, or a vault copied to another device, keeps its identity (`Notes` gets its file when sync links it).
+The header's vault chip lists the vaults and "Manage vaults…"; Settings, Vaults has Open, Delete (the folder and its notes go, after a confirmation;
+never the last vault) and "New vault…" (a name, refused when taken). Not done: ordering the vaults by hand, a vault's icon or colour, moving a
+note between vaults, and an export before a Delete (audit #2 is where export is decided).
 
 **Decided (2026-11-26):**
 
@@ -218,7 +230,7 @@ keyboard), and #3 for good (Copy, folder and the other header buttons move into 
 **Still open:**
 
 - What "+" does on the Tasks list screen: add a task (to the last used list) or make a new list.
-- The exact contents of the list screen's `[...]` menu, and where the vault switcher goes if there is ever more than one vault on a phone.
+- The exact contents of the list screen's `[...]` menu, (the vault switcher is the header chip's menu: decided and built with the vaults).
 - Whether the bottom bar hides while the keyboard is up (the editor needs the room; it probably must).
 - Swipe between the two tabs, or from the note edge for Back: after the basics.
 
@@ -291,7 +303,7 @@ organisation account is exempt [V]. F-Droid is plausible because the repository 
 
 ## Open items
 
-1. Single default vault on Android at first, or the multi-vault switcher too?
+1. Single default vault on Android at first, or the multi-vault switcher too? Decided 2026-11-27: several private vaults ("Vaults on a phone").
 2. Do we want an SAF export or mirror folder before sync exists, or is a "share a .zip" export enough for testers?
 3. Which share-target approach (community plugin or a small Kotlin intent filter)?
 4. When to add the signed-APK CI job (needs an Android SDK and NDK runner setup).

@@ -2,7 +2,9 @@
 import { useRef, useState } from "react";
 import { useClickOutside } from "../../hooks/useClickOutside";
 import { useEscape } from "../../hooks/useEscape";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import type { TasksApi } from "../../hooks/useTasks";
+import { PHONE_QUERY } from "../../lib/platform";
 import { dueLabel } from "../../lib/taskDates";
 import type { Step, Task, TaskList } from "../../lib/taskStore";
 import { isTextField } from "../../lib/textMenu";
@@ -13,6 +15,7 @@ import DatePick from "../ui/DatePick";
 import {
   CalendarIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
   ChevronRightIcon,
   ListIcon,
   PlusIcon,
@@ -153,6 +156,8 @@ function TaskDetail({
   onClose,
   onDelete,
 }: TaskDetailProps) {
+  // A phone: the pane is a screen above the tasks, and its way out is the back arrow every screen has, not the side pane's "›"
+  const phone = useMediaQuery(PHONE_QUERY);
   const [step, setStep] = useState("");
   const dueRow = useRef<HTMLDivElement>(null); // the calendar opens as wide as this row, like the list's dropdown
   const inMyDay = task.myDay === today;
@@ -199,8 +204,15 @@ function TaskDetail({
     >
       <div className="task-detail__bar" data-tauri-drag-region>
         <Tooltip label="Close" keys="Esc">
-          <IconButton aria-label="Close details" onClick={close}>
-            <ChevronRightIcon size={16} />
+          <IconButton
+            aria-label={phone ? "Back to the tasks" : "Close details"}
+            onClick={close}
+          >
+            {phone ? (
+              <ChevronLeftIcon size={18} />
+            ) : (
+              <ChevronRightIcon size={16} />
+            )}
           </IconButton>
         </Tooltip>
       </div>

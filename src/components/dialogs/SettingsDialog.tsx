@@ -7,9 +7,17 @@ import AboutPanel from "../settings/AboutPanel";
 import AppearancePanel from "../settings/AppearancePanel";
 import AssistantsPanel from "../settings/AssistantsPanel";
 import VaultsPanel from "../settings/VaultsPanel";
-import Button from "../ui/Button";
-import { FolderIcon, InfoIcon, PaletteIcon, SparklesIcon } from "../ui/Icon";
+import {
+  ChevronLeftIcon,
+  FolderIcon,
+  InfoIcon,
+  PaletteIcon,
+  SparklesIcon,
+  XIcon,
+} from "../ui/Icon";
+import IconButton from "../ui/IconButton";
 import Modal from "../ui/Modal";
+import Tooltip from "../ui/Tooltip";
 
 export type SettingsTab = "appearance" | "vaults" | "assistants" | "about";
 
@@ -44,7 +52,8 @@ interface SettingsDialogProps {
 }
 
 // One dialog for everything that is not a note: a list of sections on the left, built from the sidebar's own nav rows,
-// and the open section on the right. It keeps a fixed height, so switching sections does not make it jump.
+// and the open section on the right. It keeps a fixed height, so switching sections does not make it jump. Escape, a
+// click outside and the button in the header close it; on a touch screen it is a screen of its own and the arrow does.
 function SettingsDialog({
   initialTab,
   initialMessage,
@@ -59,7 +68,17 @@ function SettingsDialog({
     <Modal label="Settings" onClose={onClose} className="settings">
       <div className="settings__layout">
         <div className="settings__side">
-          <div className="modal__title settings__title">Settings</div>
+          <div className="settings__head">
+            {/* Only on a touch screen, where Settings is a screen of its own (_Touch.scss): the way back, as in every other screen */}
+            <IconButton
+              className="settings__back"
+              aria-label="Back"
+              onClick={onClose}
+            >
+              <ChevronLeftIcon size={18} />
+            </IconButton>
+            <div className="modal__title settings__title">Settings</div>
+          </div>
           <nav className="settings__nav" aria-label="Settings sections">
             {SECTIONS.map(({ value, label, icon }) => (
               <button
@@ -79,10 +98,19 @@ function SettingsDialog({
         </div>
 
         <div className="settings__main">
-          <header className="modal__header">
+          <header className="modal__header settings__header">
             <h2 className="modal__title">
               {SECTIONS.find((s) => s.value === tab)?.label}
             </h2>
+            <Tooltip label="Close" keys="Esc">
+              <IconButton
+                className="settings__close"
+                aria-label="Close"
+                onClick={onClose}
+              >
+                <XIcon size={14} />
+              </IconButton>
+            </Tooltip>
           </header>
 
           <div className="modal__body settings__body" data-scrollbar>
@@ -103,12 +131,6 @@ function SettingsDialog({
           </div>
         </div>
       </div>
-
-      <footer className="modal__footer">
-        <div className="modal__actions">
-          <Button onClick={onClose}>Close</Button>
-        </div>
-      </footer>
     </Modal>
   );
 }

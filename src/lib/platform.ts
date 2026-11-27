@@ -4,6 +4,9 @@
 export const IS_ANDROID =
   typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 
+// A phone: a touch screen narrower than this has the list as a screen of its own (see `phone` in App), not a drawer
+export const PHONE_QUERY = "(max-width: 599px) and (pointer: coarse)";
+
 // What a person on a phone should know: the vault is inside the app, and nothing else keeps a copy (Settings, Vaults and About)
 export const PRIVATE_VAULT_NOTICE =
   "Your notes are stored inside this app. Uninstalling the app, or clearing its storage, deletes them.";

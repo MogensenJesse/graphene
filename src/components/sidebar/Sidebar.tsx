@@ -148,6 +148,8 @@ interface SidebarProps {
   onTabChange: (tab: SidebarTab) => void;
   // What the Tasks tab shows in place of the notes (the lists: see TaskLists)
   tasksPanel: ReactNode;
+  // A phone (see App): Trash and Settings are in the header, and the footer is only the Trash's drop zone while a note is dragged
+  phone?: boolean;
   updateAvailable: boolean;
   vaults: Vaults;
   // Item open in the editor: its title and folder belong to the editor until it closes
@@ -214,6 +216,8 @@ function TreeFrame({
 }
 
 interface SidebarFooterProps {
+  /** A phone has Trash and Settings in the header: the footer is only the Trash's drop zone, while a note is dragged */
+  phone: boolean;
   tab: SidebarTab;
   trashOpen: boolean;
   trashedCount: number;
@@ -227,6 +231,7 @@ interface SidebarFooterProps {
 // Trash (a wide drop target while a note is dragged) and Settings. It reads the drag itself: only a note can go to the Trash, and
 // a dragged folder cannot
 const SidebarFooter = memo(function SidebarFooter({
+  phone,
   tab,
   trashOpen,
   trashedCount,
@@ -244,6 +249,7 @@ const SidebarFooter = memo(function SidebarFooter({
     drag,
     (view) => view.source?.kind === "item" && view.overId === TRASH_DROP_ID,
   );
+  if (phone && !noteDragging) return null;
   return (
     <div
       className={`sidebar__footer${noteDragging ? " sidebar__footer--dragging" : ""}${tab === "tasks" ? " sidebar__footer--end" : ""}`}
@@ -311,6 +317,7 @@ function Sidebar({
   tab,
   onTabChange,
   tasksPanel,
+  phone = false,
   updateAvailable,
   vaults,
   editingItemId,
@@ -818,6 +825,12 @@ function Sidebar({
         vaults={vaults}
         onShowUpdate={onShowUpdate}
         onOpenSettings={onOpenSettings}
+        phone={phone}
+        tab={tab}
+        trashOpen={trashOpen}
+        trashedCount={trashedCount}
+        unavailable={unavailable}
+        onOpenTrash={onOpenTrash}
       />
 
       <Segmented
@@ -1013,6 +1026,7 @@ function Sidebar({
       )}
 
       <SidebarFooter
+        phone={phone}
         tab={tab}
         trashOpen={trashOpen}
         trashedCount={trashedCount}

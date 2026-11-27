@@ -35,7 +35,7 @@ export const pathKey = (path: string): string => joinPath(path).toLowerCase();
 
 const samePath = (a: string, b: string) => pathKey(a) === pathKey(b);
 
-const isInside = (child: string, parent: string) =>
+export const isInside = (child: string, parent: string) =>
   pathKey(child).startsWith(`${pathKey(parent)}/`);
 
 /** The folder's own name; "Vault" for a bare drive such as D:\ */
@@ -162,16 +162,21 @@ export function checkNewVault(
   return null;
 }
 
-/** Adds a vault at the end, shared. It does not become the open one. */
+/** Whether a vault already has this name. Case does not matter. */
+export const nameTaken = (vaults: VaultEntry[], name: string): boolean =>
+  vaults.some((v) => v.name.toLowerCase() === name.trim().toLowerCase());
+
+/** Adds a vault at the end, shared. It does not become the open one. Without a `name` it is the folder's; a name a vault has gets a number. */
 export function addVault(
   config: VaultConfig,
   path: string,
+  name?: string,
 ): { config: VaultConfig; entry: VaultEntry } | VaultProblem {
   const problem = checkNewVault(config, path);
   if (problem) return problem;
   const entry: VaultEntry = {
     path,
-    name: uniqueName(folderName(path), config.vaults),
+    name: uniqueName(name ?? folderName(path), config.vaults),
     shared: true,
   };
   return {

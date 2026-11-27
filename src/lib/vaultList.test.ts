@@ -6,6 +6,7 @@ import {
   EMPTY_CONFIG,
   folderName,
   moveVault,
+  nameTaken,
   parseVaultConfig,
   removeVault,
   renameVault,
@@ -167,6 +168,20 @@ describe("adding a vault", () => {
   test("a bare drive is called Vault", () => {
     expect(folderName("D:\\")).toBe("Vault");
     expect(folderName("D:/a/b/")).toBe("b");
+  });
+
+  test("a given name is used instead of the folder's; a taken one gets a number", () => {
+    const made = addVault(base, "E:/x1", "Work");
+    if ("kind" in made) throw new Error("should have been added");
+    expect(made.entry).toEqual(vault("E:/x1", "Work"));
+    const again = addVault(made.config, "E:/x2", "work");
+    if ("kind" in again) throw new Error("should have been added");
+    expect(again.entry.name).toBe("work 2");
+  });
+
+  test("a name is taken whatever its case, and spaces around it", () => {
+    expect(nameTaken(base.vaults, "  notes ")).toBe(true);
+    expect(nameTaken(base.vaults, "Notes 2")).toBe(false);
   });
 });
 

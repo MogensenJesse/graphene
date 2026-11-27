@@ -75,16 +75,18 @@ function AssistantsPanel({ version }: AssistantsPanelProps) {
         Let an assistant search, read and add to your notes.
       </p>
 
-      <section className="settings__field">
-        <h3 className="settings__label">Assistant</h3>
-        <Select
-          label="Assistant"
-          className="settings__select"
-          value={tab}
-          options={TABS}
-          onChange={setTab}
-        />
-      </section>
+      <div className="settings__group">
+        <section className="settings__field">
+          <h3 className="settings__label">Assistant</h3>
+          <Select
+            label="Assistant"
+            className="settings__select settings__control"
+            value={tab}
+            options={TABS}
+            onChange={setTab}
+          />
+        </section>
+      </div>
 
       {files === "error" && (
         <p className="settings__error" role="alert">

@@ -79,7 +79,7 @@ import { leaveGate } from "./lib/leaveGate";
 import { sameItem } from "./lib/mergeScan";
 import { extOf, nativePath } from "./lib/paths";
 import { perfMark, perfMarkAfterPaint, perfRender } from "./lib/perf";
-import { IS_ANDROID } from "./lib/platform";
+import { IS_ANDROID, PHONE_QUERY } from "./lib/platform";
 import { readPref, writePref } from "./lib/prefs";
 import { reportError, reportNotice } from "./lib/reportError";
 import { restoreNotice } from "./lib/restoreNotice";
@@ -108,8 +108,6 @@ type Mode = "new" | "detail" | "edit" | "trash";
 
 // Below this window width the sidebar starts out hidden, and opens over the note instead of beside it
 const COMPACT_QUERY = "(max-width: 799px)";
-// A phone: a touch screen narrower than this has the list as a screen of its own (see `phone` below), not a drawer
-const PHONE_QUERY = "(max-width: 599px) and (pointer: coarse)";
 const SIDEBAR_HIDDEN_KEY = "graphene.sidebarHidden";
 const SIDEBAR_TAB_KEY = "graphene.sidebarTab";
 const TASK_VIEW_KEY = "graphene.taskView";
@@ -1254,6 +1252,7 @@ function MainApp({
           className={`app__sidebar${compact ? " app__sidebar--float" : ""}${phone ? " app__sidebar--screen" : ""}${sidebarHidden ? " app__sidebar--hidden" : ""}`}
         >
           <Sidebar
+            phone={phone}
             items={rows}
             getNote={getNote}
             folders={folders}

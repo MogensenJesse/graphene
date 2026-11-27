@@ -116,6 +116,7 @@ function FontField({
         options={FONT_CHOICES[kind]}
         onChange={(choice) => update({ ...pref, choice })}
       />
+      <p className="settings__muted">{hint}</p>
       {custom && (
         <>
           <Select
@@ -141,7 +142,6 @@ function FontField({
         </>
       )}
       <div className={`settings__sample ${sampleClassName}`}>{sample}</div>
-      <p className="settings__muted">{hint}</p>
     </section>
   );
 }
@@ -165,67 +165,73 @@ function AppearancePanel() {
 
   return (
     <>
-      <section className="settings__field">
-        <h3 className="settings__label">Theme</h3>
-        <Segmented
-          label="Theme"
-          className="settings__segments"
-          value={theme}
-          options={THEME_OPTIONS}
-          onChange={chooseTheme}
+      <div className="settings__group">
+        <section className="settings__field">
+          <h3 className="settings__label">Theme</h3>
+          <Segmented
+            label="Theme"
+            className="settings__segments"
+            value={theme}
+            options={THEME_OPTIONS}
+            onChange={chooseTheme}
+          />
+          <p className="settings__muted">
+            System follows the device&apos;s light or dark setting and changes
+            with it.
+          </p>
+        </section>
+      </div>
+
+      <div className="settings__group">
+        <FontField
+          kind="note"
+          title="Note font"
+          sample="The quick brown fox jumps over the lazy dog. 0123456789"
+          sampleClassName="settings__sample--note"
+          hint="Used for reading and editing. In the editor the raw Markdown lines only line up in a monospaced font."
         />
-        <p className="settings__muted">
-          System follows the device&apos;s light or dark setting and changes
-          with it.
-        </p>
-      </section>
 
-      <FontField
-        kind="note"
-        title="Note font"
-        sample="The quick brown fox jumps over the lazy dog. 0123456789"
-        sampleClassName="settings__sample--note"
-        hint="Used for reading and editing. In the editor the raw Markdown lines only line up in a monospaced font."
-      />
-
-      <FontField
-        kind="code"
-        title="Code font"
-        sample="const total = items.reduce((sum, n) => sum + n, 0);"
-        sampleClassName="settings__sample--code"
-        hint="Used for code blocks and inline code. Also the editor's font while the note font is Default."
-      />
-
-      <section className="settings__field">
-        <h3 className="settings__label">Code wrap</h3>
-        <Segmented
-          label="Code wrap"
-          className="settings__segments"
-          value={wrap}
-          options={WRAP_OPTIONS}
-          onChange={setCodeWrap}
+        <FontField
+          kind="code"
+          title="Code font"
+          sample="const total = items.reduce((sum, n) => sum + n, 0);"
+          sampleClassName="settings__sample--code"
+          hint="Used for code blocks and inline code. Also the editor's font while the note font is Default."
         />
-        <p className="settings__muted">
-          Long lines in code blocks, and in a note that is only code in the
-          editor, either continue on the next row or scroll sideways. Alt+Z
-          switches it anywhere.
-        </p>
-      </section>
+      </div>
 
-      <section className="settings__field">
-        <h3 className="settings__label">Text size</h3>
-        <Segmented
-          label="Text size"
-          className="settings__segments"
-          value={size}
-          options={TEXT_SIZES}
-          onChange={chooseSize}
-        />
-        <p className="settings__muted">
-          Changes note text and code. The sidebar, menus and dialogs stay the
-          same.
-        </p>
-      </section>
+      <div className="settings__group">
+        <section className="settings__field">
+          <h3 className="settings__label">Code wrap</h3>
+          <Segmented
+            label="Code wrap"
+            className="settings__segments"
+            value={wrap}
+            options={WRAP_OPTIONS}
+            onChange={setCodeWrap}
+          />
+          <p className="settings__muted">
+            Long lines in code blocks, and in a note that is only code in the
+            editor, either continue on the next row or scroll sideways. Alt+Z
+            switches it anywhere.
+          </p>
+        </section>
+
+        <section className="settings__field">
+          <h3 className="settings__label">Text size</h3>
+          <Segmented
+            label="Text size"
+            className="settings__segments"
+            value={size}
+            options={TEXT_SIZES}
+            onChange={chooseSize}
+          />
+          <p className="settings__muted">
+            Changes note text and code. The sidebar, menus and dialogs stay the
+            same.
+          </p>
+        </section>
+      </div>
     </>
   );
 }

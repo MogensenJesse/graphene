@@ -1,6 +1,6 @@
 // src/components/note/CodeLanguagePicker.tsx
-import { useEffect, useRef, useState } from "react";
-import { useClickOutside } from "../../hooks/useClickOutside";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useEscape } from "../../hooks/useEscape";
 import { ChevronDownIcon } from "../ui/Icon";
 import Tooltip from "../ui/Tooltip";
@@ -19,6 +19,12 @@ const LANGUAGES = [
   "yaml",
   "markdown",
 ];
+
+// Where the list sits, as in a Select: under the chip, cut to the room there, or above it when that is too little (the chip is
+// at the bottom of the editor, over the keyboard, on a phone)
+const EDGE = 8; // keep this far from the window edge
+const GAP = 4; // between the chip and the list
+const MIN_ROOM = 200; // under the chip, before the list opens above it instead
 
 interface Option {
   label: string;
@@ -47,6 +53,8 @@ function CodeLanguagePicker({
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const chipRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -81,7 +89,40 @@ function CodeLanguagePicker({
     listRef.current?.children[index]?.scrollIntoView({ block: "nearest" });
   }, [index, open]);
 
-  useClickOutside(wrapRef, open, () => onOpenChange(false));
+  // The list is drawn on the page itself, outside the toolbar (which scrolls sideways, so it would cut the list off): a press
+  // outside the chip and the list closes it
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        !wrapRef.current?.contains(target) &&
+        !dropRef.current?.contains(target)
+      )
+        onOpenChange(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open, onOpenChange]);
+
+  // Placed before the first paint, so it never shows in the wrong place
+  useLayoutEffect(() => {
+    const el = dropRef.current;
+    const chip = chipRef.current;
+    if (!open || !el || !chip) return;
+    const anchor = chip.getBoundingClientRect();
+    const below = window.innerHeight - anchor.bottom - GAP - EDGE;
+    const above = anchor.top - GAP - EDGE;
+    const up = below < MIN_ROOM && above > below;
+    el.style.maxHeight = `${Math.max(120, up ? above : below)}px`;
+    el.style.left = `${Math.max(EDGE, Math.min(anchor.right - el.offsetWidth, window.innerWidth - el.offsetWidth - EDGE))}px`;
+    if (up) {
+      el.style.top = "auto";
+      el.style.bottom = `${window.innerHeight - anchor.top + GAP}px`;
+    } else {
+      el.style.top = `${anchor.bottom + GAP}px`;
+    }
+  }, [open]);
 
   useEscape(() => onOpenChange(false), { active: open, capture: true });
 
@@ -108,7 +149,11 @@ function CodeLanguagePicker({
     <div className="code-language" ref={wrapRef}>
       <Tooltip label="Code block language" keys="Ctrl+L">
         <button
+          ref={chipRef}
           type="button"
+          // Keep the focus in the editor, as the other toolbar buttons do: taking it hides the keyboard and brings the bottom
+          // bar back, which moves the chip from under the finger before the tap finishes
+          onMouseDown={(e) => e.preventDefault()}
           className={`code-language__chip${open ? " code-language__chip--open" : ""}`}
           onClick={() => onOpenChange(!open)}
           aria-haspopup="menu"
@@ -121,36 +166,38 @@ function CodeLanguagePicker({
         </button>
       </Tooltip>
 
-      {open && (
-        <div className="code-language__dropdown">
-          <input
-            ref={inputRef}
-            className="code-language__input"
-            type="text"
-            placeholder="Language…"
-            aria-label="Code block language"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setIndex(0);
-            }}
-            onKeyDown={handleKeyDown}
-          />
-          <div className="code-language__list" role="menu" ref={listRef}>
-            {options.map((o, i) => (
-              <button
-                key={o.label}
-                type="button"
-                role="menuitem"
-                className={`code-language__option${i === index ? " code-language__option--active" : ""}${o.value === lang ? " code-language__option--current" : ""}`}
-                onClick={() => pick(o.value)}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {open &&
+        createPortal(
+          <div className="code-language__dropdown" ref={dropRef}>
+            <input
+              ref={inputRef}
+              className="code-language__input"
+              type="text"
+              placeholder="Language…"
+              aria-label="Code block language"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setIndex(0);
+              }}
+              onKeyDown={handleKeyDown}
+            />
+            <div className="code-language__list" role="menu" ref={listRef}>
+              {options.map((o, i) => (
+                <button
+                  key={o.label}
+                  type="button"
+                  role="menuitem"
+                  className={`code-language__option${i === index ? " code-language__option--active" : ""}${o.value === lang ? " code-language__option--current" : ""}`}
+                  onClick={() => pick(o.value)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

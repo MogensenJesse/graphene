@@ -159,7 +159,7 @@ Items 1 and 2 are already done (in the audit work, commit `7df88a1`) because the
    uses a plain `writeTextFile` [C].
 2. **Rename order:** write the new file first and delete the old one after. Today `replaceItemFile` (`src/lib/storage.ts:193`) deletes
    first [C]. Also make the duplicate-id tiebreak deterministic (newest revision wins) instead of "last in scan order".
-3. **Vault identity and sync state:** `.graphene/vault.json` holding a vault id, plus the sync-state file. Hash canonical text; do
+3. **Vault identity and sync state:** `.graphene/vault.json` holding a vault id, plus the sync-state file (the vaults an Android phone makes since 2026-11-27 already have the file, with their `nanoid` as the id: `makePrivateVaultFolder`; `Notes` and the desktop vaults do not yet). Hash canonical text; do
    not trust `updatedAt`.
 4. **Stable folder ids:** a folder manifest with id, name and rank. A folder's id is its path today [C], so renaming a folder
    re-identifies its whole subtree.

@@ -9,6 +9,8 @@ const tauri = vi.hoisted(() => ({
   writeTextFile: vi.fn<(path: string, text: string) => Promise<void>>(),
   fsCalls: vi.fn(),
   appDataDir: vi.fn<() => Promise<string>>(),
+  remove: vi.fn<(path: string, options?: object) => Promise<void>>(),
+  mkdir: vi.fn<(path: string, options?: object) => Promise<void>>(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: tauri.invoke }));
@@ -22,12 +24,18 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   // The three calls loadVaultConfig used to make; it must not make them any more
   exists: tauri.fsCalls,
   readTextFile: tauri.fsCalls,
-  mkdir: vi.fn(),
+  mkdir: tauri.mkdir,
+  remove: tauri.remove,
   rename: vi.fn(),
   writeTextFile: tauri.writeTextFile,
 }));
 
-const { loadVaultConfig, withPrivateVault } = await import("./vault");
+const {
+  deletePrivateVaultFolder,
+  loadVaultConfig,
+  makePrivateVaultFolder,
+  withPrivateVault,
+} = await import("./vault");
 
 const config = {
   active: "D:/Notes",
@@ -43,6 +51,32 @@ beforeEach(() => {
   tauri.writeTextFile.mockReset().mockResolvedValue(undefined);
   tauri.fsCalls.mockReset();
   tauri.appDataDir.mockReset().mockResolvedValue("/data/app");
+  tauri.remove.mockReset().mockResolvedValue(undefined);
+  tauri.mkdir.mockReset().mockResolvedValue(undefined);
+});
+
+test("a new private vault is a folder named by its id, with the id written inside it for syncing", async () => {
+  const path = await makePrivateVaultFolder("abc123");
+  assert.equal(path, "/data/app/vaults/abc123");
+  assert.deepEqual(tauri.mkdir.mock.calls, [
+    ["/data/app/vaults/abc123/.graphene", { recursive: true }],
+  ]);
+  const [file, text] = tauri.writeTextFile.mock.calls[0];
+  assert.equal(file, "/data/app/vaults/abc123/.graphene/vault.json");
+  assert.deepEqual(JSON.parse(text), { id: "abc123" });
+});
+
+test("a private vault's folder is deleted with what is in it", async () => {
+  await deletePrivateVaultFolder("/data/app/vaults/abc123");
+  assert.deepEqual(tauri.remove.mock.calls, [
+    ["/data/app/vaults/abc123", { recursive: true }],
+  ]);
+});
+
+test("nothing outside the app's own storage is ever deleted, nor the storage itself", async () => {
+  for (const path of ["D:/Notes", "/data/app", "/data/app2/vaults/x", "/data"])
+    await assert.rejects(deletePrivateVaultFolder(path), /own storage/);
+  assert.equal(tauri.remove.mock.calls.length, 0);
 });
 
 test("Android's first start makes the vault in the app's own storage, opens it and saves the list", async () => {

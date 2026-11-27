@@ -6,12 +6,14 @@ import {
   BaseDirectory,
   exists,
   mkdir,
+  remove,
   rename,
   writeTextFile,
 } from "@tauri-apps/plugin-fs";
 import {
   addVault,
   EMPTY_CONFIG,
+  isInside,
   parseVaultConfig,
   pathKey,
   serializeVaultConfig,
@@ -118,6 +120,32 @@ export async function withPrivateVault(
     console.error("[vault] could not make the app's own vault:", err);
     return config;
   }
+}
+
+/**
+ * A new, empty vault in the app's own storage (Android): `vaults/<id>`, named by the vault's id so that renaming the vault never
+ * moves a file. The id is also written inside it, in `.graphene/vault.json`, where syncing will look for it (docs/plans/03). Returns
+ * the folder's path.
+ */
+export async function makePrivateVaultFolder(id: string): Promise<string> {
+  const path = await join(await appDataDir(), "vaults", id);
+  const meta = await join(path, ".graphene");
+  await mkdir(meta, { recursive: true });
+  await writeTextFile(
+    await join(meta, "vault.json"),
+    JSON.stringify({ id }, null, 2),
+  );
+  return path;
+}
+
+/**
+ * Deletes a vault's folder with everything in it. Only a folder inside the app's own storage: a folder the person picked on a
+ * computer is never deleted by the app, whatever the caller asks.
+ */
+export async function deletePrivateVaultFolder(path: string): Promise<void> {
+  if (!isInside(path, await appDataDir()))
+    throw new Error(`not in the app's own storage: ${path}`);
+  await remove(path, { recursive: true });
 }
 
 /** Whether the vault's folder is there. One that cannot be looked at counts as missing. */

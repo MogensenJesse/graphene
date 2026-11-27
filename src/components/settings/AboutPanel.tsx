@@ -26,20 +26,6 @@ function AboutPanel({ updater, onShowUpdate }: AboutPanelProps) {
 
   return (
     <>
-      <section className="settings__field">
-        <h3 className="settings__label">Graphene</h3>
-        <p className="settings__text">
-          {version ? `Version ${version}` : "Version unknown"}
-        </p>
-      </section>
-
-      {IS_ANDROID && (
-        <section className="settings__field">
-          <h3 className="settings__label">Your notes</h3>
-          <p className="settings__text">{PRIVATE_VAULT_NOTICE}</p>
-        </section>
-      )}
-
       {update && (
         <p className="settings__notice">
           Version {update.version} is available.{" "}
@@ -49,35 +35,53 @@ function AboutPanel({ updater, onShowUpdate }: AboutPanelProps) {
         </p>
       )}
 
-      {/* Android has no updater: a new APK is installed over the old one */}
-      {!IS_ANDROID && (
-        <>
-          <div className="settings__row settings__row--center">
-            <Button disabled={busy} onClick={updater.checkNow}>
+      <div className="settings__group">
+        <section className="settings__field">
+          <h3 className="settings__label">Version</h3>
+          <span className="settings__value">{version ?? "Unknown"}</span>
+        </section>
+
+        {IS_ANDROID && (
+          <section className="settings__field">
+            <h3 className="settings__label">Your notes</h3>
+            <p className="settings__muted">{PRIVATE_VAULT_NOTICE}</p>
+          </section>
+        )}
+
+        {/* Android has no updater: a new APK is installed over the old one */}
+        {!IS_ANDROID && (
+          <section className="settings__field">
+            <h3 className="settings__label">Updates</h3>
+            <Button
+              className="settings__control"
+              disabled={busy}
+              onClick={updater.checkNow}
+            >
               Check for updates
             </Button>
             {result && (
-              <span className="settings__muted" role="status">
+              <p className="settings__muted" role="status">
                 {result}
-              </span>
+              </p>
             )}
-          </div>
+            <p className="settings__muted">
+              {canInstall
+                ? "Graphene also checks a few seconds after it starts."
+                : "This is a development build: it never updates itself."}
+            </p>
+          </section>
+        )}
 
-          <p className="settings__muted">
-            {canInstall
-              ? "Graphene also checks a few seconds after it starts."
-              : "This is a development build: it never updates itself."}
-          </p>
-        </>
-      )}
-
-      <div className="settings__row">
-        <Button
-          variant="link"
-          onClick={() => openUrl(RELEASES_PAGE).catch(console.error)}
-        >
-          Release notes on GitHub
-        </Button>
+        <section className="settings__field">
+          <h3 className="settings__label">Release notes</h3>
+          <Button
+            variant="link"
+            className="settings__control"
+            onClick={() => openUrl(RELEASES_PAGE).catch(console.error)}
+          >
+            View on GitHub
+          </Button>
+        </section>
       </div>
     </>
   );

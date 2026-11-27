@@ -1,10 +1,13 @@
 // src/hooks/useVaults.ts
+import { nanoid } from "nanoid";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { perfMark } from "../lib/perf";
 import { IS_ANDROID } from "../lib/platform";
 import { startVault } from "../lib/startVault";
 import {
+  deletePrivateVaultFolder,
   loadVaultConfig,
+  makePrivateVaultFolder,
   saveVaultConfig,
   vaultFolderExists,
   withPrivateVault,
@@ -14,6 +17,7 @@ import {
   EMPTY_CONFIG,
   findVault,
   moveVault,
+  nameTaken,
   pathKey,
   removeVault,
   renameVault,
@@ -24,6 +28,9 @@ import {
   type VaultProblem,
 } from "../lib/vaultList";
 import { useLatest } from "./useLatest";
+
+export type CreateResult = "created" | "empty" | "taken" | "unsaved" | "failed";
+export type EraseResult = "erased" | "last" | "unsaved" | "failed";
 
 export interface Vaults {
   /** False until config.json has been read */
@@ -43,8 +50,18 @@ export interface Vaults {
   switchTo: (path: string) => Promise<"opened" | "missing" | "unsaved">;
   /** Adds the folder and opens it. A problem (already a vault, overlaps one) means nothing was added; so does null when the unsaved changes held it back (the toast says so). */
   add: (path: string) => Promise<VaultProblem | null>;
-  /** Takes it off the list; the folder and its notes stay on disk. The open vault stays when the unsaved changes hold it back. */
-  remove: (path: string) => Promise<void>;
+  /** Takes it off the list; the folder and its notes stay on disk. False when the unsaved changes held it back (the open vault stays). */
+  remove: (path: string) => Promise<boolean>;
+  /**
+   * Android: a new, empty vault in the app's own storage, opened at once. "unsaved": the unsaved changes held it back (the toast says
+   * so); "failed": the folder could not be made.
+   */
+  create: (name: string) => Promise<CreateResult>;
+  /**
+   * Android: takes it off the list AND deletes its folder, with every note in it. Never the last vault: the app would have none and no
+   * way to make one. "failed": it is off the list but its files could not be deleted.
+   */
+  erase: (path: string) => Promise<EraseResult>;
   /** False when the name is empty or taken */
   rename: (path: string, name: string) => boolean;
   move: (path: string, delta: -1 | 1) => void;
@@ -169,7 +186,7 @@ export function useVaults(
   );
 
   const remove = useCallback(
-    async (path: string) => {
+    async (path: string): Promise<boolean> => {
       const wasOpen = pathKey(configRef.current.active ?? "") === pathKey(path);
       let heir: string | undefined;
       if (wasOpen) {
@@ -181,13 +198,55 @@ export function useVaults(
             break;
           }
         }
-        if (!(await leave.current())) return;
+        if (!(await leave.current())) return false;
         flush.current(); // what was typed while it waited
       }
       const rest = removeVault(configRef.current, path);
       commit(heir ? setActive(rest, heir) : rest);
+      return true;
     },
     [commit, flush, leave],
+  );
+
+  const create = useCallback(
+    async (name: string): Promise<CreateResult> => {
+      const clean = name.trim();
+      if (clean === "") return "empty";
+      if (nameTaken(configRef.current.vaults, clean)) return "taken";
+      if (switching.current) return "failed"; // a second tap while the first is still making it
+      switching.current = true;
+      try {
+        if (!(await leave.current())) return "unsaved";
+        const path = await makePrivateVaultFolder(nanoid());
+        const result = addVault(configRef.current, path, clean);
+        if ("kind" in result) return "failed"; // a folder of its own cannot overlap another vault
+        flush.current(); // what was typed while it waited
+        markMissing(path, false);
+        commit(setActive(result.config, result.entry.path));
+        return "created";
+      } catch (err) {
+        console.error("[vaults] could not make the vault:", err);
+        return "failed";
+      } finally {
+        switching.current = false;
+      }
+    },
+    [commit, flush, leave, markMissing],
+  );
+
+  const erase = useCallback(
+    async (path: string): Promise<EraseResult> => {
+      if (configRef.current.vaults.length <= 1) return "last";
+      if (!(await remove(path))) return "unsaved";
+      try {
+        await deletePrivateVaultFolder(path);
+        return "erased";
+      } catch (err) {
+        console.error("[vaults] could not delete the vault's files:", err);
+        return "failed";
+      }
+    },
+    [remove],
   );
 
   const rename = useCallback(
@@ -231,6 +290,8 @@ export function useVaults(
       switchTo,
       add,
       remove,
+      create,
+      erase,
       rename,
       move,
       setShared: share,
@@ -246,6 +307,8 @@ export function useVaults(
       switchTo,
       add,
       remove,
+      create,
+      erase,
       rename,
       move,
       share,

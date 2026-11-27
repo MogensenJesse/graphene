@@ -3,11 +3,11 @@
 
 // The header, body and footer are the Modal's (see _Modal.scss); this is what is Settings' own
 .settings {
-  --modal-width: 720px;
+  --modal-width: 760px;
   // The modal starts 14vh from the top, so this leaves a margin below it even in the smallest window
-  height: min(540px, calc(86vh - 20px));
+  height: min(600px, calc(86vh - 20px));
 
-  // The list of sections on the left, the open one on the right; the footer with Close runs under both
+  // The list of sections on the left, the open one on the right
   &__layout {
     flex: 1;
     min-height: 0;
@@ -18,15 +18,25 @@
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    width: 176px;
+    width: 196px;
+    padding-bottom: 12px;
     background: var(--color-background-secondary);
     border-right: 0.5px solid var(--color-border-secondary);
   }
 
-  // The modal header's padding, so this title and the section's on the right share a line. Its left edge is the
-  // rows' icons: 8px of the list's padding and 10px of a row's
+  &__head {
+    display: flex;
+    align-items: center;
+  }
+
+  // The way back: on a touch screen only (see _Touch.scss), where Settings is a screen of its own
+  &__back {
+    display: none;
+  }
+
+  // Its left edge is the rows' icons: 10px of the list's padding and 10px of a row's; its line is the section title's
   &__title {
-    padding: 18px 18px 14px;
+    padding: 15px 20px 12px;
   }
 
   // The rows are the sidebar's (`.sidebar__nav-item`)
@@ -34,37 +44,113 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 0 8px;
+    padding: 0 10px;
   }
 
+  // A container, so a setting puts its control under its name when the section is narrow (a phone, a small window)
   &__main {
     flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
+    container: settings / inline-size;
+  }
+
+  // The section's name, and the button that closes. No rule under it: the cards start right below
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px 4px 28px;
+    border-bottom: none;
+
+    .modal__title {
+      font-size: var(--fs-title);
+    }
   }
 
   &__body {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
+    padding: 12px 28px 28px;
+    // What scrolls up under the header fades out instead of being cut off by a line
+    mask-image: linear-gradient(to bottom, transparent, #000 12px);
   }
 
-  // One setting: its name, the control, and a line of explanation
-  &__field {
+  // ── Cards ─────────────────────────────────────────────────────────────────────
+
+  // The settings that belong together, one under the other with a hairline between them
+  &__group {
+    flex-shrink: 0; // the body scrolls; a card keeps its height
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    background: var(--color-background-secondary);
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--radius-lg);
+  }
+
+  &__group > &__field + &__field {
+    border-top: 0.5px solid var(--color-border-secondary);
+  }
+
+  // One setting: its name and its control on the first line, and whatever else it has (a hint, a sample, a list of
+  // fonts) the full width under them
+  &__field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 16px;
+    padding: 14px 16px;
+
+    > * {
+      grid-column: 1 / -1;
+      margin: 0;
+    }
+
+    > .settings__label {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    > .settings__segments,
+    > .settings__control,
+    > .settings__value {
+      grid-column: 2;
+      grid-row: 1;
+      justify-self: end;
+    }
   }
 
   &__label {
-    font-size: var(--fs-md);
-    font-weight: var(--fw-semibold);
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-medium);
     color: var(--color-text-primary);
   }
 
-  &__segments {
-    max-width: 340px;
+  // The value of a setting that is only read (the version)
+  &__value {
+    font-size: var(--fs-lg);
+    color: var(--color-text-secondary);
+    user-select: text;
+  }
+
+  // The choices of a few words each: they take the room they need, not a width of their own
+  &__segments .segments__item {
+    flex: 1 0 auto;
+    padding: var(--space-3) 14px;
+    white-space: nowrap;
+  }
+
+  // The same, once it is under its name: the whole width
+  @container settings (max-width: 480px) {
+    &__field > &__segments,
+    &__field > &__select {
+      grid-column: 1 / -1;
+      grid-row: auto;
+      justify-self: stretch;
+    }
   }
 
   &__input {
@@ -82,7 +168,7 @@
   &__sample {
     padding: 8px 12px;
     color: var(--color-text-secondary);
-    background: var(--color-background-secondary);
+    background: var(--color-background-primary);
     border: 0.5px solid var(--color-border-secondary);
     border-radius: var(--border-radius-md);
     font-size: calc(13px * var(--text-scale));
@@ -99,9 +185,9 @@
     }
   }
 
-  // A dropdown (ui/Select): as wide as the other pickers, the segmented rows
-  &__select {
-    max-width: 340px;
+  // A dropdown (ui/Select): in the room of a card on its own line, or the right of a name when it has `settings__control`
+  &__select.settings__control {
+    min-width: 200px;
   }
 
   // Graphene was updated since the Claude extension was added
@@ -164,7 +250,7 @@
   &__vaults {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -174,10 +260,10 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    padding: 10px 12px;
+    padding: 12px 16px;
     background: var(--color-background-secondary);
     border: 0.5px solid var(--color-border-secondary);
-    border-radius: var(--border-radius-md);
+    border-radius: var(--radius-lg);
   }
 
   &__vault-head {

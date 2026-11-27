@@ -40,9 +40,15 @@
   bottom: 20px;
 }
 
-// A task's details are a screen above the tasks, not a sliver of list beside a pane (Back closes it)
+// A task's details are a screen above the tasks, not a sliver of list beside a pane (Back closes it). The slot AND what is in it: the
+// pane keeps its own width (--details-width) when the slot is made to run to nothing, so the slot alone left the fields 320px wide
 .app--phone .tasks-pane__details {
   width: 100%;
+
+  .task-detail {
+    width: 100%;
+    border-left: none;
+  }
 }
 
 .bottom-bar {
@@ -61,25 +67,34 @@
     min-height: 44px;
   }
 
-  // Not while typing: the keyboard takes the room, and the editor has its own row of buttons there
-  .app:has(textarea:focus, input:focus) & {
+  // Not while typing: the keyboard takes the room, and the editor has its own row of buttons there. (The language list of a code
+  // block is drawn outside the app, so its field is not found by the first rule.)
+  .app:has(textarea:focus, input:focus) &,
+  :root:has(.code-language__dropdown) & {
     display: none;
   }
 }
 
+// Trash and Settings are at the end of the list's header (PhoneActions), as tall as the buttons beside them
+.app__sidebar--screen .sidebar__header-end .sidebar__trash {
+  height: 40px;
+}
+
+// The "+" is the one solid shape on the screen: the text colour as its fill, the panel colour for the sign (black with a white "+" in
+// the light theme, the other way round in the dark one)
 .new-fab {
   position: absolute;
   right: 18px;
-  bottom: 64px; // above the list's footer (Trash and Settings)
+  bottom: 16px;
   z-index: calc(#{v.z('sidebar-float')} + 1); // over the list, which is the sidebar's layer
   display: flex;
   align-items: center;
   justify-content: center;
   width: 56px;
   height: 56px;
-  color: var(--color-text-info);
-  background: var(--color-background-info);
-  border: 0.5px solid var(--color-border-info);
+  color: var(--color-background-primary);
+  background: var(--color-text-primary);
+  border: none;
   border-radius: 50%;
   box-shadow: var(--shadow-popover);
   cursor: pointer;

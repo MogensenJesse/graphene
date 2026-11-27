@@ -463,12 +463,12 @@ plan 02 (agreed 2026-11-26): on a phone the sidebar is a full-screen list, Notes
 | 19 | On the list only Search stays above the notes (a field); the Notes / Tasks switch is the bottom bar, New note is the "+", New code is gone from the phone | Small phone and dark: `46` |
 | 12, 15, 26 | No drawer: the list is the home and Back is the way back, so there is nothing to swipe and the keyboard cannot open over it; its rows have the full width | Back from a note, the editor (the keyboard first), the Trash, task details and the tasks pane each reached the list; Back on the list left the app |
 | 3 | The note header has no folder chip ("Move to" is in "..."), so the title has about 130 px more | Title 132 px wider (`42`, `43`) |
-| 17 (details) | A task's details are full width, with Back closing them | Details 391 px wide: `45` |
+| 17 (details) | A task's details are full width, with Back closing them | The slot was 391 px wide: `45` (the pane inside it was not: Round 7) |
 
 Found while building: the Undo bar of a delete was behind the list (it lives in the note's panel, which the list now covers), so on a phone the
 bars are drawn above it; a search result and "Edit" from a row's menu now close the list explicitly; the list's focus is dropped on Back, or a
-blank draft under it keeps the keyboard up and the bottom bar hidden. Not done: the list's `[...]` menu (Settings and Trash stay as the list's
-footer row), live filtering in the search field, a "+" for tasks, swipes, landscape (914 px keeps the docked sidebar), a real phone, the desktop app.
+blank draft under it keeps the keyboard up and the bottom bar hidden. Not done: the list's `[...]` menu (Settings and Trash stayed as the list's
+footer row until Round 7, which moved them to the header), live filtering in the search field, a "+" for tasks, swipes, landscape (914 px keeps the docked sidebar), a real phone, the desktop app.
 
 ### Round 5 status: polish (2026-11-26)
 
@@ -510,6 +510,62 @@ the list scrolls under the finger (`lib/dragScroll.ts`, with a test). A mouse an
 Not done: a haptic tick on the pick-up (the ghost is the only cue), a lift animation on the row, moving a task to another list by drag (the lists are on
 another screen on a phone: "Move to list" in the menu does it), a drag on a tablet with a pen, and a real phone. GitNexus rates `useDragToFolder` HIGH (the
 sidebar and the tasks both use it): every new rule is behind `pointerType === "touch"`.
+
+### Round 7 status: feedback on the phone build (2026-11-26)
+
+Done in the working tree (nothing committed) and checked on the emulator after two builds. These are the points from a look at the build on a phone-sized screen.
+
+| Point | What changed | Checked by |
+|---|---|---|
+| Settings and Trash did not sit well with the "+" | They are the last two buttons of the list's header (`PhoneActions`, rendered by `SidebarHeader` when `phone`): Trash with its count on the Notes tab, Settings on both. The sidebar footer draws nothing on a phone, except as the Trash drop zone while a note is held | Header on Notes: "Trash, 4 notes" and "Settings"; on Tasks: Settings only (`51`); the header's Trash opens the Trash view with its 4 notes; a note held for 400 ms shows "Drop to move to Trash" above the bottom bar (`56`) |
+| The "+" did not fit the rest of the app | The text colour as its fill and the panel colour for the plus: black with a white plus in the light theme (`51`), a light circle with a dark plus in the dark one (`55`). It sits 16px from the bottom | Computed colours in both themes |
+| A task's details were not full width, and their Back looked like the list's | Width: the slot `.tasks-pane__details` was 100% but the `.task-detail` inside it kept `--details-width` (320px), so both are 100% on a phone. The bar button is a left chevron "Back to the tasks" on a phone (a right chevron "Close details" elsewhere) | Slot and pane both 391px; the label read back (`53`) |
+| Settings' close button at the bottom | A back arrow before the title, as in the other screens; the footer's Close is hidden on a touch screen. The arrow is not drawn on a computer | The arrow closes it, and so does the Back key (`52`) |
+| The code language list opened under the UI and the keyboard | It is drawn on `document.body` and placed like a `Select`: under the chip cut to the room there, or above it when that is under 200px. The chip keeps the editor's focus with `onMouseDown` `preventDefault`, as the toolbar's buttons do. The bottom bar is hidden while the list is open | Keyboard up (window 578px): the list is 253px tall, its bottom 5px above the chip, the keyboard and the bar stay as they were, "ts" is preselected (`54`); picking "js" rewrote the fence and closed the list with the focus back in the text; a press outside closed it |
+
+Two misses of mine, found by the feedback and by the check: the "391 px" for the details in Round 4 was the slot only (the pane inside was 320px, and `45` shows it), and the first build of the language list did not open at all with the keyboard up: tapping the chip took the editor's focus, the keyboard went, the bottom bar came back and moved the chip from under the finger before the tap ended (the click landed on `.app`). The rows above are measured after both fixes.
+
+Vaults on a phone were built afterwards (Round 8). Not done: the "+" overlaps the right end of the Trash drop zone while a note is held (the zone is as wide as the screen, so most of it is free), a real phone, the desktop app, landscape. Seen, not investigated: leaving the app with Back ends in an Android `FORTIFY: pthread_mutex_lock called on a destroyed mutex` abort in the crash log (it is in every earlier exit too).
+
+### Round 8 status: vaults on a phone (2026-11-27)
+
+Done in the working tree (nothing committed) and checked on the emulator after three builds. The design is "Vaults on a phone" in plan 02 (agreed
+2026-11-27): several private vaults in the app's own storage, each with an id that syncing can key on.
+
+| Point | What changed | Checked by |
+|---|---|---|
+| More than one vault | `useVaults.create(name)` makes `vaults/<nanoid>` in the app's storage, with `.graphene/vault.json` holding the id (where plan 03's sync looks for it), adds the vault and opens it. `erase(path)` takes it off the list and deletes the folder; `remove` now says whether it went through. `deletePrivateVaultFolder` refuses anything outside the app's storage | "Work" made: two vaults in `config.json`, the new one active, `vault.json` has the folder's id; a note made in it is in its folder and not in `Notes`; the empty vault shows "Nothing here yet" |
+| Switching | On Android the header's vault chip is always a button: the vaults (the open one checked) and "Manage vaults…", and no "Add vault…" (there is no folder to pick) | `58`; Work to Notes: 46 notes and Notes' own Trash (4), the open vault saved |
+| Settings, Vaults | An Open tag once there are two; Open and Delete (Delete asks, and says the notes go with it); no Delete on the last vault; "New vault…" is a name field that refuses a name another vault has; renaming changes only the name | `57`, `59`, `60`; after a rename the folder is where it was; Cancel kept both vaults; deleting the open vault opened Notes, removed the folder, and logged no error |
+| Touch sizes of those controls | Open and Delete were 32x20 and 38x20 px and the name 46x23: now 56x44 and 62x44, the name 40 high | Measured on the emulator |
+
+A design change on the way: the id was first kept in `config.json`, which would have been a second id next to the `.graphene/vault.json` that plan 03 asks
+for (and one per device, where a synced vault needs the same everywhere), so it lives in the vault only. `Notes`, the first vault, has no such file yet:
+sync adds it when it links the vault.
+
+Not done: putting the vaults in an order by hand, an icon or colour for a vault, moving a note between vaults, an export offered before a Delete (the
+audit's #2 decides export), a real phone, the desktop app (its change is `remove` returning a boolean and the shape of the Vaults panel's JSX).
+GitNexus rated `useVaults`, `addVault`, `VaultSwitcher` and `VaultsPanel` HIGH (the same 56 symbols each: likely one shared node) and `VaultEntry` CRITICAL, which was not changed in the end.
+
+### Round 9 status: the Settings design (2026-11-27)
+
+Asked for after Round 8: the phone's Settings looked clunky, and so did the desktop dialog next to the rest of the app. The direction (cards, one
+line per setting, quieter chrome) was my call, not a mock-up the user chose from. In the working tree, nothing committed; the phone was checked on the
+emulator after the build, the desktop dialog only in a temporary browser harness (deleted).
+
+| Point | What changed | Checked by |
+|---|---|---|
+| Settings in cards | Each section is cards (`.settings__group`) of settings (`.settings__field`): the name left and the control right on one line, a hint or a sample the full width under them, a hairline between the settings of a card | `61`, `62` |
+| Desktop dialog | 760 x 600 px, the section list on a tinted column, the section's title and a ✕ in one header instead of a footer with a Close button, no rule under the header (the body fades out under it as it scrolls), a lighter hairline all round | Harness: light and dark, the four sections |
+| Phone | One flat surface: the sections are text tabs with a line under the open one, the cards sit on the page, segmented controls fill the width and are 44 px tall, the body ends 24 px above the gesture bar | `61`, `63`; Appearance, Vaults, About, light and dark |
+| Narrow | `.settings__main` is a container: under 480 px wide the segmented controls and dropdowns go under their name (the phone is always that narrow) | The phone; a narrow desktop window was not tried |
+| A link was a bad target | "View on GitHub" was 90 x 19.5 px: now 44 px tall and as wide as it needs, flush with the card's edge, the row still 49 px | Measured on the emulator, before and after |
+
+Not done: a real phone, the desktop app itself (only the harness), the AI assistants section with real MCP data (its card was seen with the stub only),
+a narrow desktop window. GitNexus rated `SettingsDialog` and the panels HIGH (the same 56 symbols and 22 flows: the shared-node artifact again);
+their only callers are `App.tsx` for the dialog and the dialog for the panels.
+A note on method: `closelayers` in my test helper pressed Back at the list root, which exits the app and shows the WebView FORTIFY abort from Round 7:
+that, not a crash, was what stopped the first launches of this round.
 
 ## 4. Method, conditions and limits
 
@@ -606,3 +662,16 @@ app data.
 | 48 | [48-dark-theme-light-phone-status-bar.png](android-2026-11-26/48-dark-theme-light-phone-status-bar.png) | Round 5: Theme Dark on a light phone, with light status bar icons | #33 |
 | 49 | [49-touch-drag-note.png](android-2026-11-26/49-touch-drag-note.png) | Round 6: a note held and moved, with the drop line and the Trash zone | #7 |
 | 50 | [50-touch-drag-task.png](android-2026-11-26/50-touch-drag-task.png) | Round 6: a task held and moved | #7 |
+| 51 | [51-phone-list-header-actions.png](android-2026-11-26/51-phone-list-header-actions.png) | Round 7: Trash and Settings in the list's header, the black "+" | #19 |
+| 52 | [52-settings-back-arrow.png](android-2026-11-26/52-settings-back-arrow.png) | Round 7: Settings with a back arrow and no Close | #4 |
+| 53 | [53-task-details-full-width.png](android-2026-11-26/53-task-details-full-width.png) | Round 7: a task's details at the full width, with a left chevron | #17 |
+| 54 | [54-code-language-above-keyboard.png](android-2026-11-26/54-code-language-above-keyboard.png) | Round 7: the language list above the chip, keyboard up | #1 |
+| 55 | [55-phone-list-dark-plus.png](android-2026-11-26/55-phone-list-dark-plus.png) | Round 7: the list in the dark theme, the light "+" | #19 |
+| 56 | [56-phone-drag-trash-zone.png](android-2026-11-26/56-phone-drag-trash-zone.png) | Round 7: a note held, with the Trash drop zone in the footer | #7 |
+| 57 | [57-vaults-two.png](android-2026-11-26/57-vaults-two.png) | Round 8: Settings, Vaults with two vaults, Open and Delete as finger-sized links | #2 |
+| 58 | [58-vault-menu.png](android-2026-11-26/58-vault-menu.png) | Round 8: the header chip's menu: the vaults and Manage vaults | #2 |
+| 59 | [59-new-vault-name-taken.png](android-2026-11-26/59-new-vault-name-taken.png) | Round 8: a new vault's name field refusing a name that is taken | #2 |
+| 60 | [60-vault-delete-confirm.png](android-2026-11-26/60-vault-delete-confirm.png) | Round 8: Delete asks, and says the notes go with the vault | #2 |
+| 61 | [61-settings-appearance-cards.png](android-2026-11-26/61-settings-appearance-cards.png) | Round 9: Settings, Appearance: text tabs, cards, full-width controls | Settings |
+| 62 | [62-settings-about-cards.png](android-2026-11-26/62-settings-about-cards.png) | Round 9: Settings, About: one card of settings, the link as tall as a finger | Settings |
+| 63 | [63-settings-appearance-dark.png](android-2026-11-26/63-settings-appearance-dark.png) | Round 9: Settings, Appearance in the dark theme | Settings |

@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Changed
+- Settings is tidier: each setting has its name and control on one line inside a card, and the dialog closes with a ✕ in its header instead of a Close button at the bottom
 - The theme hint in Settings no longer says "Windows"
 
 ### Fixes

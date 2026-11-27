@@ -18,7 +18,8 @@ interface VaultSwitcherProps {
   onOpenSettings: OpenSettings;
 }
 
-// The name of the open vault in the sidebar header; a click lists the others
+// The name of the open vault in the sidebar header; a click lists the vaults. On Android there is no folder to pick: new vaults are
+// made in Settings (a name is all they need), so the list ends with "Manage vaults…".
 function VaultSwitcher({ vaults, onOpenSettings }: VaultSwitcherProps) {
   const { openAt } = useContextMenu();
   const current = vaults.vaults.find((v) => v.path === vaults.active);
@@ -54,11 +55,15 @@ function VaultSwitcher({ vaults, onOpenSettings }: VaultSwitcherProps) {
         };
       }),
       "separator",
-      {
-        label: "Add vault…",
-        icon: <FolderPlusIcon size={14} />,
-        onSelect: addVault,
-      },
+      ...(IS_ANDROID
+        ? []
+        : [
+            {
+              label: "Add vault…",
+              icon: <FolderPlusIcon size={14} />,
+              onSelect: addVault,
+            },
+          ]),
       {
         label: "Manage vaults…",
         icon: <GearIcon size={14} />,
@@ -66,14 +71,6 @@ function VaultSwitcher({ vaults, onOpenSettings }: VaultSwitcherProps) {
       },
     ]);
   };
-
-  // The one vault inside the app: there is nothing to switch to or add (no folder picker), so its name is just a title
-  if (IS_ANDROID && vaults.vaults.length <= 1)
-    return (
-      <span className="sidebar__vault sidebar__vault--static">
-        <span>{current?.name ?? "Vault"}</span>
-      </span>
-    );
 
   return (
     <Tooltip label={`Vault: ${current?.name ?? ""}`}>

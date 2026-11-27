@@ -229,11 +229,15 @@
     transform: rotate(180deg);
   }
 
+  // Drawn on the page (a portal), placed by the picker beside the chip: above it when the room under it is short, as on a phone,
+  // where the chip is at the bottom of the editor. A column, so the list shrinks to the room it is given
   &__dropdown {
-    position: absolute;
-    top: calc(100% + 4px);
-    right: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
     z-index: v.z('dropdown');
+    display: flex;
+    flex-direction: column;
     width: 180px;
     animation: var(--anim-pop);
     @include mixins.popover-surface;
@@ -242,6 +246,7 @@
 
   &__input {
     display: block;
+    flex-shrink: 0;
     width: 100%;
     box-sizing: border-box;
     padding: 6px 10px;

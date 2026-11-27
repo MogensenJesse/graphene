@@ -5,6 +5,8 @@ import { perfRender } from "../../lib/perf";
 import type { OpenSettings } from "../dialogs/SettingsDialog";
 import { HexagonIcon } from "../ui/Icon";
 import Tooltip from "../ui/Tooltip";
+import PhoneActions from "./PhoneActions";
+import type { SidebarTab } from "./Sidebar";
 import VaultSwitcher from "./VaultSwitcher";
 
 interface SidebarHeaderProps {
@@ -12,15 +14,28 @@ interface SidebarHeaderProps {
   vaults: Vaults;
   onShowUpdate: () => void;
   onOpenSettings: OpenSettings;
+  /** A phone: Trash and Settings are here, not in the footer */
+  phone: boolean;
+  tab: SidebarTab;
+  trashOpen: boolean;
+  trashedCount: number;
+  unavailable: boolean;
+  onOpenTrash: () => void;
 }
 
-// Brand on the left; on the right the "Update" pill (only while a new version exists) and the vault switcher.
-// The version number and the update check live in Settings > About. The strip also drags the window.
+// Brand on the left; on the right the "Update" pill (only while a new version exists) and the vault switcher (and, on a phone,
+// Trash and Settings). The version number and the update check live in Settings > About. The strip also drags the window.
 function SidebarHeader({
   updateAvailable,
   vaults,
   onShowUpdate,
   onOpenSettings,
+  phone,
+  tab,
+  trashOpen,
+  trashedCount,
+  unavailable,
+  onOpenTrash,
 }: SidebarHeaderProps) {
   perfRender("SidebarHeader");
   return (
@@ -42,6 +57,16 @@ function SidebarHeader({
           </Tooltip>
         )}
         <VaultSwitcher vaults={vaults} onOpenSettings={onOpenSettings} />
+        {phone && (
+          <PhoneActions
+            tab={tab}
+            trashOpen={trashOpen}
+            trashedCount={trashedCount}
+            unavailable={unavailable}
+            onOpenTrash={onOpenTrash}
+            onOpenSettings={onOpenSettings}
+          />
+        )}
       </div>
     </div>
   );
