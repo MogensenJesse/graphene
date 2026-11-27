@@ -9,6 +9,9 @@
 ### Fixes
 - A table wider than the note scrolls sideways instead of breaking its words in the middle
 - The folder list in a note's header opens from the button's right edge, so it no longer runs off a narrow window
+- On a phone, menus and their submenus (Color, Move to, Format) stay on the screen and above the navigation bar instead of running off the left edge or under it, and a menu taller than the room scrolls
+- On a phone, the font list in Settings stays open instead of closing as it opens, and the calendar opens at the first tap even with the keyboard up
+- On a phone, buttons, the rows of a task's details and the note's title are 44 px tall, and the small text is a little bigger
 
 ## v1.7.0
 

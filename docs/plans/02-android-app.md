@@ -193,7 +193,13 @@ phone and on a computer (cards of settings, text tabs on a phone; audit Round 9,
 
 **Left from the proposal:** the list's `[...]` menu (Settings and Trash are buttons in the list's header now; the vault chip is a menu of the
 vaults and "Manage vaults…" now: see "Vaults on a phone"), a search field that filters in place (it opens the palette), a "+" on the Tasks list
-screen (the lists screen keeps its own "+" for a list and a group, and a task is added inside a list), and swipes. Not tried on a real phone.
+screen (the lists screen keeps its own "+" for a list and a group, and a task is added inside a list), and swipes.
+
+**Tried on a real phone (2026-11-27):** a OnePlus (Android 16, 354 x 792 px, three-button bar, system font 90 %) over USB. The audit is
+`docs/audits/2026-11-27-android-phone-audit.md`. Its findings were popups placed for the window and not for what a finger reaches (menus under the
+navigation bar, submenus off the left edge, a calendar and a dropdown closed by the keyboard), targets of 36 to 40 px and a text menu on top of the
+text. They are fixed in Round 10 of that file: `src/lib/popoverBounds.ts` places every popup inside what the page can show, targets are 44 px, and
+the small text is a step larger.
 
 **Vaults on a phone (built 2026-11-27):** a phone can have several vaults, all private (no folder picker: Android hands a picked folder over as a
 `content://` address, and the vault code reads real paths; all-files access is restricted on Google Play). The first is `Notes`, the others are

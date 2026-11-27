@@ -10,16 +10,20 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
+import { useAnchorRect } from "../../hooks/useAnchorRect";
 import { useEscape } from "../../hooks/useEscape";
+import { placeBelow, visibleBounds } from "../../lib/popoverBounds";
 import Calendar from "./Calendar";
 import Tooltip from "./Tooltip";
 
-const EDGE = 8; // keep this far from the window edge
+const EDGE = 8; // keep this far from the edge of what the page can show
 const GAP = 4; // between the button and the calendar
 
 interface CalendarPopoverProps {
   /** Where the calendar opens: under this box, or above it when the window has no room below */
   anchor: DOMRect;
+  /** The element `anchor` was measured from, if it can be measured again: the calendar follows it when the window is resized */
+  anchorEl?: Element | null;
   /** The button that opened it, if any: a press on it is its own toggle, not a click outside */
   trigger?: Element | null;
   /** As wide as this (the button), but never narrower than the month needs, see `.calendar-pop` */
@@ -33,9 +37,13 @@ interface CalendarPopoverProps {
 const insidePopover = (target: EventTarget | null) =>
   target instanceof Element && target.closest(".calendar-pop") !== null;
 
-/** The calendar in a box over the page. It closes on a pick, Escape, a click elsewhere, losing the window, a resize or a scroll. */
+/**
+ * The calendar in a box over the page. It closes on a pick, Escape, a click elsewhere, losing the window or a scroll. A resize (a phone's
+ * keyboard going up or down) places it again.
+ */
 function CalendarPopover({
   anchor,
+  anchorEl,
   trigger,
   width,
   value,
@@ -46,20 +54,22 @@ function CalendarPopover({
   const ref = useRef<HTMLDivElement>(null);
   // Read during the first render, before the calendar takes the focus, so closing can hand it back
   const previous = useRef(document.activeElement);
+  const rect = useAnchorRect(anchor, anchorEl ?? trigger, onClose);
 
-  // Under the anchor and pulled back inside the window before the first paint
+  // Under the anchor, over it when there is more room there, or moved up to be seen whole: inside what the page can show (not under a
+  // system bar or the keyboard), before the first paint
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const x = Math.min(anchor.left, window.innerWidth - el.offsetWidth - EDGE);
-    el.style.left = `${Math.max(EDGE, x)}px`;
-    const below = anchor.bottom + GAP;
-    el.style.top = `${
-      below + el.offsetHeight > window.innerHeight - EDGE
-        ? Math.max(EDGE, anchor.top - GAP - el.offsetHeight)
-        : below
-    }px`;
-  }, [anchor]);
+    const p = placeBelow(
+      rect,
+      { width: el.offsetWidth, height: el.offsetHeight },
+      visibleBounds(EDGE),
+      GAP,
+    );
+    el.style.left = `${p.left}px`;
+    el.style.top = `${p.top}px`;
+  }, [rect]);
 
   useEscape(onClose, { capture: true });
 
@@ -74,12 +84,10 @@ function CalendarPopover({
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("scroll", onScroll, true);
     window.addEventListener("blur", onClose);
-    window.addEventListener("resize", onClose);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown, true);
       document.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("blur", onClose);
-      window.removeEventListener("resize", onClose);
     };
   }, [trigger, onClose]);
 
@@ -152,6 +160,7 @@ export function pickDate(
     root.render(
       <CalendarPopover
         anchor={anchor?.getBoundingClientRect() ?? new DOMRect()}
+        anchorEl={anchor}
         value={value}
         today={today}
         onPick={(day) => {
@@ -213,6 +222,7 @@ function DatePick({
         createPortal(
           <CalendarPopover
             anchor={anchor}
+            anchorEl={alignTo?.current ?? button.current}
             trigger={button.current}
             width={anchor.width}
             value={value}

@@ -8,6 +8,11 @@ import {
   useState,
 } from "react";
 import { useBack } from "../../hooks/useBack";
+import {
+  placeAtPoint,
+  placeBeside,
+  visibleBounds,
+} from "../../lib/popoverBounds";
 import { CheckIcon, ChevronRightIcon } from "./Icon";
 
 interface ActionEntry {
@@ -35,7 +40,9 @@ export type MenuEntry = ActionEntry | SubmenuEntry | "separator";
 
 // Focusable rows of one list only (a submenu's rows sit deeper in the DOM)
 const ROWS = ':scope > .context-menu__slot > [role^="menuitem"]:not(:disabled)';
-const EDGE = 6; // keep this far from the window edge
+const EDGE = 6; // keep this far from the edge of what the page can show
+const FINGER_CLEARANCE = 24; // a text menu opened by a finger keeps this far from the point, so the pressed word stays in sight
+const SUB_MAX_HEIGHT = 320; // the same cap as `.context-menu--sub`, which the inline max-height replaces
 
 interface MenuListProps {
   entries: MenuEntry[];
@@ -64,25 +71,34 @@ function MenuList({
     focus: boolean;
   } | null>(null);
 
-  // Clamp into the window before the first paint. The top-level menu is placed at the cursor;
-  // a submenu opens to the right of its row and flips left / shifts up near the edges.
+  // Place it inside what the page can show before the first paint (`visibleBounds`: not under the status bar, the navigation bar or the
+  // keyboard). The top-level menu goes at the cursor, or beside a finger; a submenu goes beside its row, on whichever side has the room.
+  // One taller than the room scrolls.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const r = el.getBoundingClientRect();
+    el.style.maxHeight = ""; // measured at its natural height, not the one an earlier run gave it
+    const size = { width: el.offsetWidth, height: el.offsetHeight };
+    const bounds = visibleBounds(EDGE);
     if (origin) {
-      el.style.left = `${Math.max(EDGE, Math.min(origin.x, window.innerWidth - r.width - EDGE))}px`;
-      el.style.top = `${Math.max(EDGE, Math.min(origin.y, window.innerHeight - r.height - EDGE))}px`;
+      // The menu of a text field on a touch screen stays off the word that was pressed
+      const clearance =
+        keepFocus && window.matchMedia("(pointer: coarse)").matches
+          ? FINGER_CLEARANCE
+          : 0;
+      const p = placeAtPoint(origin, size, bounds, clearance);
+      el.style.left = `${p.left}px`;
+      el.style.top = `${p.top}px`;
+      el.style.maxHeight = `${p.maxHeight}px`;
       return;
     }
-    if (r.right > window.innerWidth - EDGE) {
-      el.style.left = "auto";
-      el.style.right = "calc(100% - 4px)";
-    }
-    if (r.bottom > window.innerHeight - EDGE) {
-      el.style.top = `${-5 - (r.bottom - window.innerHeight + EDGE)}px`;
-    }
-  }, [origin]);
+    const slot = el.parentElement;
+    if (!slot) return;
+    const p = placeBeside(slot.getBoundingClientRect(), size, bounds);
+    el.style.left = `${p.left}px`;
+    el.style.top = `${p.top}px`;
+    el.style.maxHeight = `${Math.min(p.maxHeight, SUB_MAX_HEIGHT)}px`;
+  }, [origin, keepFocus]);
 
   // The top-level menu takes focus itself so the arrow keys work without highlighting a row
   useEffect(() => {

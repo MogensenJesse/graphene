@@ -143,13 +143,22 @@
     white-space: nowrap;
   }
 
-  // The same, once it is under its name: the whole width
+  // The same, once it is under its name: the whole width. The choices are tighter there, and take a second row rather than run
+  // off the card when even that is too wide (a 354px phone with four fonts, or a larger system font)
   @container settings (max-width: 480px) {
     &__field > &__segments,
     &__field > &__select {
       grid-column: 1 / -1;
       grid-row: auto;
       justify-self: stretch;
+    }
+
+    &__segments {
+      flex-wrap: wrap;
+    }
+
+    &__segments .segments__item {
+      padding-inline: 8px;
     }
   }
 

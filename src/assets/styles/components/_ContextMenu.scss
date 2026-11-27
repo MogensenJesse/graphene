@@ -11,17 +11,18 @@
   padding: 4px;
   @include mixins.popover-surface;
   outline: none;
+  // The script gives it a max-height where the page shows less than the menu is tall (a phone), so it scrolls instead of running
+  // under the navigation bar
+  overflow-y: auto;
+  @include mixins.custom-scrollbar;
   // Opacity only: the menu is measured against the window before it is shown, and a transform would skew that
   animation: var(--anim-fade);
 
+  // Fixed, not absolute: a scrolling parent would clip it. The script puts it beside its row
   &--sub {
-    position: absolute;
-    top: -5px;
-    left: calc(100% - 4px);
+    position: fixed;
     z-index: v.z('raised');
     max-height: 320px;
-    overflow-y: auto;
-    @include mixins.custom-scrollbar;
   }
 
   &__slot {

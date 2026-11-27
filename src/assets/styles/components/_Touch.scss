@@ -42,7 +42,10 @@
     --row-menu: 44px;
     --row-tree: 44px;
     --row-nav: 44px;
-    --btn-sm: 36px;
+    --btn-sm: 44px;
+    // The small text of a computer (11px and 12px) is read at arm's length here: the facts of a task row, the counts, the small buttons
+    --fs-xs: 12px;
+    --fs-sm: 13px;
   }
 
   // Icon buttons, whatever their desktop size
@@ -51,7 +54,7 @@
   .icon-btn--md,
   .icon-btn--lg,
   .icon-btn--tool {
-    --icon-btn-size: 40px;
+    --icon-btn-size: 44px;
   }
 
   // A long press opens a row's menu: it should not also select the row's text, or flash grey where it was pressed. The text of a
@@ -84,16 +87,16 @@
     opacity: 1;
   }
 
-  // The header: the sidebar toggle (now 40px) has the left corner, and Search, New and Settings are in the drawer, so the title
+  // The header: the sidebar toggle (now 44px) has the left corner, and Search, New and Settings are in the drawer, so the title
   // starts after the toggle and the buttons end at the screen's edge. The note's own text uses the screen's width.
   .app__main {
     --pane-pad: 14px;
-    --chrome-left: 58px;
+    --chrome-left: 62px;
   }
 
   .app__main--quick,
   .app__main--quick .item-header {
-    --chrome-left: 58px;
+    --chrome-left: 62px;
   }
 
   .app__quick {
@@ -101,11 +104,78 @@
   }
 
   .app__sidebar-toggle {
-    top: calc((var(--bar-height) - 40px) / 2);
+    top: calc((var(--bar-height) - 44px) / 2);
   }
 
   .item-header {
     padding-right: 10px;
+  }
+
+  // The note's title is a button that renames it: as tall as a finger, not as tall as its letters. The padding is what is left of 44px
+  // after its line, and not a line-height of 44px: the system's font size scales a line-height in px, and not a height
+  .item-header__title {
+    padding-block: calc((44px - 1lh) / 2);
+  }
+
+  .item-header__title-input {
+    height: 44px;
+  }
+
+  // Task details: the rows of the card (My Day, due date, list), the title and the step boxes are as tall as a finger. The title is
+  // a box that grows with its text, so it takes the height as padding and the first line stays in the middle
+  .task-detail__option,
+  .task-detail__option-btn {
+    height: 44px;
+  }
+
+  .task-detail__title {
+    padding-block: 12px;
+    min-height: 44px;
+  }
+
+  // The "Completed" line that folds the done tasks
+  .tasks-pane__done-toggle {
+    min-height: 44px;
+  }
+
+  .task-detail__step-title {
+    min-height: 44px;
+  }
+
+  // The box to add a task (its field fills it, so a tap anywhere along it lands in it), a list's name (a button that renames it) and a
+  // task's own button
+  .add-task {
+    height: 44px;
+  }
+
+  .add-task__input {
+    align-self: stretch;
+  }
+
+  .tasks-pane__title-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .tasks-pane__rename {
+    height: 44px;
+  }
+
+  .task-row__main {
+    align-self: stretch;
+    justify-content: center;
+  }
+
+  // A dropdown: its button, its search field and its rows (a row's text is centred by padding, as the note's title above)
+  .select,
+  .select-pop__input {
+    min-height: 44px;
+  }
+
+  .select-pop__option {
+    padding-block: calc((44px - 1lh) / 2);
+    contain-intrinsic-size: auto 44px;
   }
 
   // The formatting buttons stay in one row that scrolls sideways, instead of three rows that push the text down. The row is under
@@ -176,7 +246,7 @@
   }
 
   .segments__item {
-    min-height: 40px;
+    min-height: 44px;
   }
 
   // The header's "Edit" is a button with its word hidden in a narrow panel: as wide as the square icon buttons beside it
@@ -276,7 +346,8 @@
     }
 
     .modal__body {
-      padding: 16px 16px max(24px, env(safe-area-inset-bottom));
+      // The bar's own height, and a margin above it (not max(): a 3-button bar is as tall as the margin, and the last card sat on it)
+      padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
     }
 
     // The choices fill the width under their name, and are as tall as a finger

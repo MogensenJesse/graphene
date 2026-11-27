@@ -11,11 +11,13 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { useAnchorRect } from "../../hooks/useAnchorRect";
 import { useEscape } from "../../hooks/useEscape";
 import { filterOptions } from "../../lib/optionFilter";
+import { placeBelow, visibleBounds } from "../../lib/popoverBounds";
 import { ChevronDownIcon } from "./Icon";
 
-const EDGE = 8; // keep this far from the window edge
+const EDGE = 8; // keep this far from the edge of what the page can show
 const GAP = 4; // between the button and the list
 const PAGE = 8; // rows Page Up and Page Down jump
 const MIN_ROOM = 200; // under the button, before the list opens above it instead
@@ -63,7 +65,10 @@ interface PopoverProps<T extends string> {
 const insidePopover = (target: EventTarget | null) =>
   target instanceof Element && target.closest(".select-pop") !== null;
 
-/** The list in a box over the page. It closes on a pick, Escape, Tab, a click elsewhere, losing the window, a resize or a scroll. */
+/**
+ * The list in a box over the page. It closes on a pick, Escape, Tab, a click elsewhere, losing the window or a scroll. A resize (a phone's
+ * keyboard going up or down) places it again.
+ */
 function SelectPopover<T extends string>({
   anchor,
   trigger,
@@ -79,6 +84,7 @@ function SelectPopover<T extends string>({
   const ref = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const rect = useAnchorRect(anchor, trigger, () => onClose(false));
   const listId = useId();
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(() =>
@@ -98,28 +104,36 @@ function SelectPopover<T extends string>({
       : found;
   }, [options, query, typed]);
 
-  // Under the button, cut to the room there, or above it when that is too little and there is more room above; pulled back
-  // inside the window before the first paint. Above, it hangs from the button's top edge, so a shorter list (a search)
-  // stays next to the button
+  // Under the button, cut to the room there, or above it when that is too little and there is more room above; inside what the page
+  // can show (not under a system bar or the keyboard) before the first paint. Above, it hangs from the button's top edge, so a
+  // shorter list (a search) stays next to the button. Again when the window is resized (a phone's keyboard)
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const below = window.innerHeight - anchor.bottom - GAP - EDGE;
-    const above = anchor.top - GAP - EDGE;
-    const up = below < MIN_ROOM && above > below;
-    el.style.maxHeight = `${Math.max(120, up ? above : below)}px`;
-    el.style.left = `${Math.max(EDGE, Math.min(anchor.left, window.innerWidth - el.offsetWidth - EDGE))}px`;
-    if (up) {
+    el.style.maxHeight = ""; // measured at its natural height, not the one an earlier run gave it
+    const p = placeBelow(
+      rect,
+      { width: el.offsetWidth, height: el.scrollHeight },
+      visibleBounds(EDGE),
+      GAP,
+      MIN_ROOM,
+    );
+    el.style.maxHeight = `${Math.max(120, p.maxHeight)}px`;
+    el.style.left = `${p.left}px`;
+    if (p.up) {
       el.style.top = "auto";
-      el.style.bottom = `${window.innerHeight - anchor.top + GAP}px`;
+      el.style.bottom = `${window.innerHeight - p.bottom}px`;
     } else {
-      el.style.top = `${anchor.bottom + GAP}px`;
+      el.style.top = `${p.top}px`;
+      el.style.bottom = "auto";
     }
-  }, [anchor]);
+  }, [rect]);
 
-  // The box that takes the keys: the search field, or the list itself
+  // The box that takes the keys: the search field, or the list itself. A touch screen has no keys to send it: the search field
+  // would only raise the keyboard over the list, so it is left for a tap
   useEffect(() => {
-    (searchable ? inputRef.current : listRef.current)?.focus();
+    const touch = window.matchMedia("(pointer: coarse)").matches;
+    (searchable && !touch ? inputRef.current : listRef.current)?.focus();
   }, [searchable]);
 
   // Also when the list is made again: an unchanged index still needs its row brought into view
@@ -142,12 +156,10 @@ function SelectPopover<T extends string>({
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("scroll", onScroll, true);
     window.addEventListener("blur", close);
-    window.addEventListener("resize", close);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown, true);
       document.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("blur", close);
-      window.removeEventListener("resize", close);
     };
   }, [trigger, onClose]);
 
@@ -220,7 +232,7 @@ function SelectPopover<T extends string>({
         className="select-pop__list"
         role="listbox"
         aria-label={label}
-        tabIndex={searchable ? undefined : -1}
+        tabIndex={-1}
         aria-activedescendant={
           !searchable && shown[index] ? `${listId}-${index}` : undefined
         }

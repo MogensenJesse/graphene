@@ -551,17 +551,22 @@ GitNexus rated `useVaults`, `addVault`, `VaultSwitcher` and `VaultsPanel` HIGH (
 
 Asked for after Round 8: the phone's Settings looked clunky, and so did the desktop dialog next to the rest of the app. The direction (cards, one
 line per setting, quieter chrome) was my call, not a mock-up the user chose from. In the working tree, nothing committed; the phone was checked on the
-emulator after the build, the desktop dialog only in a temporary browser harness (deleted).
+emulator after the build and then on a real phone (OnePlus CPH2493, Android 16, 354 x 792 dp, three-button navigation), the desktop
+dialog only in a temporary browser harness (deleted).
 
 | Point | What changed | Checked by |
 |---|---|---|
 | Settings in cards | Each section is cards (`.settings__group`) of settings (`.settings__field`): the name left and the control right on one line, a hint or a sample the full width under them, a hairline between the settings of a card | `61`, `62` |
 | Desktop dialog | 760 x 600 px, the section list on a tinted column, the section's title and a ✕ in one header instead of a footer with a Close button, no rule under the header (the body fades out under it as it scrolls), a lighter hairline all round | Harness: light and dark, the four sections |
-| Phone | One flat surface: the sections are text tabs with a line under the open one, the cards sit on the page, segmented controls fill the width and are 44 px tall, the body ends 24 px above the gesture bar | `61`, `63`; Appearance, Vaults, About, light and dark |
+| Phone | One flat surface: the sections are text tabs with a line under the open one, the cards sit on the page, segmented controls fill the width and are 44 px tall, the body ends 16 px above the system bar (its inset plus 16) | `61`, `63`; Appearance, Vaults, About, light and dark |
 | Narrow | `.settings__main` is a container: under 480 px wide the segmented controls and dropdowns go under their name (the phone is always that narrow) | The phone; a narrow desktop window was not tried |
 | A link was a bad target | "View on GitHub" was 90 x 19.5 px: now 44 px tall and as wide as it needs, flush with the card's edge, the row still 49 px | Measured on the emulator, before and after |
+| Four options on a 354 dp phone | Code font's four options need 314 px and the control has 284: "Custom" ran off the card. Under 480 px wide the options have 8 px of side padding (14 before) and take a second row if that is still too wide (larger text was simulated: Custom drops to a row of its own) | The real phone, before and after: `64` |
+| The end of a long section | The body's bottom padding was `max(24px, inset)`: with a 3-button bar (inset 44 px) that is the bar's own height, so the last card sat on the bar. It is now the inset plus 16 px | The real phone: the last card ended at 748 px, the bar's top, before and 732 after: `65` |
 
-Not done: a real phone, the desktop app itself (only the harness), the AI assistants section with real MCP data (its card was seen with the stub only),
+The emulator is 411 dp wide with a gesture bar, so neither of the last two rows showed there; the real phone found both.
+
+Not done: the desktop app itself (only the harness), the AI assistants section with real MCP data (its card was seen with the stub only),
 a narrow desktop window. GitNexus rated `SettingsDialog` and the panels HIGH (the same 56 symbols and 22 flows: the shared-node artifact again);
 their only callers are `App.tsx` for the dialog and the dialog for the panels.
 A note on method: `closelayers` in my test helper pressed Back at the list root, which exits the app and shows the WebView FORTIFY abort from Round 7:
@@ -675,3 +680,5 @@ app data.
 | 61 | [61-settings-appearance-cards.png](android-2026-11-26/61-settings-appearance-cards.png) | Round 9: Settings, Appearance: text tabs, cards, full-width controls | Settings |
 | 62 | [62-settings-about-cards.png](android-2026-11-26/62-settings-about-cards.png) | Round 9: Settings, About: one card of settings, the link as tall as a finger | Settings |
 | 63 | [63-settings-appearance-dark.png](android-2026-11-26/63-settings-appearance-dark.png) | Round 9: Settings, Appearance in the dark theme | Settings |
+| 64 | [64-phone-settings-appearance.png](android-2026-11-26/64-phone-settings-appearance.png) | Round 9: a real phone (354 dp): Code font's four options fit | Settings |
+| 65 | [65-phone-settings-bottom.png](android-2026-11-26/65-phone-settings-bottom.png) | Round 9: a real phone: the end of Appearance, the last card above the bar | Settings |
